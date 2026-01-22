@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "electron": "npm run build && electron electron-main.js",
+    "electron:dev": "ng build --watch & wait-on dist/index.html && electron electron-main.js"
   },
   "prettier": {
     "printWidth": 100,
@@ -29,15 +31,30 @@
     "@angular/forms": "^21.1.0",
     "@angular/platform-browser": "^21.1.0",
     "@angular/router": "^21.1.0",
+    "@editorjs/editorjs": "^2.31.1",
+    "@editorjs/header": "^2.8.8",
+    "@editorjs/list": "^2.0.9",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "jspdf": "^4.0.0",
+    "jszip": "^3.10.1",
+    "literallycanvas": "^0.5.2",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
     "rxjs": "~7.8.0",
+    "tone": "^15.1.22",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.1.1",
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
+    "concurrently": "^9.2.1",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
     "jsdom": "^27.1.0",
     "typescript": "~5.9.2",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "wait-on": "^9.0.3"
   }
 }

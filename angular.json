@@ -16,6 +16,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": "dist",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
@@ -24,6 +25,7 @@
                 "input": "public"
               }
             ],
+            "index": "src/index.html",
             "styles": [
               "src/styles.css"
             ]
