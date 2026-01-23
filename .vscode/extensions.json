@@ -3,7 +3,6 @@
   "recommendations": [
     "angular.ng-template",
     "bradlc.vscode-tailwindcss",
-    "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
     "GitHub.vscode-pull-request-github",
     "eamodio.gitlens",
