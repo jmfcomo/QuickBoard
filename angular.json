@@ -3,9 +3,7 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "schematicCollections": [
-      "angular-eslint"
-    ],
+    "schematicCollections": ["angular-eslint"],
     "analytics": false
   },
   "newProjectRoot": "projects",
@@ -31,8 +29,10 @@
             ],
             "index": "src/index.html",
             "styles": [
-              "src/styles.css"
-            ]
+              "src/styles.css",
+              "node_modules/literallycanvas/lib/css/literallycanvas.css"
+            ],
+            "scripts": ["node_modules/literallycanvas/lib/js/literallycanvas-core.js"]
           },
           "configurations": {
             "production": {
@@ -76,10 +76,7 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "src/**/*.ts",
-              "src/**/*.html"
-            ]
+            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
           }
         }
       }

@@ -1,0 +1,45 @@
+.canvas-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  gap: 8px;
+  min-height: 400px;
+}
+
+.tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.tool-button {
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.tool-button:hover {
+  background-color: #f0f0f0;
+}
+
+.separator {
+  color: #d1d5db;
+}
+
+.literally-canvas {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: white;
+  min-height: 300px;
+}
