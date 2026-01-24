@@ -9,7 +9,8 @@
     "test": "ng test",
     "electron": "npm run build && electron electron-main.js",
     "electron:dev": "ng build --watch & wait-on dist/index.html && electron electron-main.js",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "postinstall": "node patch-literallycanvas.js"
   },
   "prettier": {
     "printWidth": 100,
