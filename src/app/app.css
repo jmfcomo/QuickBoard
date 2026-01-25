@@ -1,0 +1,33 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+}
+
+.editors {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  width: 100%;
+  height: 60%;
+  padding: 1rem;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.editors app-canvas {
+  flex: 0 0 70%;
+  height: 100%;
+}
+
+.editors app-script {
+  flex: 0 0 30%;
+  height: 100%;
+}
+
+app-timeline {
+  width: 100%;
+  height: 40%;
+  box-sizing: border-box;
+}
