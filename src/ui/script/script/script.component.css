@@ -1,0 +1,12 @@
+#editorjs {
+  width: 100%;
+  height: 600px;
+  border: 1px solid #ccc;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+#editorjs .ce-editor__content {
+  min-height: 500px;
+  padding: 0;
+}
