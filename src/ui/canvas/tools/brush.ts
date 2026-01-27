@@ -25,7 +25,7 @@ interface Point {
 export class Brush {
   name = 'Brush';
   iconName = 'brush';
-  strokeWidth = 10;
+  strokeWidth = 5;
   optionsStyle = 'stroke-width';
   usesSimpleAPI = true;
   
@@ -70,6 +70,32 @@ export class Brush {
   }
 
   private addPoint(x: number, y: number, lc: LCInstance): void {
+    const lastPoint = this.points[this.points.length - 1];
+    
+    // If we have a previous point, interpolate between them if distance is too large
+    if (lastPoint) {
+      const dx = x - lastPoint.x;
+      const dy = y - lastPoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Create intermediate points if the distance is larger than half the brush size
+      if (distance > this.strokeWidth / 2) {
+        const steps = Math.ceil(distance / (this.strokeWidth / 2));
+        for (let i = 1; i <= steps; i++) {
+          const t = i / steps;
+          const interpX = Math.round(lastPoint.x + dx * t);
+          const interpY = Math.round(lastPoint.y + dy * t);
+          this.drawSquare(interpX, interpY, lc);
+        }
+        return;
+      }
+    }
+    
+    // Otherwise draw at the current point
+    this.drawSquare(x, y, lc);
+  }
+
+  private drawSquare(x: number, y: number, lc: LCInstance): void {
     // Check if we've already drawn a square at this position
     const isDuplicate = this.points.some((pt) => {
       return Math.abs(pt.x - x) < this.strokeWidth / 2 && 
