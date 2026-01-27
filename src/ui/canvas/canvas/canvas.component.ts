@@ -20,7 +20,6 @@ interface LiterallyCanvas {
   tools: {
     Pencil: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
-    Clear: LiterallyCanvasTool;
   };
 }
 
@@ -41,6 +40,7 @@ export class CanvasComponent implements AfterViewInit {
   @ViewChild('canvasContainer') canvasContainer!: ElementRef;
   private lc: LCInstance | null = null;
   tools: CanvasTool[] = [];
+  currentTool: CanvasTool | null = null;
 
   ngAfterViewInit() {
     setTimeout(() => this.initializeCanvas(), 0);
@@ -79,7 +79,6 @@ export class CanvasComponent implements AfterViewInit {
     // Handle clear button separately (not a tool, just an action)
     const clearButton = document.getElementById('tool-clear');
     if (clearButton) {
-      clearButton.style.cursor = 'pointer';
       clearButton.onclick = (e: Event) => {
         e.preventDefault();
         this.clearCanvas();
@@ -93,6 +92,7 @@ export class CanvasComponent implements AfterViewInit {
         t.el.onclick = (e: Event) => {
           e.preventDefault();
           this.activateTool(t);
+          this.currentTool = t;
         };
       }
     });
@@ -130,8 +130,11 @@ export class CanvasComponent implements AfterViewInit {
       this.lc.trigger('clear');
     }
 
-    // Switch back to pencil tool after clearing
-    if (this.tools.length > 0) {
+    // Switch back to previous tool if any
+    if (this.currentTool) {
+      this.activateTool(this.currentTool);
+    }
+    else if (this.tools.length > 0) {
       this.activateTool(this.tools[0]);
     }
   }
