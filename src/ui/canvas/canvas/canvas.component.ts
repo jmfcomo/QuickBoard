@@ -8,10 +8,20 @@ import {
   PLATFORM_ID,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { Brush } from '../../canvas/tools/brush';
 
 interface LCTool {
+  name?: string;
+  iconName?: string;
+  strokeWidth?: number;
+  optionsStyle?: string;
   willBecomeActive?(lc: LCInstance): void;
   didBecomeActive?(lc: LCInstance): void;
+  begin?(x: number, y: number, lc: LCInstance): void;
+  ['continue']?(x: number, y: number, lc: LCInstance): void;
+  end?(x: number, y: number, lc: LCInstance): void;
+  willBecomeInactive?(lc: LCInstance): void;
+  didBecomeInactive?(lc: LCInstance): void;
 }
 
 interface LCInstance {
@@ -20,6 +30,10 @@ interface LCInstance {
   shapes: unknown[];
   repaintLayer(layer: string): void;
   trigger(event: string, data?: unknown): void;
+  tool: LCTool;
+  getColor(type: string): string;
+  setShapesInProgress(shapes: unknown[]): void;
+  saveShape(shape: unknown): void;
 }
 
 type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
@@ -28,6 +42,7 @@ interface LiterallyCanvas {
   init(element: HTMLElement, options?: { imageURLPrefix?: string }): LCInstance;
   tools: {
     Pencil: LiterallyCanvasTool;
+    Brush: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
   };
 }
@@ -45,6 +60,7 @@ export class CanvasComponent implements AfterViewInit {
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
+    { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'eraser', label: 'Eraser', icon: '🧹' },
   ];
 
@@ -71,6 +87,7 @@ export class CanvasComponent implements AfterViewInit {
     // Initialize tool instances
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
+    this.toolInstances.set('brush', new Brush(this.lc));
 
     // Activate the default tool
     this.setTool('pencil');
