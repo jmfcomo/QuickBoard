@@ -9,6 +9,8 @@ interface LCInstance {
   setTool(tool: LCTool): void;
   backgroundShapes: unknown[];
   shapes: unknown[];
+  repaintLayer(layer: string): void;
+  trigger(event: string, data?: unknown): void;
 }
 
 type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
@@ -102,5 +104,17 @@ export class CanvasComponent implements AfterViewInit {
         if (t.el) t.el.style.backgroundColor = 'transparent';
       }
     });
+  }
+
+  public clearCanvas(): void {
+    if (!this.lc) return;
+
+    // Clear all shapes
+    this.lc.shapes = [];
+    this.lc.backgroundShapes = [];
+    this.lc.repaintLayer('main');
+
+    // Trigger clear event
+    this.lc.trigger('clear');
   }
 }
