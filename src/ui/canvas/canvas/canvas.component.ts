@@ -76,15 +76,6 @@ export class CanvasComponent implements AfterViewInit {
       },
     ];
 
-    // Handle clear button separately (not a tool, just an action)
-    const clearButton = document.getElementById('tool-clear');
-    if (clearButton) {
-      clearButton.onclick = (e: Event) => {
-        e.preventDefault();
-        this.clearCanvas();
-      };
-    }
-
     // Setup tool click handlers
     this.tools.forEach((t) => {
       if (t.el) {
@@ -117,7 +108,7 @@ export class CanvasComponent implements AfterViewInit {
     });
   }
 
-  private clearCanvas(): void {
+  public clearCanvas(): void {
     if (!this.lc) return;
 
     // Clear all shapes
