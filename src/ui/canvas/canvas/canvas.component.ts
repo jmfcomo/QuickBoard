@@ -40,7 +40,6 @@ export class CanvasComponent implements AfterViewInit {
   @ViewChild('canvasContainer') canvasContainer!: ElementRef;
   private lc: LCInstance | null = null;
   tools: CanvasTool[] = [];
-  currentTool: CanvasTool | null = null;
 
   ngAfterViewInit() {
     setTimeout(() => this.initializeCanvas(), 0);
@@ -83,7 +82,6 @@ export class CanvasComponent implements AfterViewInit {
         t.el.onclick = (e: Event) => {
           e.preventDefault();
           this.activateTool(t);
-          this.currentTool = t;
         };
       }
     });
@@ -118,12 +116,5 @@ export class CanvasComponent implements AfterViewInit {
 
     // Trigger clear event
     this.lc.trigger('clear');
-
-    // Switch back to previous tool if any
-    if (this.currentTool) {
-      this.activateTool(this.currentTool);
-    } else if (this.tools.length > 0) {
-      this.activateTool(this.tools[0]);
-    }
   }
 }
