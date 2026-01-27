@@ -9,6 +9,8 @@ interface LCInstance {
   setTool(tool: LCTool): void;
   backgroundShapes: unknown[];
   shapes: unknown[];
+  repaintLayer(layer: string): void;
+  trigger(event: string, data?: unknown): void;
 }
 
 type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
@@ -18,6 +20,7 @@ interface LiterallyCanvas {
   tools: {
     Pencil: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
+    Clear: LiterallyCanvasTool;
   };
 }
 
@@ -73,6 +76,16 @@ export class CanvasComponent implements AfterViewInit {
       },
     ];
 
+    // Handle clear button separately (not a tool, just an action)
+    const clearButton = document.getElementById('tool-clear');
+    if (clearButton) {
+      clearButton.style.cursor = 'pointer';
+      clearButton.onclick = (e: Event) => {
+        e.preventDefault();
+        this.clearCanvas();
+      };
+    }
+
     // Setup tool click handlers
     this.tools.forEach((t) => {
       if (t.el) {
@@ -102,5 +115,24 @@ export class CanvasComponent implements AfterViewInit {
         if (t.el) t.el.style.backgroundColor = 'transparent';
       }
     });
+  }
+
+  private clearCanvas(): void {
+    if (!this.lc) return;
+
+    // Clear all shapes
+    this.lc.shapes = [];
+    this.lc.backgroundShapes = [];
+    this.lc.repaintLayer('main');
+
+    // Trigger clear event
+    if (this.lc.trigger) {
+      this.lc.trigger('clear');
+    }
+
+    // Switch back to pencil tool after clearing
+    if (this.tools.length > 0) {
+      this.activateTool(this.tools[0]);
+    }
   }
 }
