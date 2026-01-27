@@ -117,15 +117,12 @@ export class CanvasComponent implements AfterViewInit {
     this.lc.repaintLayer('main');
 
     // Trigger clear event
-    if (this.lc.trigger) {
-      this.lc.trigger('clear');
-    }
+    this.lc.trigger('clear');
 
     // Switch back to previous tool if any
     if (this.currentTool) {
       this.activateTool(this.currentTool);
-    }
-    else if (this.tools.length > 0) {
+    } else if (this.tools.length > 0) {
       this.activateTool(this.tools[0]);
     }
   }
