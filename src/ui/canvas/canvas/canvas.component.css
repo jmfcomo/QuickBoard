@@ -31,6 +31,11 @@
   background-color: #f0f0f0;
 }
 
+.tool-button.active {
+  background-color: #fbbf24;
+  border-color: #f59e0b;
+}
+
 .separator {
   color: #d1d5db;
 }

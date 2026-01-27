@@ -1,9 +1,15 @@
 <div class="canvas-container">
   <div class="tools-bar">
-    <button id="tool-pencil" class="tool-button">Pencil</button>
-    <span class="separator">|</span>
-    <button id="tool-eraser" class="tool-button">Eraser</button>
-    <span class="separator">|</span>
+    @for (tool of tools; track tool.id) {
+      <button
+        class="tool-button"
+        [class.active]="activeTool() === tool.id"
+        (click)="setTool(tool.id)"
+      >
+        {{ tool.label }}
+      </button>
+      <span class="separator">|</span>
+    }
     <button (click)="clearCanvas()" class="tool-button">Clear</button>
   </div>
   <div #canvasContainer class="literally-canvas"></div>
