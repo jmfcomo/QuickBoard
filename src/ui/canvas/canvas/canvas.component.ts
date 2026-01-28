@@ -10,47 +10,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { Brush } from '../../canvas/tools/brush';
-
-interface LCTool {
-  name?: string;
-  iconName?: string;
-  strokeWidth?: number;
-  optionsStyle?: string;
-  willBecomeActive?(lc: LCInstance): void;
-  didBecomeActive?(lc: LCInstance): void;
-  begin?(x: number, y: number, lc: LCInstance): void;
-  ['continue']?(x: number, y: number, lc: LCInstance): void;
-  end?(x: number, y: number, lc: LCInstance): void;
-  willBecomeInactive?(lc: LCInstance): void;
-  didBecomeInactive?(lc: LCInstance): void;
-}
-
-interface LCInstance {
-  setTool(tool: LCTool): void;
-  backgroundShapes: unknown[];
-  shapes: unknown[];
-  repaintLayer(layer: string): void;
-  trigger(event: string, data?: unknown): void;
-  tool: LCTool;
-  getColor(type: string): string;
-  setShapesInProgress(shapes: unknown[]): void;
-  saveShape(shape: unknown): void;
-  on(event: string, handler: (data: unknown) => void): void;
-  getSnapshot(): Record<string, unknown>;
-  loadSnapshot(snapshot: Record<string, unknown>): void;
-}
-
-type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
-
-interface LiterallyCanvas {
-  init(element: HTMLElement, options?: { imageURLPrefix?: string }): LCInstance;
-  tools: {
-    Pencil: LiterallyCanvasTool;
-    Eraser: LiterallyCanvasTool;
-  };
-}
-
-declare const LC: LiterallyCanvas;
+import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
   selector: 'app-canvas',
@@ -71,6 +31,7 @@ export class CanvasComponent implements AfterViewInit {
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
+  private updateCanvasTimeout: number | null = null;
 
   ngAfterViewInit() {
     // Ensure we are in the browser and not in a test runner that might lack global objects
@@ -94,7 +55,16 @@ export class CanvasComponent implements AfterViewInit {
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
-        this.store.updateCanvasData(this.lc.getSnapshot());
+        // Debounce the canvas data update to avoid excessive store updates
+        if (this.updateCanvasTimeout !== null) {
+          clearTimeout(this.updateCanvasTimeout);
+        }
+        this.updateCanvasTimeout = window.setTimeout(() => {
+          if (this.lc) {
+            this.store.updateCanvasData(this.lc.getSnapshot());
+          }
+          this.updateCanvasTimeout = null;
+        }, 300); // Wait 300ms after the last drawing change
       }
     });
 

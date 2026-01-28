@@ -13,7 +13,6 @@ export const AppStore = signalStore(
   withState(initialState),
   withMethods((store) => ({
     updateCanvasData(canvasData: Record<string, unknown>) {
-      console.log('Updating canvas data in store:', canvasData);
       patchState(store, { canvasData });
     },
   })),
