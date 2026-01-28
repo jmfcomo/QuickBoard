@@ -48,6 +48,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       clearTimeout(this.updateCanvasTimeout);
       this.updateCanvasTimeout = null;
     }
+    
+    // Clean up LiterallyCanvas instance and event listeners
+    if (this.lc) {
+      this.lc.teardown();
+      this.lc = null;
+    }
   }
 
   private initializeCanvas(): void {

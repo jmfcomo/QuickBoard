@@ -25,6 +25,7 @@ export interface LCInstance {
   on(event: string, handler: (data: unknown) => void): void;
   getSnapshot(): Record<string, unknown>;
   loadSnapshot(snapshot: Record<string, unknown>): void;
+  teardown(): void;
 }
 
 export type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
