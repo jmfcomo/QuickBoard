@@ -1,21 +1,6 @@
 // Brush Tool - paints with squares for a pixel effect
 
-interface LCShape {
-  className: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  strokeWidth: number;
-  strokeColor: string;
-  fillColor: string;
-}
-
-interface LCInstance {
-  tool: { strokeWidth?: number };
-  getColor(type: string): string;
-  saveShape(shape: unknown): void;
-}
+import { LCInstance } from '../literally-canvas-interfaces';
 
 interface Point {
   x: number;
@@ -28,7 +13,7 @@ export class Brush {
   strokeWidth = 5;
   optionsStyle = 'stroke-width';
   usesSimpleAPI = true;
-  
+
   private points: Point[] = [];
   private color = '#000000';
 
@@ -71,13 +56,13 @@ export class Brush {
 
   private addPoint(x: number, y: number, lc: LCInstance): void {
     const lastPoint = this.points[this.points.length - 1];
-    
+
     // If we have a previous point, interpolate between them if distance is too large
     if (lastPoint) {
       const dx = x - lastPoint.x;
       const dy = y - lastPoint.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // Create intermediate points if the distance is larger than half the brush size
       if (distance > this.strokeWidth / 2) {
         const steps = Math.ceil(distance / (this.strokeWidth / 2));
@@ -90,7 +75,7 @@ export class Brush {
         return;
       }
     }
-    
+
     // Otherwise draw at the current point
     this.drawSquare(x, y, lc);
   }
@@ -98,25 +83,23 @@ export class Brush {
   private drawSquare(x: number, y: number, lc: LCInstance): void {
     // Check if we've already drawn a square at this position
     const isDuplicate = this.points.some((pt) => {
-      return Math.abs(pt.x - x) < this.strokeWidth / 2 && 
-             Math.abs(pt.y - y) < this.strokeWidth / 2;
+      return Math.abs(pt.x - x) < this.strokeWidth / 2 && Math.abs(pt.y - y) < this.strokeWidth / 2;
     });
 
     if (!isDuplicate) {
-      this.points.push({x, y});
-      
-      // Create and immediately save a rectangle (square) shape
-      const square: LCShape = {
-        className: 'Rectangle',
+      this.points.push({ x, y });
+
+      // Create and immediately save a rectangle (square) shape using LC.createShape
+      const square = LC.createShape('Rectangle', {
         x: Math.round(x - this.strokeWidth / 2),
         y: Math.round(y - this.strokeWidth / 2),
         width: this.strokeWidth,
         height: this.strokeWidth,
         strokeWidth: 0, // No border
         strokeColor: 'transparent',
-        fillColor: this.color
-      };
-      
+        fillColor: this.color,
+      });
+
       lc.saveShape(square);
     }
   }
