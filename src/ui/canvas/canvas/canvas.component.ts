@@ -33,17 +33,24 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private updateCanvasTimeout: number | null = null;
+  private initCanvasTimeout: number | null = null;
 
   ngAfterViewInit() {
     // Ensure we are in the browser and not in a test runner that might lack global objects
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
       // Use a small timeout to let the view settle/paint if necessary
-      setTimeout(() => this.initializeCanvas(), 0);
+      this.initCanvasTimeout = window.setTimeout(() => this.initializeCanvas(), 0);
     }
   }
 
   ngOnDestroy() {
-    // Clear the timeout to prevent memory leaks and errors after component destruction
+    // Clear the initialization timeout to prevent it from executing after destruction
+    if (this.initCanvasTimeout !== null) {
+      clearTimeout(this.initCanvasTimeout);
+      this.initCanvasTimeout = null;
+    }
+    
+    // Clear the update timeout to prevent memory leaks and errors after component destruction
     if (this.updateCanvasTimeout !== null) {
       clearTimeout(this.updateCanvasTimeout);
       this.updateCanvasTimeout = null;
