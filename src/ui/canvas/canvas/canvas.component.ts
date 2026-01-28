@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   AfterViewInit,
+  OnDestroy,
   signal,
   viewChild,
   inject,
@@ -17,7 +18,7 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
-export class CanvasComponent implements AfterViewInit {
+export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
 
@@ -38,6 +39,14 @@ export class CanvasComponent implements AfterViewInit {
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
       // Use a small timeout to let the view settle/paint if necessary
       setTimeout(() => this.initializeCanvas(), 0);
+    }
+  }
+
+  ngOnDestroy() {
+    // Clear the timeout to prevent memory leaks and errors after component destruction
+    if (this.updateCanvasTimeout !== null) {
+      clearTimeout(this.updateCanvasTimeout);
+      this.updateCanvasTimeout = null;
     }
   }
 
