@@ -41,7 +41,6 @@
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
     "literallycanvas": "^0.5.2",
-    "ngrx": "^0.0.1-security",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "rxjs": "~7.8.0",
