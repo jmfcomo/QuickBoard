@@ -61,9 +61,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.teardown();
       this.lc = null;
     }
+    
+    // Clear tool instances to release references
+    this.toolInstances.clear();
   }
 
   private initializeCanvas(): void {
+    // Clear the init timeout reference as it has already fired
+    this.initCanvasTimeout = null;
+    
     const container = this.canvasContainer().nativeElement;
 
     // Initialize Literally Canvas
