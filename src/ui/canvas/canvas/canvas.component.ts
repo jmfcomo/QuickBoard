@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   AfterViewInit,
+  OnDestroy,
   signal,
   viewChild,
   inject,
@@ -17,7 +18,7 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
-export class CanvasComponent implements AfterViewInit {
+export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
 
@@ -32,16 +33,43 @@ export class CanvasComponent implements AfterViewInit {
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private updateCanvasTimeout: number | null = null;
+  private initCanvasTimeout: number | null = null;
 
   ngAfterViewInit() {
     // Ensure we are in the browser and not in a test runner that might lack global objects
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
       // Use a small timeout to let the view settle/paint if necessary
-      setTimeout(() => this.initializeCanvas(), 0);
+      this.initCanvasTimeout = window.setTimeout(() => this.initializeCanvas(), 0);
     }
   }
 
+  ngOnDestroy() {
+    // Clear the initialization timeout to prevent it from executing after destruction
+    if (this.initCanvasTimeout !== null) {
+      clearTimeout(this.initCanvasTimeout);
+      this.initCanvasTimeout = null;
+    }
+    
+    // Clear the update timeout to prevent memory leaks and errors after component destruction
+    if (this.updateCanvasTimeout !== null) {
+      clearTimeout(this.updateCanvasTimeout);
+      this.updateCanvasTimeout = null;
+    }
+    
+    // Clean up LiterallyCanvas instance and event listeners
+    if (this.lc) {
+      this.lc.teardown();
+      this.lc = null;
+    }
+    
+    // Clear tool instances to release references
+    this.toolInstances.clear();
+  }
+
   private initializeCanvas(): void {
+    // Clear the init timeout reference as it has already fired
+    this.initCanvasTimeout = null;
+    
     const container = this.canvasContainer().nativeElement;
 
     // Initialize Literally Canvas
