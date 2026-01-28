@@ -53,7 +53,6 @@
     "@angular/build": "^21.1.1",
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
-    "@ngrx/signals": "^21.0.1",
     "angular-eslint": "21.1.0",
     "concurrently": "^9.2.1",
     "electron": "^40.0.0",
