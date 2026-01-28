@@ -8,6 +8,7 @@ import {
   PLATFORM_ID,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { AppStore } from '../../../data/store/app.store';
 import { Brush } from '../../canvas/tools/brush';
 
 interface LCTool {
@@ -34,6 +35,9 @@ interface LCInstance {
   getColor(type: string): string;
   setShapesInProgress(shapes: unknown[]): void;
   saveShape(shape: unknown): void;
+  on(event: string, handler: (data: unknown) => void): void;
+  getSnapshot(): Record<string, unknown>;
+  loadSnapshot(snapshot: Record<string, unknown>): void;
 }
 
 type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
@@ -63,6 +67,7 @@ export class CanvasComponent implements AfterViewInit {
     { id: 'eraser', label: 'Eraser', icon: '🧹' },
   ];
 
+  readonly store = inject(AppStore);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
@@ -81,6 +86,16 @@ export class CanvasComponent implements AfterViewInit {
     // Initialize Literally Canvas
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
+    });
+    const existingData = this.store.canvasData();
+    if (existingData) {
+      this.lc.loadSnapshot(existingData);
+    }
+
+    this.lc.on('drawingChange', () => {
+      if (this.lc) {
+        this.store.updateCanvasData(this.lc.getSnapshot());
+      }
     });
 
     // Initialize tool instances

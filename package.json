@@ -41,16 +41,19 @@
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
     "literallycanvas": "^0.5.2",
+    "ngrx": "^0.0.1-security",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "rxjs": "~7.8.0",
     "tone": "^15.1.22",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@ngrx/signals": "^21.0.1"
   },
   "devDependencies": {
     "@angular/build": "^21.1.1",
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
+    "@ngrx/signals": "^21.0.1",
     "angular-eslint": "21.1.0",
     "concurrently": "^9.2.1",
     "electron": "^40.0.0",
