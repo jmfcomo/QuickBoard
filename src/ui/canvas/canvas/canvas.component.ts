@@ -42,7 +42,6 @@ interface LiterallyCanvas {
   init(element: HTMLElement, options?: { imageURLPrefix?: string }): LCInstance;
   tools: {
     Pencil: LiterallyCanvasTool;
-    Brush: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
   };
 }
