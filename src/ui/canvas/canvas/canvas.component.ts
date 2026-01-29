@@ -33,20 +33,20 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
-  private currentFrameId: string | null = null;
+  private currentBoardId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
 
   constructor() {
-    // Watch for frame changes and reload canvas data
+    // Watch for board changes and reload canvas data
     effect(() => {
-      const selectedFrameId = this.store.currentFrameId();
-      if (this.lc && selectedFrameId && selectedFrameId !== this.currentFrameId) {
-        // Save current frame data before switching
-        if (this.currentFrameId && this.lc) {
-          this.store.updateCanvasData(this.currentFrameId, this.lc.getSnapshot());
+      const selectedBoardId = this.store.currentBoardId();
+      if (this.lc && selectedBoardId && selectedBoardId !== this.currentBoardId) {
+        // Save current board data before switching
+        if (this.currentBoardId && this.lc) {
+          this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
         }
-        this.loadFrameData(selectedFrameId);
+        this.loadBoardData(selectedBoardId);
       }
     });
   }
@@ -88,11 +88,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const container = this.canvasContainer().nativeElement;
 
-    // Get the current frame or first frame
-    const frames = this.store.frames();
-    const currentFrame = frames.find((f) => f.id === this.store.currentFrameId()) || frames[0];
-    if (currentFrame) {
-      this.currentFrameId = currentFrame.id;
+    // Get the current board or first board
+    const boards = this.store.boards();
+    const currentBoard = boards.find((b) => b.id === this.store.currentBoardId()) || boards[0];
+    if (currentBoard) {
+      this.currentBoardId = currentBoard.id;
     }
 
     // Initialize Literally Canvas
@@ -100,8 +100,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
-    if (currentFrame?.canvasData) {
-      this.lc.loadSnapshot(currentFrame.canvasData);
+    if (currentBoard?.canvasData) {
+      this.lc.loadSnapshot(currentBoard.canvasData);
     }
 
     this.lc.on('drawingChange', () => {
@@ -111,8 +111,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           clearTimeout(this.updateCanvasTimeout);
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
-          if (this.lc && this.currentFrameId) {
-            this.store.updateCanvasData(this.currentFrameId, this.lc.getSnapshot());
+          if (this.lc && this.currentBoardId) {
+            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
           }
           this.updateCanvasTimeout = null;
         }, 300); // Wait 300ms after the last drawing change
@@ -128,21 +128,21 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.setTool('pencil');
   }
 
-  private loadFrameData(frameId: string) {
+  private loadBoardData(boardId: string) {
     if (!this.lc) return;
 
-    const frames = this.store.frames();
-    const frame = frames.find(f => f.id === frameId);
-    
-    this.currentFrameId = frameId;
-    
+    const boards = this.store.boards();
+    const board = boards.find((b) => b.id === boardId);
+
+    this.currentBoardId = boardId;
+
     // Clear canvas
     this.lc.shapes = [];
     this.lc.backgroundShapes = [];
-    
-    // Load new frame data
-    if (frame?.canvasData) {
-      this.lc.loadSnapshot(frame.canvasData);
+
+    // Load new board data
+    if (board?.canvasData) {
+      this.lc.loadSnapshot(board.canvasData);
     } else {
       this.lc.repaintLayer('main');
     }

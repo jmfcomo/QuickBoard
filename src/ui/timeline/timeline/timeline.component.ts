@@ -9,22 +9,22 @@ import { AppStore } from '../../../data/store/app.store';
 export class TimelineComponent {
   readonly store = inject(AppStore);
 
-  addFrame() {
-    const newFrameId = this.store.addFrame();
-    this.store.setCurrentFrame(newFrameId);
+  addBoard() {
+    const newBoardId = this.store.addBoard();
+    this.store.setCurrentBoard(newBoardId);
   }
 
-  selectFrame(frameId: string) {
-    this.store.setCurrentFrame(frameId);
+  selectBoard(boardId: string) {
+    this.store.setCurrentBoard(boardId);
   }
 
-  deleteFrame(frameId: string) {
-    const frames = this.store.frames();
-    if (frames.length > 1) {
-      this.store.deleteFrame(frameId);
-      // Select another frame if the deleted one was selected
-      if (this.store.currentFrameId() === frameId) {
-        this.store.setCurrentFrame(frames[0].id);
+  deleteBoard(boardId: string) {
+    const boards = this.store.boards();
+    if (boards.length > 1) {
+      this.store.deleteBoard(boardId);
+      // Select another board if the deleted one was selected
+      if (this.store.currentBoardId() === boardId) {
+        this.store.setCurrentBoard(boards[0].id);
       }
     }
   }

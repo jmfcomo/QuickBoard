@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import EditorJS from '@editorjs/editorjs';
+import type { OutputBlockData } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Paragraph from '@editorjs/paragraph';
@@ -17,15 +18,15 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private editor: EditorJS | null = null;
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
-  private currentFrameId: string | null = null;
+  private currentBoardId: string | null = null;
 
   constructor() {
-    // Watch for frame changes and reload editor data
+    // Watch for board changes and reload editor data
     effect(() => {
-      const selectedFrameId = this.store.currentFrameId();
-      if (this.editor && selectedFrameId && selectedFrameId !== this.currentFrameId) {
-        // Save current frame data before switching (use async to ensure completion)
-        this.switchFrame(selectedFrameId);
+      const selectedBoardId = this.store.currentBoardId();
+      if (this.editor && selectedBoardId && selectedBoardId !== this.currentBoardId) {
+        // Save current board data before switching (use async to ensure completion)
+        this.switchBoard(selectedBoardId);
       }
     });
   }
@@ -55,11 +56,11 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private initializeEditor() {
-    // Get the current frame or first frame
-    const frames = this.store.frames();
-    const currentFrame = frames.find((f) => f.id === this.store.currentFrameId()) || frames[0];
-    if (currentFrame) {
-      this.currentFrameId = currentFrame.id;
+    // Get the current board or first board
+    const boards = this.store.boards();
+    const currentBoard = boards.find((b) => b.id === this.store.currentBoardId()) || boards[0];
+    if (currentBoard) {
+      this.currentBoardId = currentBoard.id;
     }
 
     this.editor = new EditorJS({
@@ -71,7 +72,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
         list: List,
       },
       placeholder: 'Start typing here...',
-      data: currentFrame?.scriptData || {
+      data: currentBoard?.scriptData || {
         blocks: [],
         time: Date.now(),
         version: '2.28.0',
@@ -83,44 +84,44 @@ export class ScriptComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async switchFrame(frameId: string) {
+  private async switchBoard(boardId: string) {
     if (!this.editor || this.isSaving) return;
 
-    // First, save current frame data
-    if (this.currentFrameId) {
+    // First, save current board data
+    if (this.currentBoardId) {
       try {
         this.isSaving = true;
         const data = await this.editor.save();
 
         // Only save if there's actual content (not just empty blocks)
         if (data.blocks && data.blocks.length > 0) {
-          this.store.updateScriptData(this.currentFrameId, data);
+          this.store.updateScriptData(this.currentBoardId, data);
         } else {
           // Save null instead of empty blocks to avoid validation issues
-          this.store.updateScriptData(this.currentFrameId, {
+          this.store.updateScriptData(this.currentBoardId, {
             blocks: [],
             time: Date.now(),
             version: '2.28.0',
           });
         }
       } catch (error) {
-        console.error('Failed to save before frame switch:', error);
+        console.error('Failed to save before board switch:', error);
       } finally {
         this.isSaving = false;
       }
     }
 
-    // Then load new frame data
-    await this.loadFrameData(frameId);
+    // Then load new board data
+    await this.loadBoardData(boardId);
   }
 
-  private async loadFrameData(frameId: string) {
+  private async loadBoardData(boardId: string) {
     if (!this.editor) return;
 
-    const frames = this.store.frames();
-    const frame = frames.find((f) => f.id === frameId);
+    const boards = this.store.boards();
+    const board = boards.find((b) => b.id === boardId);
 
-    this.currentFrameId = frameId;
+    this.currentBoardId = boardId;
 
     // Prepare default empty data
     const emptyData = {
@@ -131,22 +132,24 @@ export class ScriptComponent implements OnInit, OnDestroy {
 
     let dataToRender = emptyData;
 
-    if (frame?.scriptData && frame.scriptData.blocks && frame.scriptData.blocks.length > 0) {
+    if (board?.scriptData && board.scriptData.blocks && board.scriptData.blocks.length > 0) {
       // Deep clone to ensure data integrity
-      dataToRender = JSON.parse(JSON.stringify(frame.scriptData));
+      dataToRender = JSON.parse(JSON.stringify(board.scriptData));
 
       // Validate and sanitize blocks
-      dataToRender.blocks = dataToRender.blocks.filter((block: any) => {
-        // Ensure each block has required properties and valid data
-        if (!block || !block.type || block.data === undefined) {
-          return false;
-        }
-        // Ensure paragraph blocks have text property
-        if (block.type === 'paragraph' && typeof block.data.text !== 'string') {
-          block.data.text = '';
-        }
-        return true;
-      });
+      dataToRender.blocks = dataToRender.blocks.filter(
+        (block: OutputBlockData<string, { text?: string }> | null | undefined) => {
+          // Ensure each block has required properties and valid data
+          if (!block || !block.type || block.data === undefined) {
+            return false;
+          }
+          // Ensure paragraph blocks have text property
+          if (block.type === 'paragraph' && typeof block.data.text !== 'string') {
+            block.data.text = '';
+          }
+          return true;
+        },
+      );
 
       // If all blocks were filtered out, use empty data
       if (dataToRender.blocks.length === 0) {
@@ -158,7 +161,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
     try {
       await this.editor.render(dataToRender);
     } catch (error) {
-      console.error('Failed to load frame data:', error, 'Data:', dataToRender);
+      console.error('Failed to load board data:', error, 'Data:', dataToRender);
       // Fallback to completely empty editor
       try {
         await this.editor.render(emptyData);
@@ -176,24 +179,24 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private async saveEditorData() {
-    // Skip if already saving or no editor or no frame
-    if (this.isSaving || !this.editor || !this.currentFrameId) {
+    // Skip if already saving or no editor or no board
+    if (this.isSaving || !this.editor || !this.currentBoardId) {
       return;
     }
 
     this.isSaving = true;
-    const frameIdAtSaveStart = this.currentFrameId;
+    const boardIdAtSaveStart = this.currentBoardId;
 
     try {
       const data = await this.editor.save();
 
-      // Only save if we're still on the same frame
-      if (frameIdAtSaveStart !== this.currentFrameId) {
+      // Only save if we're still on the same board
+      if (boardIdAtSaveStart !== this.currentBoardId) {
         return;
       }
 
-      const frames = this.store.frames();
-      const currentFrame = frames.find((f) => f.id === this.currentFrameId);
+      const boards = this.store.boards();
+      const currentBoard = boards.find((b) => b.id === this.currentBoardId);
 
       // Normalize empty data
       const dataToSave =
@@ -202,8 +205,8 @@ export class ScriptComponent implements OnInit, OnDestroy {
           : data;
 
       // Only update if data has changed
-      if (JSON.stringify(dataToSave) !== JSON.stringify(currentFrame?.scriptData)) {
-        this.store.updateScriptData(this.currentFrameId, dataToSave);
+      if (JSON.stringify(dataToSave) !== JSON.stringify(currentBoard?.scriptData)) {
+        this.store.updateScriptData(this.currentBoardId, dataToSave);
       }
     } catch (error) {
       console.error('Failed to save editor data:', error);
@@ -214,21 +217,21 @@ export class ScriptComponent implements OnInit, OnDestroy {
 
   private saveEditorDataSync() {
     // Synchronous save for component destruction to prevent data loss
-    if (!this.editor || !this.currentFrameId) {
+    if (!this.editor || !this.currentBoardId) {
       return;
     }
 
-    const frameId = this.currentFrameId;
+    const boardId = this.currentBoardId;
     try {
       // Use the editor's save method but don't await it
       // Store the promise to potentially be handled elsewhere if needed
       this.editor
         .save()
         .then((data) => {
-          const frames = this.store.frames();
-          const currentFrame = frames.find((f) => f.id === frameId);
-          if (JSON.stringify(data) !== JSON.stringify(currentFrame?.scriptData)) {
-            this.store.updateScriptData(frameId, data);
+          const boards = this.store.boards();
+          const currentBoard = boards.find((b) => b.id === boardId);
+          if (JSON.stringify(data) !== JSON.stringify(currentBoard?.scriptData)) {
+            this.store.updateScriptData(boardId, data);
           }
         })
         .catch((error) => {

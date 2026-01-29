@@ -1,62 +1,62 @@
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import type { OutputData } from '@editorjs/editorjs';
 
-interface Frame {
+interface Board {
   id: string;
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
 }
 
 interface AppState {
-  frames: Frame[];
-  currentFrameId: string | null;
+  boards: Board[];
+  currentBoardId: string | null;
 }
 
-const firstFrameId = crypto.randomUUID();
+const firstBoardId = crypto.randomUUID();
 
 const initialState: AppState = {
-  frames: [
+  boards: [
     {
-      id: firstFrameId,
+      id: firstBoardId,
       canvasData: null,
       scriptData: null,
     },
   ],
-  currentFrameId: firstFrameId,
+  currentBoardId: firstBoardId,
 };
 
 export const AppStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store) => ({
-    setCurrentFrame(frameId: string) {
-      patchState(store, { currentFrameId: frameId });
+    setCurrentBoard(boardId: string) {
+      patchState(store, { currentBoardId: boardId });
     },
-    addFrame() {
-      const newFrame: Frame = {
+    addBoard() {
+      const newBoard: Board = {
         id: crypto.randomUUID(),
         canvasData: null,
         scriptData: null,
       };
-      patchState(store, { frames: [...store.frames(), newFrame] });
-      return newFrame.id;
+      patchState(store, { boards: [...store.boards(), newBoard] });
+      return newBoard.id;
     },
-    deleteFrame(frameId: string) {
-      const frames = store.frames().filter((f) => f.id !== frameId);
-      patchState(store, { frames });
+    deleteBoard(boardId: string) {
+      const boards = store.boards().filter((b) => b.id !== boardId);
+      patchState(store, { boards });
     },
-    updateCanvasData(frameId: string, canvasData: Record<string, unknown>) {
-      const frames = store
-        .frames()
-        .map((frame) => (frame.id === frameId ? { ...frame, canvasData } : frame));
-      patchState(store, { frames });
+    updateCanvasData(boardId: string, canvasData: Record<string, unknown>) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, canvasData } : board));
+      patchState(store, { boards });
     },
-    updateScriptData(frameId: string, scriptData: OutputData) {
+    updateScriptData(boardId: string, scriptData: OutputData) {
       const clonedData = JSON.parse(JSON.stringify(scriptData)) as OutputData;
-      const frames = store
-        .frames()
-        .map((frame) => (frame.id === frameId ? { ...frame, scriptData: clonedData } : frame));
-      patchState(store, { frames });
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));
+      patchState(store, { boards });
     },
   })),
 );
