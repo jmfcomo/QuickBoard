@@ -32,6 +32,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
+  private currentFrameId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
 
@@ -49,19 +50,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       clearTimeout(this.initCanvasTimeout);
       this.initCanvasTimeout = null;
     }
-    
+
     // Clear the update timeout to prevent memory leaks and errors after component destruction
     if (this.updateCanvasTimeout !== null) {
       clearTimeout(this.updateCanvasTimeout);
       this.updateCanvasTimeout = null;
     }
-    
+
     // Clean up LiterallyCanvas instance and event listeners
     if (this.lc) {
       this.lc.teardown();
       this.lc = null;
     }
-    
+
     // Clear tool instances to release references
     this.toolInstances.clear();
   }
@@ -69,16 +70,23 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initializeCanvas(): void {
     // Clear the init timeout reference as it has already fired
     this.initCanvasTimeout = null;
-    
+
     const container = this.canvasContainer().nativeElement;
+
+    // Get the current frame or first frame
+    const frames = this.store.frames();
+    const currentFrame = frames.find((f) => f.id === this.store.currentFrameId()) || frames[0];
+    if (currentFrame) {
+      this.currentFrameId = currentFrame.id;
+    }
 
     // Initialize Literally Canvas
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
-    const existingData = this.store.canvasData();
-    if (existingData) {
-      this.lc.loadSnapshot(existingData);
+
+    if (currentFrame?.canvasData) {
+      this.lc.loadSnapshot(currentFrame.canvasData);
     }
 
     this.lc.on('drawingChange', () => {
@@ -88,8 +96,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           clearTimeout(this.updateCanvasTimeout);
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
-          if (this.lc) {
-            this.store.updateCanvasData(this.lc.getSnapshot());
+          if (this.lc && this.currentFrameId) {
+            this.store.updateCanvasData(this.currentFrameId, this.lc.getSnapshot());
           }
           this.updateCanvasTimeout = null;
         }, 300); // Wait 300ms after the last drawing change

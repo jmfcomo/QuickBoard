@@ -17,6 +17,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private editor: EditorJS | null = null;
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
+  private currentFrameId: string | null = null;
 
   ngOnInit() {
     // Ensure we are in the browser and not in SSR or test environment
@@ -43,8 +44,12 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private initializeEditor() {
-    // Load existing data from store if available
-    const savedData = this.store.scriptData();
+    // Get the current frame or first frame
+    const frames = this.store.frames();
+    const currentFrame = frames.find((f) => f.id === this.store.currentFrameId()) || frames[0];
+    if (currentFrame) {
+      this.currentFrameId = currentFrame.id;
+    }
 
     this.editor = new EditorJS({
       holder: 'editorjs',
@@ -55,7 +60,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
         list: List,
       },
       placeholder: 'Start typing here...',
-      data: savedData || {
+      data: currentFrame?.scriptData || {
         blocks: [],
       },
       onReady: () => {
@@ -73,19 +78,20 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private async saveEditorData() {
-    // Skip if already saving or no editor
-    if (this.isSaving || !this.editor) {
+    // Skip if already saving or no editor or no frame
+    if (this.isSaving || !this.editor || !this.currentFrameId) {
       return;
     }
 
     this.isSaving = true;
     try {
       const data = await this.editor.save();
-      const currentData = this.store.scriptData();
+      const frames = this.store.frames();
+      const currentFrame = frames.find((f) => f.id === this.currentFrameId);
 
       // Only update if data has changed
-      if (JSON.stringify(data) !== JSON.stringify(currentData)) {
-        this.store.updateScriptData(data);
+      if (JSON.stringify(data) !== JSON.stringify(currentFrame?.scriptData)) {
+        this.store.updateScriptData(this.currentFrameId, data);
       }
     } catch (error) {
       console.error('Failed to save editor data:', error);
@@ -96,19 +102,21 @@ export class ScriptComponent implements OnInit, OnDestroy {
 
   private saveEditorDataSync() {
     // Synchronous save for component destruction to prevent data loss
-    if (!this.editor) {
+    if (!this.editor || !this.currentFrameId) {
       return;
     }
 
+    const frameId = this.currentFrameId;
     try {
       // Use the editor's save method but don't await it
       // Store the promise to potentially be handled elsewhere if needed
       this.editor
         .save()
         .then((data) => {
-          const currentData = this.store.scriptData();
-          if (JSON.stringify(data) !== JSON.stringify(currentData)) {
-            this.store.updateScriptData(data);
+          const frames = this.store.frames();
+          const currentFrame = frames.find((f) => f.id === frameId);
+          if (JSON.stringify(data) !== JSON.stringify(currentFrame?.scriptData)) {
+            this.store.updateScriptData(frameId, data);
           }
         })
         .catch((error) => {
