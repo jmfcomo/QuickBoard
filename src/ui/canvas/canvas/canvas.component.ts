@@ -7,6 +7,7 @@ import {
   viewChild,
   inject,
   PLATFORM_ID,
+  effect,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
@@ -35,6 +36,20 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentFrameId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
+
+  constructor() {
+    // Watch for frame changes and reload canvas data
+    effect(() => {
+      const selectedFrameId = this.store.currentFrameId();
+      if (this.lc && selectedFrameId && selectedFrameId !== this.currentFrameId) {
+        // Save current frame data before switching
+        if (this.currentFrameId && this.lc) {
+          this.store.updateCanvasData(this.currentFrameId, this.lc.getSnapshot());
+        }
+        this.loadFrameData(selectedFrameId);
+      }
+    });
+  }
 
   ngAfterViewInit() {
     // Ensure we are in the browser and not in a test runner that might lack global objects
@@ -111,6 +126,26 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Activate the default tool
     this.setTool('pencil');
+  }
+
+  private loadFrameData(frameId: string) {
+    if (!this.lc) return;
+
+    const frames = this.store.frames();
+    const frame = frames.find(f => f.id === frameId);
+    
+    this.currentFrameId = frameId;
+    
+    // Clear canvas
+    this.lc.shapes = [];
+    this.lc.backgroundShapes = [];
+    
+    // Load new frame data
+    if (frame?.canvasData) {
+      this.lc.loadSnapshot(frame.canvasData);
+    } else {
+      this.lc.repaintLayer('main');
+    }
   }
 
   public setTool(toolId: string): void {

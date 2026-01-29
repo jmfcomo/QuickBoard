@@ -12,15 +12,17 @@ interface AppState {
   currentFrameId: string | null;
 }
 
+const firstFrameId = crypto.randomUUID();
+
 const initialState: AppState = {
   frames: [
     {
-      id: crypto.randomUUID(),
+      id: firstFrameId,
       canvasData: null,
       scriptData: null,
     },
   ],
-  currentFrameId: null,
+  currentFrameId: firstFrameId,
 };
 
 export const AppStore = signalStore(
@@ -50,9 +52,10 @@ export const AppStore = signalStore(
       patchState(store, { frames });
     },
     updateScriptData(frameId: string, scriptData: OutputData) {
+      const clonedData = JSON.parse(JSON.stringify(scriptData)) as OutputData;
       const frames = store
         .frames()
-        .map((frame) => (frame.id === frameId ? { ...frame, scriptData } : frame));
+        .map((frame) => (frame.id === frameId ? { ...frame, scriptData: clonedData } : frame));
       patchState(store, { frames });
     },
   })),

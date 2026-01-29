@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import EditorJS from '@editorjs/editorjs';
 import Header from '@editorjs/header';
@@ -18,6 +18,17 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
   private currentFrameId: string | null = null;
+
+  constructor() {
+    // Watch for frame changes and reload editor data
+    effect(() => {
+      const selectedFrameId = this.store.currentFrameId();
+      if (this.editor && selectedFrameId && selectedFrameId !== this.currentFrameId) {
+        // Save current frame data before switching (use async to ensure completion)
+        this.switchFrame(selectedFrameId);
+      }
+    });
+  }
 
   ngOnInit() {
     // Ensure we are in the browser and not in SSR or test environment
@@ -62,12 +73,99 @@ export class ScriptComponent implements OnInit, OnDestroy {
       placeholder: 'Start typing here...',
       data: currentFrame?.scriptData || {
         blocks: [],
+        time: Date.now(),
+        version: '2.28.0',
       },
       onReady: () => {
         // Start auto-save only after editor is fully initialized
         this.startAutoSave();
       },
     });
+  }
+
+  private async switchFrame(frameId: string) {
+    if (!this.editor || this.isSaving) return;
+
+    // First, save current frame data
+    if (this.currentFrameId) {
+      try {
+        this.isSaving = true;
+        const data = await this.editor.save();
+
+        // Only save if there's actual content (not just empty blocks)
+        if (data.blocks && data.blocks.length > 0) {
+          this.store.updateScriptData(this.currentFrameId, data);
+        } else {
+          // Save null instead of empty blocks to avoid validation issues
+          this.store.updateScriptData(this.currentFrameId, {
+            blocks: [],
+            time: Date.now(),
+            version: '2.28.0',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to save before frame switch:', error);
+      } finally {
+        this.isSaving = false;
+      }
+    }
+
+    // Then load new frame data
+    await this.loadFrameData(frameId);
+  }
+
+  private async loadFrameData(frameId: string) {
+    if (!this.editor) return;
+
+    const frames = this.store.frames();
+    const frame = frames.find((f) => f.id === frameId);
+
+    this.currentFrameId = frameId;
+
+    // Prepare default empty data
+    const emptyData = {
+      blocks: [],
+      time: Date.now(),
+      version: '2.28.0',
+    };
+
+    let dataToRender = emptyData;
+
+    if (frame?.scriptData && frame.scriptData.blocks && frame.scriptData.blocks.length > 0) {
+      // Deep clone to ensure data integrity
+      dataToRender = JSON.parse(JSON.stringify(frame.scriptData));
+
+      // Validate and sanitize blocks
+      dataToRender.blocks = dataToRender.blocks.filter((block: any) => {
+        // Ensure each block has required properties and valid data
+        if (!block || !block.type || block.data === undefined) {
+          return false;
+        }
+        // Ensure paragraph blocks have text property
+        if (block.type === 'paragraph' && typeof block.data.text !== 'string') {
+          block.data.text = '';
+        }
+        return true;
+      });
+
+      // If all blocks were filtered out, use empty data
+      if (dataToRender.blocks.length === 0) {
+        dataToRender = emptyData;
+      }
+    }
+
+    // Render new data
+    try {
+      await this.editor.render(dataToRender);
+    } catch (error) {
+      console.error('Failed to load frame data:', error, 'Data:', dataToRender);
+      // Fallback to completely empty editor
+      try {
+        await this.editor.render(emptyData);
+      } catch (fallbackError) {
+        console.error('Fallback render also failed:', fallbackError);
+      }
+    }
   }
 
   private startAutoSave() {
@@ -84,14 +182,28 @@ export class ScriptComponent implements OnInit, OnDestroy {
     }
 
     this.isSaving = true;
+    const frameIdAtSaveStart = this.currentFrameId;
+
     try {
       const data = await this.editor.save();
+
+      // Only save if we're still on the same frame
+      if (frameIdAtSaveStart !== this.currentFrameId) {
+        return;
+      }
+
       const frames = this.store.frames();
       const currentFrame = frames.find((f) => f.id === this.currentFrameId);
 
+      // Normalize empty data
+      const dataToSave =
+        !data.blocks || data.blocks.length === 0
+          ? { blocks: [], time: Date.now(), version: '2.28.0' }
+          : data;
+
       // Only update if data has changed
-      if (JSON.stringify(data) !== JSON.stringify(currentFrame?.scriptData)) {
-        this.store.updateScriptData(this.currentFrameId, data);
+      if (JSON.stringify(dataToSave) !== JSON.stringify(currentFrame?.scriptData)) {
+        this.store.updateScriptData(this.currentFrameId, dataToSave);
       }
     } catch (error) {
       console.error('Failed to save editor data:', error);

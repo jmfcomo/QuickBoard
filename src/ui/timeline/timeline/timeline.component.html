@@ -1,3 +1,27 @@
-<p>
-  timeline works!
-</p>
+<div class="timeline-container">
+  <button class="add-frame-btn" (click)="addFrame()">+ New Frame</button>
+  <div class="frames-list">
+    @for (frame of store.frames(); track frame.id) {
+      <div
+        class="frame-item"
+        [class.selected]="frame.id === store.currentFrameId()"
+        (click)="selectFrame(frame.id)"
+        (keyup.space)="selectFrame(frame.id)"
+        tabindex="0"
+      >
+        <div class="frame-content">
+          <span class="frame-label">Frame {{ $index + 1 }}</span>
+          @if (store.frames().length > 1) {
+            <button
+              class="delete-btn"
+              (click)="deleteFrame(frame.id); $event.stopPropagation()"
+              title="Delete frame"
+            >
+              ×
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>
