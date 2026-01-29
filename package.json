@@ -36,8 +36,10 @@
     "@editorjs/editorjs": "^2.31.1",
     "@editorjs/header": "^2.8.8",
     "@editorjs/list": "^2.0.9",
+    "@editorjs/paragraph": "^2.11.7",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@ngrx/signals": "^21.0.1",
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
     "literallycanvas": "^0.5.2",
@@ -45,8 +47,7 @@
     "react-dom": "^16.14.0",
     "rxjs": "~7.8.0",
     "tone": "^15.1.22",
-    "tslib": "^2.3.0",
-    "@ngrx/signals": "^21.0.1"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.1.1",
