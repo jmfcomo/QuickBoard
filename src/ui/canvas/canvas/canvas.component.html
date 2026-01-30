@@ -5,12 +5,13 @@
         class="tool-button"
         [class.active]="activeTool() === tool.id"
         (click)="setTool(tool.id)"
+        [title]="tool.label"
       >
-        {{ tool.label }}
+        {{ tool.icon }}
       </button>
     }
-    <span class="separator">|</span>
-    <button (click)="clearCanvas()" class="tool-button">Clear</button>
+    <div class="separator"></div>
+    <button (click)="clearCanvas()" class="tool-button" title="Clear Canvas">🗑️</button>
   </div>
   <div #canvasContainer class="literally-canvas"></div>
 </div>
