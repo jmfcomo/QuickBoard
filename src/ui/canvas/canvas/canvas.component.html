@@ -6,12 +6,13 @@
         [class.active]="activeTool() === tool.id"
         (click)="setTool(tool.id)"
         [title]="tool.label"
+        [attr.aria-label]="tool.label"
       >
         {{ tool.icon }}
       </button>
     }
     <div class="separator"></div>
-    <button (click)="clearCanvas()" class="tool-button" title="Clear Canvas">🗑️</button>
+    <button (click)="clearCanvas()" class="tool-button" title="Clear Canvas" aria-label="Clear Canvas">🗑️</button>
   </div>
   <div #canvasContainer class="literally-canvas"></div>
 </div>
