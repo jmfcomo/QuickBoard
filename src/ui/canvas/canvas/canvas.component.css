@@ -1,6 +1,6 @@
 .canvas-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100%;
   width: 100%;
   gap: 8px;
@@ -9,22 +9,24 @@
 
 .tools-bar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background-color: #f3f4f6;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 4px;
+  gap: 6px;
 }
 
 .tool-button {
-  padding: 6px 12px;
-  background-color: transparent;
+  padding: 0;
+  background-color: white;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+  font-size: 18px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
 }
 
 .tool-button:hover {
@@ -37,7 +39,10 @@
 }
 
 .separator {
-  color: #d1d5db;
+  width: 100%;
+  height: 1px;
+  background-color: #d1d5db;
+  margin: 4px 0;
 }
 
 .literally-canvas {
