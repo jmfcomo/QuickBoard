@@ -1,5 +1,9 @@
 <div class="timeline-container">
   <button class="add-board-btn" (click)="addBoard()">+ New Board</button>
+
+  <button class="save-board-btn"(click)="saveBoard()">* Save Board</button>
+  <button class="load-board-btn">^ Load Board</button>
+
   <div class="boards-list">
     @for (board of store.boards(); track board.id) {
       <div

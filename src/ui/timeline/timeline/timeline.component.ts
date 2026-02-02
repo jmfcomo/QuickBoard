@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 
+import { saveBoard } from './electron.main';
+
 @Component({
   selector: 'app-timeline',
   templateUrl: './timeline.component.html',

@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -12,6 +12,10 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
+}
+
+function saveBoard() {
+  dialog.showSaveDialog();
 }
 
 app.whenReady().then(createWindow);
