@@ -13,6 +13,80 @@
     }
     <div class="separator"></div>
     <button (click)="clearCanvas()" class="tool-button" title="Clear Canvas" aria-label="Clear Canvas">🗑️</button>
+    
+    <div class="separator"></div>
+    
+    <!-- Stroke Color -->
+    <div class="color-section">
+      <label for="stroke-color" class="color-label">Stroke</label>
+      <div class="color-picker-container">
+        <input 
+          id="stroke-color"
+          type="color" 
+          [value]="strokeColor()" 
+          (input)="setStrokeColor($any($event.target).value)"
+          class="color-input"
+          title="Stroke Color"
+        />
+        <div
+          class="color-preview"
+          [class.preview-transparent]="strokeColor() === 'transparent'"
+          [style.background-color]="strokeColor()"
+        ></div>
+      </div>
+      <div class="quick-colors">
+        <button
+          (click)="setStrokeColor('transparent')"
+          class="quick-color-btn quick-color--transparent"
+          title="Transparent"
+          aria-label="Stroke: Transparent"
+          type="button"
+        ></button>
+        <button
+          (click)="setStrokeColor('#000000')"
+          class="quick-color-btn quick-color--black"
+          title="Black"
+          aria-label="Stroke: Black"
+          type="button"
+        ></button>
+      </div>
+    </div>
+    
+    <!-- Fill Color -->
+    <div class="color-section">
+      <label for="fill-color" class="color-label">Fill</label>
+      <div class="color-picker-container">
+        <input 
+          id="fill-color"
+          type="color" 
+          [value]="fillColor()" 
+          (input)="setFillColor($any($event.target).value)"
+          class="color-input"
+          title="Fill Color"
+        />
+        <div
+          class="color-preview"
+          [class.preview-transparent]="fillColor() === 'transparent'"
+          [style.background-color]="fillColor()"
+        ></div>
+      </div>
+      <div class="quick-colors">
+        <button
+          (click)="setFillColor('transparent')"
+          class="quick-color-btn quick-color--transparent"
+          title="Transparent"
+          aria-label="Fill: Transparent"
+          type="button"
+        ></button>
+        <button
+          (click)="setFillColor('#ffffff')"
+          class="quick-color-btn quick-color--white"
+          title="White"
+          aria-label="Fill: White"
+          type="button"
+        ></button>
+      </div>
+    </div>
   </div>
   <div #canvasContainer class="literally-canvas"></div>
 </div>

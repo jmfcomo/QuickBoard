@@ -20,6 +20,7 @@ export interface LCInstance {
   trigger(event: string, data?: unknown): void;
   tool: LCTool;
   getColor(type: string): string;
+  setColor(type: string, color: string): void;
   setShapesInProgress(shapes: unknown[]): void;
   saveShape(shape: unknown): void;
   on(event: string, handler: (data: unknown) => void): void;

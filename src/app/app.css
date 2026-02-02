@@ -12,6 +12,7 @@
   width: 100%;
   height: 60%;
   padding: 1rem;
+  padding-top: 0rem;
   box-sizing: border-box;
   align-items: stretch;
 }

@@ -11,7 +11,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  margin-left: -1rem;
 }
 
 .tool-button {
@@ -42,7 +45,7 @@
   width: 100%;
   height: 1px;
   background-color: #d1d5db;
-  margin: 4px 0;
+  margin: 3px 0;
 }
 
 .literally-canvas {
@@ -52,4 +55,92 @@
   overflow: hidden;
   background-color: white;
   min-height: 300px;
+}
+
+.color-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.color-label {
+  font-size: 8px;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+.color-picker-container {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.color-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-preview {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.preview-transparent {
+  background-image: conic-gradient(#e5e7eb 0 25%, #ffffff 0 50%, #e5e7eb 0 75%, #ffffff 0);
+  background-size: 6px 6px;
+}
+
+.quick-colors {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+}
+
+.quick-color-btn {
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid #d1d5db;
+  border-radius: 2px;
+  cursor: pointer;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.quick-color-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.quick-color-btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.quick-color--black {
+  background-color: #000000;
+}
+
+.quick-color--white {
+  background-color: #ffffff;
+}
+
+.quick-color--transparent {
+  background-image: conic-gradient(#e5e7eb 0 25%, #ffffff 0 50%, #e5e7eb 0 75%, #ffffff 0);
+  background-size: 6px 6px;
 }
