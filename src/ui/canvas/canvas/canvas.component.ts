@@ -31,6 +31,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
   ];
 
+  readonly colorPickers = [
+    { label: 'Stroke', signal: this.strokeColor, setter: this.setStrokeColor.bind(this), quickColors: ['transparent', '#000000'] },
+    { label: 'Fill', signal: this.fillColor, setter: this.setFillColor.bind(this), quickColors: ['transparent', '#ffffff'] },
+  ];
+
   readonly store = inject(AppStore);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
