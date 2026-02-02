@@ -96,11 +96,6 @@
   box-sizing: border-box;
 }
 
-.preview-transparent {
-  background-image: conic-gradient(var(--bg-transparent-checker) 0 25%, var(--canvas-fill) 0 50%, var(--bg-transparent-checker) 0 75%, var(--canvas-fill) 0);
-  background-size: 6px 6px;
-}
-
 .quick-colors {
   display: flex;
   gap: 2px;
@@ -129,15 +124,7 @@
   outline-offset: 1px;
 }
 
-.quick-color--black {
-  background-color: var(--canvas-stroke);
-}
-
-.quick-color--white {
-  background-color: var(--canvas-fill);
-}
-
-.quick-color--transparent {
+.transparent-checker {
   background-image: conic-gradient(var(--bg-transparent-checker) 0 25%, var(--canvas-fill) 0 50%, var(--bg-transparent-checker) 0 75%, var(--canvas-fill) 0);
   background-size: 6px 6px;
 }
