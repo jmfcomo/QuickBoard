@@ -1,0 +1,19 @@
+:root {
+  --border-default: #d1d5db;
+  --border-darker: #9ca3af;
+  --border-light: #ccc;
+  
+  --bg-hover: #f0f0f0;
+  --bg-hover-light: #f3f4f6;
+  --bg-active: #fbbf24;
+  --bg-transparent-checker: #e5e7eb;
+  
+  --border-active: #f59e0b;
+  
+  --text-muted: #4b5563;
+  
+  --focus-ring: #3b82f6;
+  
+  --canvas-stroke: #000000;
+  --canvas-fill: #ffffff;
+}

@@ -12,15 +12,13 @@
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
   margin-left: -1rem;
 }
 
 .tool-button {
   padding: 0;
   background-color: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   cursor: pointer;
   font-size: 18px;
@@ -33,24 +31,24 @@
 }
 
 .tool-button:hover {
-  background-color: #f0f0f0;
+  background-color: var(--bg-hover);
 }
 
 .tool-button.active {
-  background-color: #fbbf24;
-  border-color: #f59e0b;
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
 }
 
 .separator {
   width: 100%;
   height: 1px;
-  background-color: #d1d5db;
+  background-color: var(--border-default);
   margin: 3px 0;
 }
 
 .literally-canvas {
   flex: 1;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   overflow: hidden;
   background-color: white;
@@ -67,7 +65,7 @@
 .color-label {
   font-size: 8px;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
   line-height: 1;
@@ -92,13 +90,13 @@
 .color-preview {
   width: 100%;
   height: 100%;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 3px;
   pointer-events: none;
 }
 
 .preview-transparent {
-  background-image: conic-gradient(#e5e7eb 0 25%, #ffffff 0 50%, #e5e7eb 0 75%, #ffffff 0);
+  background-image: conic-gradient(var(--bg-transparent-checker) 0 25%, var(--canvas-fill) 0 50%, var(--bg-transparent-checker) 0 75%, var(--canvas-fill) 0);
   background-size: 6px 6px;
 }
 
@@ -111,7 +109,7 @@
 .quick-color-btn {
   padding: 0;
   background-color: transparent;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-default);
   border-radius: 2px;
   cursor: pointer;
   width: 12px;
@@ -123,24 +121,24 @@
 }
 
 .quick-color-btn:hover {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
+  background-color: var(--bg-hover-light);
+  border-color: var(--border-darker);
 }
 
 .quick-color-btn:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
 .quick-color--black {
-  background-color: #000000;
+  background-color: var(--canvas-stroke);
 }
 
 .quick-color--white {
-  background-color: #ffffff;
+  background-color: var(--canvas-fill);
 }
 
 .quick-color--transparent {
-  background-image: conic-gradient(#e5e7eb 0 25%, #ffffff 0 50%, #e5e7eb 0 75%, #ffffff 0);
+  background-image: conic-gradient(var(--bg-transparent-checker) 0 25%, var(--canvas-fill) 0 50%, var(--bg-transparent-checker) 0 75%, var(--canvas-fill) 0);
   background-size: 6px 6px;
 }
