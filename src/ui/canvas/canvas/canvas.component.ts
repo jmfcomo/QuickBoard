@@ -22,11 +22,18 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
+  readonly strokeColor = signal<string>('#000000');
+  readonly fillColor = signal<string>('#ffffff');
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
+  ];
+
+  readonly colorPickers = [
+    { label: 'Stroke', signal: this.strokeColor, setter: this.setStrokeColor.bind(this), quickColors: ['transparent', '#000000'] },
+    { label: 'Fill', signal: this.fillColor, setter: this.setFillColor.bind(this), quickColors: ['transparent', '#ffffff'] },
   ];
 
   readonly store = inject(AppStore);
@@ -168,5 +175,23 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Trigger clear event
     this.lc.trigger('clear');
+  }
+
+  public setStrokeColor(color: string): void {
+    if (!this.lc) return;
+    
+    // Handle transparent color
+    const colorValue = color === 'transparent' ? 'hsla(0, 0%, 0%, 0)' : color;
+    this.strokeColor.set(color);
+    this.lc.setColor('primary', colorValue);
+  }
+
+  public setFillColor(color: string): void {
+    if (!this.lc) return;
+    
+    // Handle transparent color
+    const colorValue = color === 'transparent' ? 'hsla(0, 0%, 100%, 0)' : color;
+    this.fillColor.set(color);
+    this.lc.setColor('secondary', colorValue);
   }
 }
