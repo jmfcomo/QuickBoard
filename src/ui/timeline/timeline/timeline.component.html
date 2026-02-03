@@ -2,7 +2,7 @@
   <button class="add-board-btn" (click)="addBoard()">+ New Board</button>
 
   <button class="save-board-btn"(click)="saveBoard()">* Save Board</button>
-  <button class="load-board-btn">^ Load Board</button>
+  <button class="load-board-btn" (click)="loadBoard()">^ Load Board</button>
 
   <div class="boards-list">
     @for (board of store.boards(); track board.id) {

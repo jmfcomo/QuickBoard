@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 
-import { saveBoard } from './electron.main';
+import * as fs from 'fs';
 
 @Component({
   selector: 'app-timeline',
@@ -29,5 +29,29 @@ export class TimelineComponent {
         this.store.setCurrentBoard(boards[0].id);
       }
     }
+  }
+
+  saveBoard() {
+    const newBoard = this.store.exportAsJson();
+
+    console.log(newBoard);
+
+    // stops everything to write file
+    try {
+      fs.writeFileSync('testing.txt', newBoard, 'utf-8');
+      console.log("File written successfully!");
+      } catch (err) {
+          console.error(err);
+        }
+  }
+
+  loadBoard() {
+    console.log("Loading file...");
+    try {
+      const pulled = fs.readFileSync('testing.txt', 'utf-8');
+      console.log(pulled);
+    } catch (err) {
+        console.error(err);
+      }
   }
 }
