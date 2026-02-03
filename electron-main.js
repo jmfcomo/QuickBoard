@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -12,6 +12,23 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  // applies the menu without overriding the whole window
+  const mainMenu = Menu.buildFromTemplate([
+  {
+    label: 'Board Options',
+    submenu: [
+      { label: 'Save board' },
+      { label: 'Load board' }
+    ]
+  },
+  {
+    role: 'quit'
+  }
+  ])
+
+  win.setMenu(mainMenu);
+
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
