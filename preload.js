@@ -1,2 +1,6 @@
-// This file can be used to expose APIs to the renderer process if needed.
-// For now, it's empty for security reasons.
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('quickboard', {
+  saveBoard: (data) => ipcRenderer.invoke('quickboard:save-board', data),
+  loadBoard: () => ipcRenderer.invoke('quickboard:load-board'),
+});

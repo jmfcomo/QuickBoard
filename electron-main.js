@@ -1,5 +1,6 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs/promises');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -14,9 +15,36 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
-function saveBoard() {
-  dialog.showSaveDialog();
-}
+ipcMain.handle('quickboard:save-board', async (_event, data) => {
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Save Board',
+    defaultPath: 'quickboard.json',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+
+  if (canceled || !filePath) {
+    return { canceled: true };
+  }
+
+  await fs.writeFile(filePath, data, 'utf-8');
+  return { canceled: false, filePath };
+});
+
+ipcMain.handle('quickboard:load-board', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Load Board',
+    properties: ['openFile'],
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+
+  if (canceled || !filePaths || filePaths.length === 0) {
+    return { canceled: true };
+  }
+
+  const filePath = filePaths[0];
+  const content = await fs.readFile(filePath, 'utf-8');
+  return { canceled: false, filePath, content };
+});
 
 app.whenReady().then(createWindow);
 

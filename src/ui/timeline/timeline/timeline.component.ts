@@ -1,8 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 
-import * as fs from 'fs';
-
 @Component({
   selector: 'app-timeline',
   templateUrl: './timeline.component.html',
@@ -31,27 +29,36 @@ export class TimelineComponent {
     }
   }
 
-  saveBoard() {
+  async saveBoard() {
     const newBoard = this.store.exportAsJson();
+    if (!window.quickboard) {
+      console.error('File API unavailable.');
+      return;
+    }
 
-    console.log(newBoard);
-
-    // stops everything to write file
     try {
-      fs.writeFileSync('testing.txt', newBoard, 'utf-8');
-      console.log("File written successfully!");
-      } catch (err) {
-          console.error(err);
-        }
+      const result = await window.quickboard.saveBoard(newBoard);
+      if (!result.canceled) {
+        console.log(`File saved: ${result.filePath ?? 'unknown path'}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  loadBoard() {
-    console.log("Loading file...");
+  async loadBoard() {
+    if (!window.quickboard) {
+      console.error('File API unavailable.');
+      return;
+    }
+
     try {
-      const pulled = fs.readFileSync('testing.txt', 'utf-8');
-      console.log(pulled);
-    } catch (err) {
-        console.error(err);
+      const result = await window.quickboard.loadBoard();
+      if (!result.canceled && result.content) {
+        this.store.loadFromJson(result.content);
       }
+    } catch (err) {
+      console.error(err);
+    }
   }
 }
