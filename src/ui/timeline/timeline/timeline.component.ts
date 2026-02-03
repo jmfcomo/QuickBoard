@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 
 @Component({
   selector: 'app-timeline',
   templateUrl: './timeline.component.html',
   styleUrls: ['./timeline.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TimelineComponent {
   readonly store = inject(AppStore);
