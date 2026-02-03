@@ -1,6 +1,6 @@
-# Quickboard
+# QuickBoard
 
-Quickboard is a modern Angular application that can run as a desktop app using Electron.
+QuickBoard is a modern Angular application that can run as a desktop app using Electron.
 
 ## Getting Started
 
