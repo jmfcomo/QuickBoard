@@ -25,6 +25,7 @@ export interface LCInstance {
   saveShape(shape: unknown): void;
   on(event: string, handler: (data: unknown) => void): void;
   getSnapshot(): Record<string, unknown>;
+  getImage(opts?: { scale?: number }): HTMLCanvasElement;
   loadSnapshot(snapshot: Record<string, unknown>): void;
   teardown(): void;
 }

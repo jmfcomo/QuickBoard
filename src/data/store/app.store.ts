@@ -5,6 +5,7 @@ interface Board {
   id: string;
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
+  previewUrl: string | null;
 }
 
 interface AppState {
@@ -20,6 +21,7 @@ const initialState: AppState = {
       id: firstBoardId,
       canvasData: null,
       scriptData: null,
+      previewUrl: null,
     },
   ],
   currentBoardId: firstBoardId,
@@ -37,6 +39,7 @@ export const AppStore = signalStore(
         id: crypto.randomUUID(),
         canvasData: null,
         scriptData: null,
+        previewUrl: null,
       };
       patchState(store, { boards: [...store.boards(), newBoard] });
       return newBoard.id;
@@ -45,10 +48,10 @@ export const AppStore = signalStore(
       const boards = store.boards().filter((b) => b.id !== boardId);
       patchState(store, { boards });
     },
-    updateCanvasData(boardId: string, canvasData: Record<string, unknown>) {
+    updateCanvasData(boardId: string, canvasData: Record<string, unknown>, previewUrl?: string) {
       const boards = store
         .boards()
-        .map((board) => (board.id === boardId ? { ...board, canvasData } : board));
+        .map((board) => (board.id === boardId ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl } : board));
       patchState(store, { boards });
     },
     updateScriptData(boardId: string, scriptData: OutputData) {

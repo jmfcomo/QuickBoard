@@ -11,7 +11,11 @@
       [attr.aria-selected]="board.id === store.currentBoardId()"
       [attr.aria-label]="'Board ' + ($index + 1)"
     >
-      <div class="board-preview"></div>
+      @if (board.previewUrl) {
+        <img class="board-preview" [src]="board.previewUrl" alt="">
+      } @else {
+        <div class="board-preview"></div>
+      }
       <span class="board-label">{{ $index + 1 }}</span>
       @if (store.boards().length > 1) {
         <button

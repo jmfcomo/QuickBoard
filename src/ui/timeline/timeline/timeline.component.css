@@ -38,10 +38,12 @@
 }
 
 .board-preview {
+  display: block;
   width: 100%;
   height: 100%;
   border-radius: calc(0.5rem - 2px);
   background: var(--bg-transparent-checker);
+  object-fit: contain;
 }
 
 .board-label {

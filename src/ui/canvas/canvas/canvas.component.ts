@@ -119,7 +119,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
           if (this.lc && this.currentBoardId) {
-            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
+            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot(), preview);
           }
           this.updateCanvasTimeout = null;
         }, 300); // Wait 300ms after the last drawing change
