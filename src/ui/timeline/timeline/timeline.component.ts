@@ -1,5 +1,6 @@
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
+import { PlaybackService } from '../../../data/services/playback.service';
 
 @Component({
   selector: 'app-timeline',
@@ -9,6 +10,7 @@ import { AppStore } from '../../../data/store/app.store';
 })
 export class TimelineComponent {
   readonly store = inject(AppStore);
+  readonly playbackService = inject(PlaybackService);
 
   addBoard() {
     const newBoardId = this.store.addBoard();
@@ -28,5 +30,25 @@ export class TimelineComponent {
         this.store.setCurrentBoard(boards[0].id);
       }
     }
+  }
+
+  async togglePlayback() {
+    await this.playbackService.togglePlayback();
+  }
+
+  stopPlayback() {
+    this.playbackService.stop();
+  }
+
+  get isPlaying() {
+    return this.store.playback().isPlaying;
+  }
+
+  get currentFrame() {
+    return this.store.playback().currentPlaybackIndex + 1;
+  }
+
+  get totalFrames() {
+    return this.store.boards().length;
   }
 }

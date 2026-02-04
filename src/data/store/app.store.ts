@@ -6,11 +6,18 @@ interface Board {
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
   previewUrl: string | null;
+  duration: number; // Duration in seconds for this frame
+}
+
+interface PlaybackState {
+  isPlaying: boolean;
+  currentPlaybackIndex: number;
 }
 
 interface AppState {
   boards: Board[];
   currentBoardId: string | null;
+  playback: PlaybackState;
 }
 
 const firstBoardId = crypto.randomUUID();
@@ -22,9 +29,14 @@ const initialState: AppState = {
       canvasData: null,
       scriptData: null,
       previewUrl: null,
+      duration: 2, // Default 2 seconds per frame
     },
   ],
   currentBoardId: firstBoardId,
+  playback: {
+    isPlaying: false,
+    currentPlaybackIndex: 0,
+  },
 };
 
 export const AppStore = signalStore(
@@ -40,6 +52,7 @@ export const AppStore = signalStore(
         canvasData: null,
         scriptData: null,
         previewUrl: null,
+        duration: 2,
       };
       patchState(store, { boards: [...store.boards(), newBoard] });
       return newBoard.id;
@@ -51,7 +64,11 @@ export const AppStore = signalStore(
     updateCanvasData(boardId: string, canvasData: Record<string, unknown>, previewUrl?: string) {
       const boards = store
         .boards()
-        .map((board) => (board.id === boardId ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl } : board));
+        .map((board) =>
+          board.id === boardId
+            ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl }
+            : board,
+        );
       patchState(store, { boards });
     },
     updateScriptData(boardId: string, scriptData: OutputData) {
@@ -59,6 +76,21 @@ export const AppStore = signalStore(
       const boards = store
         .boards()
         .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));
+      patchState(store, { boards });
+    },
+    setPlaybackState(isPlaying: boolean, currentPlaybackIndex: number) {
+      patchState(store, { playback: { isPlaying, currentPlaybackIndex } });
+    },
+    setIsPlaying(isPlaying: boolean) {
+      patchState(store, { playback: { ...store.playback(), isPlaying } });
+    },
+    setCurrentPlaybackIndex(currentPlaybackIndex: number) {
+      patchState(store, { playback: { ...store.playback(), currentPlaybackIndex } });
+    },
+    updateBoardDuration(boardId: string, duration: number) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, duration } : board));
       patchState(store, { boards });
     },
   })),
