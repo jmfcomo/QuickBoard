@@ -101,6 +101,13 @@ export class PlaybackService {
     }
   }
 
+  updateFrameDuration(boardId: string, newDuration: number | string): void {
+    const parsedDuration = typeof newDuration === 'number' ? newDuration : Number(newDuration);
+    const duration = Number.isFinite(parsedDuration) ? Math.max(0.1, parsedDuration) : 0.1;
+    this.store.updateBoardDuration(boardId, duration);
+    this.rebuild();
+  }
+
   async play(): Promise<void> {
     await this.initialize();
 

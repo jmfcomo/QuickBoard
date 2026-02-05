@@ -59,4 +59,9 @@ export class TimelineComponent {
   get isLooping() {
     return this.store.playback().loop;
   }
+
+  updateFrameDuration(boardId: string, newDuration: string): void {
+    const parsedDuration = Number(newDuration);
+    this.playbackService.updateFrameDuration(boardId, parsedDuration);
+  }
 }

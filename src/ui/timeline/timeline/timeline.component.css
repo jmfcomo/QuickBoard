@@ -210,3 +210,35 @@
   font-size: 2rem;
   color: var(--text-light);
 }
+
+.frame-duration {
+  position: absolute;
+  bottom: 0.375rem;
+  left: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.35rem;
+  background: var(--overlay-light);
+  border-radius: 0.25rem;
+}
+
+.frame-duration label {
+  font-size: 0.65rem;
+  color: var(--text-light);
+}
+
+.frame-duration input {
+  width: 3.25rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.2rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  background: var(--bg-default);
+  color: var(--text-default);
+}
+
+.duration-unit {
+  font-size: 0.65rem;
+  color: var(--text-light);
+}
