@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
-import { Brush } from '../../canvas/tools/brush';
+import { Brush } from '../../canvas/tools/tools';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
