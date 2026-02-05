@@ -200,10 +200,16 @@ export class PlaybackService {
 
   async rebuild(): Promise<void> {
     const wasPlaying = this.isPlaying();
+    const hadScheduledStop = this.stopScheduleId !== null;
     this.stop();
 
     if (wasPlaying) {
       await this.play();
+
+      // If there was a scheduled stop before rebuilding, restore it
+      if (hadScheduledStop) {
+        this.scheduleStopAtLoopEnd();
+      }
     }
   }
 
