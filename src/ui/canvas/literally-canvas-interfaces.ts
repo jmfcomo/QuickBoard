@@ -37,6 +37,7 @@ export interface LiterallyCanvas {
   tools: {
     Pencil: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
+    Rectangle: LiterallyCanvasTool;
   };
   createShape(type: string, args: Record<string, unknown>): unknown;
 }
