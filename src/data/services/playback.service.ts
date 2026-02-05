@@ -1,4 +1,4 @@
-import { Injectable, inject, effect } from '@angular/core';
+import { Injectable, inject, effect, DestroyRef } from '@angular/core';
 import * as Tone from 'tone';
 import { AppStore } from '../store/app.store';
 
@@ -14,13 +14,14 @@ interface FrameSchedule {
 })
 export class PlaybackService {
   private readonly store = inject(AppStore);
+  private readonly destroyRef = inject(DestroyRef);
   private timeline: Tone.Part | null = null;
   private frameSchedule: FrameSchedule[] = [];
   private isInitialized = false;
   private stopScheduleId: number | null = null;
 
   constructor() {
-    effect(() => {
+    const playbackEffectRef = effect(() => {
       const playback = this.store.playback();
       if (playback.isPlaying && !this.isPlaying()) {
         this.play().catch((error) => {
@@ -32,7 +33,7 @@ export class PlaybackService {
       }
     });
 
-    effect(() => {
+    const loopEffectRef = effect(() => {
       const loop = this.store.playback().loop;
       if (this.timeline) {
         this.timeline.loop = true;
@@ -43,6 +44,11 @@ export class PlaybackService {
           this.scheduleStopAtLoopEnd();
         }
       }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      playbackEffectRef.destroy();
+      loopEffectRef.destroy();
     });
   }
 
