@@ -49,7 +49,6 @@ export class PlaybackService {
 
     await Tone.start();
     this.isInitialized = true;
-    console.log('Tone.js initialized');
   }
 
   // build schedule
