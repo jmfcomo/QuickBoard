@@ -23,7 +23,10 @@ export class PlaybackService {
     effect(() => {
       const playback = this.store.playback();
       if (playback.isPlaying && !this.isPlaying()) {
-        this.play();
+        this.play().catch((error) => {
+          console.error('Failed to start playback:', error);
+          this.store.setIsPlaying(false);
+        });
       } else if (!playback.isPlaying && this.isPlaying()) {
         this.pause();
       }
