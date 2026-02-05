@@ -29,6 +29,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
+    { id: 'rectangle', label: 'Square', icon: '⬜' },
   ];
 
   readonly colorPickers = [
@@ -131,6 +132,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
+    this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
 
     // Activate the default tool
     this.setTool('pencil');
