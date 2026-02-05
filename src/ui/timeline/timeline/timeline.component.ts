@@ -51,4 +51,12 @@ export class TimelineComponent {
   get totalFrames() {
     return this.store.boards().length;
   }
+
+  toggleLoop() {
+    this.store.toggleLoop();
+  }
+
+  get isLooping() {
+    return this.store.playback().loop;
+  }
 }

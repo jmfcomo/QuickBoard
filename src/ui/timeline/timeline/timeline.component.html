@@ -19,6 +19,14 @@
     >
       <span class="icon" aria-hidden="true">⏹</span>
     </button>
+    <button
+      class="playback-btn loop-btn"
+      (click)="toggleLoop()"
+      [attr.aria-label]="isLooping ? 'Disable loop' : 'Enable loop'"
+      [class.active]="isLooping"
+    >
+      <span class="icon" aria-hidden="true">🔁</span>
+    </button>
     <div class="frame-display">
       <span class="frame-label">Frame:</span>
       <span class="frame-counter">{{ currentFrame }} / {{ totalFrames }}</span>

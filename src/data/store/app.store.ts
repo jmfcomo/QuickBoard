@@ -12,6 +12,7 @@ interface Board {
 interface PlaybackState {
   isPlaying: boolean;
   currentPlaybackIndex: number;
+  loop: boolean;
 }
 
 interface AppState {
@@ -36,6 +37,7 @@ const initialState: AppState = {
   playback: {
     isPlaying: false,
     currentPlaybackIndex: 0,
+    loop: true,
   },
 };
 
@@ -79,13 +81,16 @@ export const AppStore = signalStore(
       patchState(store, { boards });
     },
     setPlaybackState(isPlaying: boolean, currentPlaybackIndex: number) {
-      patchState(store, { playback: { isPlaying, currentPlaybackIndex } });
+      patchState(store, { playback: { ...store.playback(), isPlaying, currentPlaybackIndex } });
     },
     setIsPlaying(isPlaying: boolean) {
       patchState(store, { playback: { ...store.playback(), isPlaying } });
     },
     setCurrentPlaybackIndex(currentPlaybackIndex: number) {
       patchState(store, { playback: { ...store.playback(), currentPlaybackIndex } });
+    },
+    toggleLoop() {
+      patchState(store, { playback: { ...store.playback(), loop: !store.playback().loop } });
     },
     updateBoardDuration(boardId: string, duration: number) {
       const boards = store

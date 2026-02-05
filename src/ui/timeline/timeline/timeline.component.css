@@ -65,6 +65,15 @@
   color: var(--danger);
 }
 
+.loop-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent-default);
+}
+
+.loop-btn.active .icon {
+  color: var(--accent-darker);
+}
+
 .frame-display {
   display: flex;
   align-items: center;

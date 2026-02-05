@@ -17,6 +17,7 @@ export class PlaybackService {
   private timeline: Tone.Part | null = null;
   private frameSchedule: FrameSchedule[] = [];
   private isInitialized = false;
+  private stopScheduleId: number | null = null;
 
   constructor() {
     effect(() => {
@@ -25,6 +26,19 @@ export class PlaybackService {
         this.play();
       } else if (!playback.isPlaying && this.isPlaying()) {
         this.pause();
+      }
+    });
+
+    effect(() => {
+      const loop = this.store.playback().loop;
+      if (this.timeline) {
+        this.timeline.loop = true;
+        this.timeline.loopEnd = this.getTotalDuration();
+        if (loop) {
+          this.clearScheduledStop();
+        } else if (this.isPlaying()) {
+          this.scheduleStopAtLoopEnd();
+        }
       }
     });
   }
@@ -97,6 +111,9 @@ export class PlaybackService {
     if (this.timeline) {
       Tone.getTransport().start();
       this.timeline.start(0);
+      if (!this.store.playback().loop) {
+        this.scheduleStopAtLoopEnd();
+      }
     }
   }
 
@@ -104,12 +121,15 @@ export class PlaybackService {
     if (this.timeline) {
       Tone.getTransport().pause();
     }
+    this.clearScheduledStop();
   }
 
   stop(): void {
     this.pause();
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
+
+    this.clearScheduledStop();
 
     // reset to start
     this.store.setPlaybackState(false, 0);
@@ -135,6 +155,40 @@ export class PlaybackService {
     if (this.timeline) {
       this.timeline.dispose();
       this.timeline = null;
+    }
+    this.clearScheduledStop();
+  }
+
+  private scheduleStopAtLoopEnd(): void {
+    if (this.frameSchedule.length === 0) return;
+
+    const currentIndex = this.store.playback().currentPlaybackIndex;
+    const transport = Tone.getTransport();
+
+    // Calculate remaining time based on current frame progress
+    const currentFrame = this.frameSchedule[currentIndex];
+    const elapsedInFrame = transport.seconds - currentFrame.startTime;
+    const remainingInFrame = Math.max(0, currentFrame.duration - elapsedInFrame);
+
+    // Sum remaining durations from current frame to the end
+    const remaining =
+      remainingInFrame +
+      this.frameSchedule
+        .slice(currentIndex + 1)
+        .reduce((total, frame) => total + frame.duration, 0);
+
+    if (remaining <= 0) return;
+
+    this.clearScheduledStop();
+    this.stopScheduleId = transport.scheduleOnce(() => {
+      this.stop();
+    }, `+${remaining}`);
+  }
+
+  private clearScheduledStop(): void {
+    if (this.stopScheduleId !== null) {
+      Tone.getTransport().clear(this.stopScheduleId);
+      this.stopScheduleId = null;
     }
   }
 
