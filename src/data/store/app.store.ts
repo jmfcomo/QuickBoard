@@ -37,12 +37,14 @@ export const AppStore = signalStore(
       patchState(store, { currentBoardId: boardId });
     },
     addBoard() {
+      const currentBoard = store.boards().find((board) => board.id === store.currentBoardId());
+      const backgroundColor = currentBoard?.backgroundColor ?? '#ffffff';
       const newBoard: Board = {
         id: crypto.randomUUID(),
         canvasData: null,
         scriptData: null,
         previewUrl: null,
-        backgroundColor: '#ffffff',
+        backgroundColor,
       };
       patchState(store, { boards: [...store.boards(), newBoard] });
       return newBoard.id;
