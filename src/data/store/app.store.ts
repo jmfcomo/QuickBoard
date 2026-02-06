@@ -6,6 +6,7 @@ interface Board {
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
   previewUrl: string | null;
+  backgroundColor: string;
 }
 
 interface AppState {
@@ -22,6 +23,7 @@ const initialState: AppState = {
       canvasData: null,
       scriptData: null,
       previewUrl: null,
+      backgroundColor: '#ffffff',
     },
   ],
   currentBoardId: firstBoardId,
@@ -40,6 +42,7 @@ export const AppStore = signalStore(
         canvasData: null,
         scriptData: null,
         previewUrl: null,
+        backgroundColor: '#ffffff',
       };
       patchState(store, { boards: [...store.boards(), newBoard] });
       return newBoard.id;
@@ -52,6 +55,12 @@ export const AppStore = signalStore(
       const boards = store
         .boards()
         .map((board) => (board.id === boardId ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl } : board));
+      patchState(store, { boards });
+    },
+    updateBackgroundColor(boardId: string, backgroundColor: string) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, backgroundColor } : board));
       patchState(store, { boards });
     },
     updateScriptData(boardId: string, scriptData: OutputData) {

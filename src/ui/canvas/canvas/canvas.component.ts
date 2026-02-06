@@ -55,6 +55,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
           this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+          this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
         }
         this.loadBoardData(selectedBoardId);
       }
@@ -113,6 +114,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (currentBoard?.canvasData) {
       this.lc.loadSnapshot(currentBoard.canvasData);
     }
+    const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
+    this.lc.setColor('background', initialBackground);
+    this.backgroundColor.set(initialBackground);
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -158,6 +162,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     } else {
       this.lc.repaintLayer('main');
     }
+    const boardBackground = board?.backgroundColor ?? '#ffffff';
+    this.lc.setColor('background', boardBackground);
+    this.backgroundColor.set(boardBackground);
   }
 
   public setTool(toolId: string): void {
@@ -204,5 +211,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (!this.lc) return;
     this.backgroundColor.set(color);
     this.lc.setColor('background', color);
+    if (this.currentBoardId) {
+      this.store.updateBackgroundColor(this.currentBoardId, color);
+    }
   }
 }
