@@ -24,6 +24,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly activeTool = signal<string>('pencil');
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
+  readonly backgroundColor = signal<string>('#ffffff');
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
@@ -35,6 +36,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly colorPickers = [
     { label: 'Stroke', signal: this.strokeColor, setter: this.setStrokeColor.bind(this), quickColors: ['transparent', '#000000'] },
     { label: 'Fill', signal: this.fillColor, setter: this.setFillColor.bind(this), quickColors: ['transparent', '#ffffff'] },
+    { label: 'BG', signal: this.backgroundColor, setter: this.setBackgroundColor.bind(this), quickColors: ['#ffffff', '#000000'] },
   ];
 
   readonly store = inject(AppStore);
@@ -196,5 +198,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const colorValue = color === 'transparent' ? 'hsla(0, 0%, 100%, 0)' : color;
     this.fillColor.set(color);
     this.lc.setColor('secondary', colorValue);
+  }
+
+  public setBackgroundColor(color: string): void {
+    if (!this.lc) return;
+    this.backgroundColor.set(color);
+    this.lc.setColor('background', color);
   }
 }
