@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, ipcRenderer } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -18,13 +18,25 @@ function createWindow() {
   {
     label: 'Board Options',
     submenu: [
-      { label: 'Save board' },
-      { label: 'Load board' }
+      { label: 'Save board',
+        // badly needs fixing
+        click: async () => {
+          try {
+            const result = await ipcRenderer.invoke('quickboard:save-board', data);
+            if (!result.canceled) {
+              console.log(`File saved: ${result.filePath ?? 'unknown path'}`);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+       },
+      { label: 'Load board' },
     ]
   },
   {
     role: 'quit'
-  }
+  },
   ])
 
   win.setMenu(mainMenu);
