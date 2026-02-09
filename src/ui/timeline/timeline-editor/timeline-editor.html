@@ -30,7 +30,12 @@
 
             <!-- Delete Button -->
             @if (store.boards().length > 1) {
-              <button class="delete-btn" (click)="$event.stopPropagation(); deleteBoard(board.id)">
+              <button
+                type="button"
+                class="delete-btn"
+                aria-label="Delete board"
+                (click)="$event.stopPropagation(); deleteBoard(board.id)"
+              >
                 x
               </button>
             }
