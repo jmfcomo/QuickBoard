@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, ipcRenderer } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -12,39 +12,37 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-
-  // applies the menu without overriding the whole window
   const mainMenu = Menu.buildFromTemplate([
-  {
-    label: 'Board Options',
-    submenu: [
-      { label: 'Save board',
-        // badly needs fixing
-        click: async () => {
-          try {
-            const result = await ipcRenderer.invoke('quickboard:save-board', data);
-            if (!result.canceled) {
-              console.log(`File saved: ${result.filePath ?? 'unknown path'}`);
-            }
-          } catch (err) {
-            console.error(err);
-          }
-        }
-       },
-      { label: 'Load board' },
-    ]
-  },
-  {
-    role: 'quit'
-  },
-  ])
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Save',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            void requestSaveFromRenderer(win);
+          },
+        },
+        {
+          label: 'Load',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            void loadBoardIntoRenderer(win);
+          },
+        },
+      ],
+    },
+    {
+      role: 'quit',
+    },
+  ]);
 
   win.setMenu(mainMenu);
 
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
-ipcMain.handle('quickboard:save-board', async (_event, data) => {
+async function requestSaveFromRenderer(win) {
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Save Board',
     defaultPath: 'quickboard.json',
@@ -52,14 +50,13 @@ ipcMain.handle('quickboard:save-board', async (_event, data) => {
   });
 
   if (canceled || !filePath) {
-    return { canceled: true };
+    return;
   }
 
-  await fs.writeFile(filePath, data, 'utf-8');
-  return { canceled: false, filePath };
-});
+  win.webContents.send('quickboard:request-save', { filePath });
+}
 
-ipcMain.handle('quickboard:load-board', async () => {
+async function loadBoardIntoRenderer(win) {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Load Board',
     properties: ['openFile'],
@@ -67,12 +64,20 @@ ipcMain.handle('quickboard:load-board', async () => {
   });
 
   if (canceled || !filePaths || filePaths.length === 0) {
-    return { canceled: true };
+    return;
   }
 
   const filePath = filePaths[0];
   const content = await fs.readFile(filePath, 'utf-8');
-  return { canceled: false, filePath, content };
+  win.webContents.send('quickboard:load-data', { filePath, content });
+}
+
+ipcMain.on('quickboard:save-data', async (_event, payload) => {
+  if (!payload || !payload.filePath || typeof payload.data !== 'string') {
+    return;
+  }
+
+  await fs.writeFile(payload.filePath, payload.data, 'utf-8');
 });
 
 app.whenReady().then(createWindow);

@@ -3,12 +3,9 @@ export {};
 declare global {
   interface Window {
     quickboard?: {
-      saveBoard: (data: string) => Promise<{ canceled: boolean; filePath?: string }>;
-      loadBoard: () => Promise<{
-        canceled: boolean;
-        filePath?: string;
-        content?: string;
-      }>;
+      onRequestSave: (handler: (payload: { filePath: string }) => void) => () => void;
+      onLoadData: (handler: (payload: { filePath: string; content: string }) => void) => () => void;
+      sendSaveData: (payload: { filePath: string; data: string }) => void;
     };
   }
 }
