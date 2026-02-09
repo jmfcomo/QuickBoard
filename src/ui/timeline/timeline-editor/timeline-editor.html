@@ -1,1 +1,34 @@
-<p>timeline-editor works!</p>
+<div class="boards-track" role="listbox" aria-label="Board timeline">
+  @for (board of store.boards(); track board.id) {
+    <div
+      class="board-card"
+      [class.selected]="board.id === store.currentBoardId()"
+      (click)="selectBoard(board.id)"
+      (keydown.enter)="selectBoard(board.id)"
+      (keydown.space)="$event.preventDefault(); selectBoard(board.id)"
+      tabindex="0"
+      role="option"
+      [attr.aria-selected]="board.id === store.currentBoardId()"
+      [attr.aria-label]="'Board ' + ($index + 1)"
+    >
+      @if (board.previewUrl) {
+        <img class="board-preview" [src]="board.previewUrl" alt="" />
+      } @else {
+        <div class="board-preview"></div>
+      }
+      <span class="board-label">{{ $index + 1 }}</span>
+      @if (store.boards().length > 1) {
+        <button
+          class="delete-btn"
+          (click)="deleteBoard(board.id); $event.stopPropagation()"
+          aria-label="Delete Board {{ $index + 1 }}"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      }
+    </div>
+  }
+  <button class="board-card add-card" (click)="addBoard()" aria-label="Add new board">
+    <span class="add-icon" aria-hidden="true">+</span>
+  </button>
+</div>
