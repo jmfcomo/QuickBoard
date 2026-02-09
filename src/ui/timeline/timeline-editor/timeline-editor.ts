@@ -1,5 +1,7 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
+import { TimelineActions } from '../helpers/timeline.actions';
+import { createTimelineData } from '../helpers/timeline.editor.graphics';
 
 @Component({
   selector: 'app-timeline-editor',
@@ -9,74 +11,26 @@ import { AppStore } from '../../../data/store/app.store';
 })
 export class TimelineEditor {
   readonly store = inject(AppStore);
+  readonly actions = inject(TimelineActions);
 
   scale = signal(40); // pixels per second
 
-  timelineBoards = computed(() => {
-    let currentTime = 0;
-    return this.store.boards().map((board) => {
-      const duration = board.duration;
-      const startTime = currentTime;
-      currentTime += duration;
-
-      return {
-        ...board,
-        startTime,
-        duration,
-        leftPx: startTime * this.scale(),
-        widthPx: duration * this.scale(),
-      };
-    });
-  });
-
-  totalWidth = computed(() => {
-    const lastBoard = this.timelineBoards().slice(-1)[0];
-    const endSecond = lastBoard ? lastBoard.startTime + lastBoard.duration : 0;
-    return Math.max((endSecond + 5) * this.scale(), 800);
-  });
-
-  addButtonLeftPx = computed(() => {
-    const boards = this.timelineBoards();
-    if (boards.length === 0) return 8;
-    const lastBoard = boards[boards.length - 1];
-    return lastBoard.leftPx + lastBoard.widthPx + 8;
-  });
-
-  rulerTicks = computed(() => {
-    const ticks = [];
-    const width = this.totalWidth();
-    const stepSeconds = 5;
-    const stepPx = stepSeconds * this.scale();
-    const count = Math.ceil(width / stepPx);
-
-    for (let i = 0; i < count; i++) {
-      ticks.push({
-        time: i * stepSeconds,
-        left: i * stepPx,
-        label: this.formatTime(i * stepSeconds),
-      });
-    }
-    return ticks;
-  });
+  private readonly _shared = createTimelineData(this.store, this.scale);
+  timelineBoards = this._shared.timelineBoards;
+  totalWidth = this._shared.totalWidth;
+  addButtonLeftPx = this._shared.addButtonLeftPx;
+  rulerTicks = this._shared.rulerTicks;
 
   addBoard() {
-    const newBoardId = this.store.addBoard();
-    this.store.setCurrentBoard(newBoardId);
+    this.actions.addBoard();
   }
 
   selectBoard(boardId: string) {
-    this.store.setCurrentBoard(boardId);
+    this.actions.selectBoard(boardId);
   }
 
   deleteBoard(boardId: string) {
-    const boards = this.store.boards();
-    if (boards.length > 1) {
-      this.store.deleteBoard(boardId);
-      // Select another board if the deleted one was selected
-      if (this.store.currentBoardId() === boardId) {
-        this.store.setCurrentBoard(boards[0].id);
-      }
-    }
+    this.actions.deleteBoard(boardId);
   }
 
   private formatTime(seconds: number): string {
