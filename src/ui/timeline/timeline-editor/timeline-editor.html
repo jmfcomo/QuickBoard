@@ -1,34 +1,47 @@
-<div class="boards-track" role="listbox" aria-label="Board timeline">
-  @for (board of store.boards(); track board.id) {
-    <div
-      class="board-card"
-      [class.selected]="board.id === store.currentBoardId()"
-      (click)="selectBoard(board.id)"
-      (keydown.enter)="selectBoard(board.id)"
-      (keydown.space)="$event.preventDefault(); selectBoard(board.id)"
-      tabindex="0"
-      role="option"
-      [attr.aria-selected]="board.id === store.currentBoardId()"
-      [attr.aria-label]="'Board ' + ($index + 1)"
-    >
-      @if (board.previewUrl) {
-        <img class="board-preview" [src]="board.previewUrl" alt="" />
-      } @else {
-        <div class="board-preview"></div>
-      }
-      <span class="board-label">{{ $index + 1 }}</span>
-      @if (store.boards().length > 1) {
-        <button
-          class="delete-btn"
-          (click)="deleteBoard(board.id); $event.stopPropagation()"
-          aria-label="Delete Board {{ $index + 1 }}"
-        >
-          <span aria-hidden="true">×</span>
-        </button>
+<!-- eslint-disable @angular-eslint/template/interactive-supports-focus -->
+<div class="timeline-editor custom-scrollbar">
+  <div class="timeline-content" [style.width.px]="totalWidth()">
+    <div class="timeline-ruler">
+      @for (tick of rulerTicks(); track tick.time) {
+        <div class="timeline-tick" [style.left.px]="tick.left">
+          <span class="tick-label">{{ tick.label }}</span>
+        </div>
       }
     </div>
-  }
-  <button class="board-card add-card" (click)="addBoard()" aria-label="Add new board">
-    <span class="add-icon" aria-hidden="true">+</span>
-  </button>
+
+    <!-- Boards Track -->
+    <div class="timeline-tracks">
+      <div class="boards-track">
+        @for (board of timelineBoards(); track board.id) {
+          <div
+            class="timeline-board"
+            [style.left.px]="board.leftPx"
+            [style.width.px]="board.widthPx"
+            (click)="selectBoard(board.id)"
+            (keydown.enter)="selectBoard(board.id)"
+            tabIndex="0"
+          >
+            <div class="board-content">
+              @if (board.previewUrl) {
+                <img [src]="board.previewUrl" alt="board drawing" />
+              }
+            </div>
+            <div class="board-number">{{ $index + 1 }}</div>
+
+            <!-- Delete Button -->
+            @if (store.boards().length > 1) {
+              <button class="delete-btn" (click)="$event.stopPropagation(); deleteBoard(board.id)">
+                x
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Add Button -->
+        <button class="add-board-btn" [style.left.px]="addButtonLeftPx()" (click)="addBoard()">
+          + Add Board
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
