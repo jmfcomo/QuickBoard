@@ -80,5 +80,11 @@ export const AppStore = signalStore(
         .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));
       patchState(store, { boards });
     },
+    updateBoardDuration(boardId: string, duration: number) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, duration } : board));
+      patchState(store, { boards });
+    },
   })),
 );

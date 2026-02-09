@@ -1,0 +1,12 @@
+<div class="timeline-menu">
+  <label class="duration-control">
+    Frame duration (s):
+    <input
+      type="number"
+      min="0.1"
+      step="0.1"
+      [value]="currentDuration()"
+      (input)="updateDuration($any($event.target).value)"
+    />
+  </label>
+</div>
