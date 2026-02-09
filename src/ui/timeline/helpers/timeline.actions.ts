@@ -18,9 +18,13 @@ export class TimelineActions {
   deleteBoard(boardId: string) {
     const boards = this.store.boards();
     if (boards.length > 1) {
+      const wasCurrentBoard = this.store.currentBoardId() === boardId;
       this.store.deleteBoard(boardId);
-      if (this.store.currentBoardId() === boardId) {
-        this.store.setCurrentBoard(boards[0].id);
+      if (wasCurrentBoard) {
+        const remainingBoards = this.store.boards();
+        if (remainingBoards.length > 0) {
+          this.store.setCurrentBoard(remainingBoards[0].id);
+        }
       }
     }
   }
