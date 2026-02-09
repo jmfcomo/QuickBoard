@@ -1,8 +1,6 @@
 import { computed, Signal } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 
-// Utility to compute timeline layout values.
-// Use loose `any` types so it works with injected signals or plain numbers.
 export function createTimelineData(store: InstanceType<typeof AppStore>, scale: Signal<number>) {
   const timelineBoards = computed(() => {
     let currentTime = 0;
@@ -11,7 +9,7 @@ export function createTimelineData(store: InstanceType<typeof AppStore>, scale: 
       const startTime = currentTime;
       currentTime += duration;
 
-      const s = typeof scale === 'function' ? scale() : scale;
+      const s = scale();
 
       return {
         ...board,
@@ -26,7 +24,7 @@ export function createTimelineData(store: InstanceType<typeof AppStore>, scale: 
   const totalWidth = computed(() => {
     const lastBoard = timelineBoards().slice(-1)[0];
     const endSecond = lastBoard ? lastBoard.startTime + lastBoard.duration : 0;
-    const s = typeof scale === 'function' ? scale() : scale;
+    const s = scale();
     return Math.max((endSecond + 5) * s, 800);
   });
 
@@ -41,7 +39,7 @@ export function createTimelineData(store: InstanceType<typeof AppStore>, scale: 
     const ticks: { time: number; left: number; label: string }[] = [];
     const width = totalWidth();
     const stepSeconds = 5;
-    const s = typeof scale === 'function' ? scale() : scale;
+    const s = scale();
     const stepPx = stepSeconds * s;
     const count = Math.ceil(width / stepPx);
 
