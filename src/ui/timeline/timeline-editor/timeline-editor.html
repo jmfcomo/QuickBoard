@@ -1,6 +1,6 @@
-<div class="timeline-editor custom-scrollbar">
+<div class="timeline-editor custom-scrollbar" role="region" aria-label="Timeline Editor">
   <div class="timeline-content" [style.width.px]="totalWidth()">
-    <div class="timeline-ruler">
+    <div class="timeline-ruler" aria-hidden="true">
       @for (tick of rulerTicks(); track tick.time) {
         <div class="timeline-tick" [style.left.px]="tick.left">
           <span class="tick-label">{{ tick.label }}</span>
@@ -8,42 +8,52 @@
       }
     </div>
 
-    <!-- Boards Track -->
-    <div class="timeline-tracks">
+    <div class="timeline-tracks" role="listbox" aria-label="Timeline Boards">
       <div class="boards-track">
         @for (board of timelineBoards(); track board.id) {
           <div
             class="timeline-board"
+            role="option"
+            [attr.aria-selected]="store.currentBoardId() === board.id"
             [class.selected]="store.currentBoardId() === board.id"
             [style.left.px]="board.leftPx"
             [style.width.px]="board.widthPx"
             (click)="selectBoard(board.id)"
             (keydown.enter)="selectBoard(board.id)"
-            tabIndex="0"
+            (keydown.space)="selectBoard(board.id)"
+            tabindex="0"
           >
             <div class="board-content">
               @if (board.previewUrl) {
-                <img [src]="board.previewUrl" alt="board drawing" />
+                <img
+                  [src]="board.previewUrl"
+                  alt="Board {{ $index + 1 }} preview"
+                  width="100"
+                  height="60"
+                />
               }
             </div>
-            <div class="board-number">{{ $index + 1 }}</div>
+            <div class="board-number" aria-hidden="true">{{ $index + 1 }}</div>
 
-            <!-- Delete Button -->
             @if (store.boards().length > 1) {
               <button
                 type="button"
                 class="delete-btn"
-                aria-label="Delete board"
+                aria-label="Delete board {{ $index + 1 }}"
                 (click)="$event.stopPropagation(); deleteBoard(board.id)"
               >
-                x
+                <span aria-hidden="true">×</span>
               </button>
             }
           </div>
         }
 
-        <!-- Add Button -->
-        <button class="add-board-btn" [style.left.px]="addButtonLeftPx()" (click)="addBoard()">
+        <button
+          type="button"
+          class="add-board-btn"
+          [style.left.px]="addButtonLeftPx()"
+          (click)="addBoard()"
+        >
           + Add Board
         </button>
       </div>
