@@ -90,6 +90,11 @@
   z-index: 10;
 }
 
+/* Always show delete on selected board */
+.timeline-board.selected .delete-btn {
+  display: flex;
+}
+
 .board-content {
   display: flex;
   align-items: center;

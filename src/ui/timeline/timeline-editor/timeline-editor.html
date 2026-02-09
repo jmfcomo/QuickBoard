@@ -15,6 +15,7 @@
         @for (board of timelineBoards(); track board.id) {
           <div
             class="timeline-board"
+            [class.selected]="store.currentBoardId() === board.id"
             [style.left.px]="board.leftPx"
             [style.width.px]="board.widthPx"
             (click)="selectBoard(board.id)"
