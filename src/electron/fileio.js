@@ -103,7 +103,15 @@ async function loadBoardIntoRenderer(win) {
     await saveSettings();
   } catch {}
 
-  win.webContents.send('quickboard:load-data', { filePath, content });
+  const sendData = () => {
+    win.webContents.send('quickboard:load-data', { filePath, content });
+  };
+
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', sendData);
+  } else {
+    sendData();
+  }
 }
 
 function registerIpcHandlers() {
