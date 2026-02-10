@@ -42,15 +42,12 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
-async function requestSaveFromRenderer(win) {
-  // Ensure we have a dedicated QuickBoard folder inside the user's Documents
-  const documentsDir = app.getPath('documents');
-  const quickboardDir = path.join(documentsDir, 'quickboard');
-  try {
-    await fs.mkdir(quickboardDir, { recursive: true });
-  } catch (err) {}
+let lastUsedDir = null;
 
-  const defaultPath = path.join(quickboardDir, 'quickboard.json');
+async function requestSaveFromRenderer(win) {
+  const documentsDir = app.getPath('documents');
+  const baseDir = lastUsedDir || documentsDir;
+  const defaultPath = path.join(baseDir, 'quickboard.json');
 
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Save Board',
@@ -62,19 +59,20 @@ async function requestSaveFromRenderer(win) {
     return;
   }
 
+  try {
+    lastUsedDir = path.dirname(filePath);
+  } catch {}
+
   win.webContents.send('quickboard:request-save', { filePath });
 }
 
 async function loadBoardIntoRenderer(win) {
   const documentsDir = app.getPath('documents');
-  const quickboardDir = path.join(documentsDir, 'quickboard');
-  try {
-    await fs.mkdir(quickboardDir, { recursive: true });
-  } catch (err) {}
+  const baseDir = lastUsedDir || documentsDir;
 
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Load Board',
-    defaultPath: quickboardDir,
+    defaultPath: baseDir,
     properties: ['openFile'],
     filters: [{ name: 'JSON', extensions: ['json'] }],
   });
@@ -85,6 +83,9 @@ async function loadBoardIntoRenderer(win) {
 
   const filePath = filePaths[0];
   const content = await fs.readFile(filePath, 'utf-8');
+  try {
+    lastUsedDir = path.dirname(filePath);
+  } catch {}
   win.webContents.send('quickboard:load-data', { filePath, content });
 }
 
@@ -92,6 +93,11 @@ ipcMain.on('quickboard:save-data', async (_event, payload) => {
   if (!payload || !payload.filePath || typeof payload.data !== 'string') {
     return;
   }
+
+  try {
+    const dir = path.dirname(payload.filePath);
+    if (dir) lastUsedDir = dir;
+  } catch {}
 
   await fs.writeFile(payload.filePath, payload.data, 'utf-8');
 });
