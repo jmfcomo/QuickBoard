@@ -43,9 +43,18 @@ function createWindow() {
 }
 
 async function requestSaveFromRenderer(win) {
+  // Ensure we have a dedicated QuickBoard folder inside the user's Documents
+  const documentsDir = app.getPath('documents');
+  const quickboardDir = path.join(documentsDir, 'quickboard');
+  try {
+    await fs.mkdir(quickboardDir, { recursive: true });
+  } catch (err) {}
+
+  const defaultPath = path.join(quickboardDir, 'quickboard.json');
+
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Save Board',
-    defaultPath: 'quickboard.json',
+    defaultPath,
     filters: [{ name: 'JSON', extensions: ['json'] }],
   });
 
@@ -57,8 +66,15 @@ async function requestSaveFromRenderer(win) {
 }
 
 async function loadBoardIntoRenderer(win) {
+  const documentsDir = app.getPath('documents');
+  const quickboardDir = path.join(documentsDir, 'quickboard');
+  try {
+    await fs.mkdir(quickboardDir, { recursive: true });
+  } catch (err) {}
+
   const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Load Board',
+    defaultPath: quickboardDir,
     properties: ['openFile'],
     filters: [{ name: 'JSON', extensions: ['json'] }],
   });
