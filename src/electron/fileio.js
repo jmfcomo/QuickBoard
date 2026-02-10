@@ -31,7 +31,7 @@ async function init(appInstance) {
 async function requestSaveFromRenderer(win) {
   const documentsDir = _app.getPath('documents');
   const baseDir = lastUsedDir || documentsDir;
-  const defaultPath = path.join(baseDir, 'quickboard.json');
+  const defaultPath = path.join(baseDir, 'untitled.json');
 
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     title: 'Save Board',
