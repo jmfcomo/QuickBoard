@@ -1,4 +1,5 @@
-import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
+import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
+import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 
 interface Board {
@@ -13,6 +14,8 @@ interface Board {
 interface AppState {
   boards: Board[];
   currentBoardId: string | null;
+  isPlaying: boolean;
+  currentTime: number; // seconds
 }
 
 const firstBoardId = crypto.randomUUID();
@@ -29,6 +32,8 @@ const initialState: AppState = {
     },
   ],
   currentBoardId: firstBoardId,
+  isPlaying: false,
+  currentTime: 0,
 };
 
 export const AppStore = signalStore(
@@ -86,5 +91,17 @@ export const AppStore = signalStore(
         .map((board) => (board.id === boardId ? { ...board, duration } : board));
       patchState(store, { boards });
     },
+    setIsPlaying(isPlaying: boolean) {
+      patchState(store, { isPlaying });
+    },
+    setCurrentTime(time: number) {
+      patchState(store, { currentTime: time });
+    },
+  })),
+  withComputed((store) => ({
+    boards: computed(() => store.boards()),
+    totalDuration: computed(() => {
+      return store.boards().reduce((acc, b) => acc + (b.duration || 3), 0);
+    }),
   })),
 );
