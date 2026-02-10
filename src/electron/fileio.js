@@ -33,7 +33,7 @@ async function requestSaveFromRenderer(win) {
   const baseDir = lastUsedDir || documentsDir;
   const defaultPath = path.join(baseDir, 'quickboard.json');
 
-  const { canceled, filePath } = await dialog.showSaveDialog(win, {
+  const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Save Board',
     defaultPath,
     filters: [{ name: 'JSON', extensions: ['json'] }],
@@ -53,7 +53,7 @@ async function loadBoardIntoRenderer(win) {
   const documentsDir = _app.getPath('documents');
   const baseDir = lastUsedDir || documentsDir;
 
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
     title: 'Load Board',
     defaultPath: baseDir,
     properties: ['openFile'],
