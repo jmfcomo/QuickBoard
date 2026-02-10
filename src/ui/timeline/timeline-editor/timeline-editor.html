@@ -8,7 +8,11 @@
       }
     </div>
 
-    <div class="timeline-playhead" [style.left.px]="playheadPosition()" (mousedown)="startScrub($event)" role="slider" aria-label="Playhead">
+    <div
+      class="timeline-playhead"
+      [style.left.px]="playheadPosition()"
+      (mousedown)="startScrub($event)"
+    >
       <div class="playhead-head"></div>
       <div class="playhead-line"></div>
     </div>

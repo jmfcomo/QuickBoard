@@ -9,4 +9,15 @@
       (input)="updateDuration($any($event.target).value)"
     />
   </label>
+
+  <div class="playback-controls">
+    <button (click)="togglePlayback()" [class.active]="store.isPlaying()" aria-label="Play/Pause">
+      @if (store.isPlaying()) {
+        <span>⏸</span>
+      } @else {
+        <span>▶</span>
+      }
+    </button>
+    <span class="time-display">{{ formatTime(store.currentTime()) }}</span>
+  </div>
 </div>

@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
@@ -44,14 +44,10 @@ export class TimelineEditor {
   }
 
   startScrub(event: MouseEvent) {
-    event.preventDefault();
     this.isScrubbing.set(true);
-    // prevent text/image selection while scrubbing
-    try { document.body.style.userSelect = 'none'; } catch {}
     this.seekToMouse(event);
   }
 
-  @HostListener('window:mousemove', ['$event'])
   handleDrag(event: MouseEvent) {
     if (this.isScrubbing()) {
       event.preventDefault();
@@ -59,12 +55,8 @@ export class TimelineEditor {
     }
   }
 
-  @HostListener('window:mouseup', ['$event'])
-  stopScrub(event?: MouseEvent) {
-    if (this.isScrubbing()) {
-      this.isScrubbing.set(false);
-      try { document.body.style.userSelect = ''; } catch {}
-    }
+  stopScrub() {
+    this.isScrubbing.set(false);
   }
 
   private seekToMouse(event: MouseEvent) {

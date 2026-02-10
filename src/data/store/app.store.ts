@@ -99,7 +99,6 @@ export const AppStore = signalStore(
     },
   })),
   withComputed((store) => ({
-    boards: computed(() => store.boards()),
     totalDuration: computed(() => {
       return store.boards().reduce((acc, b) => acc + (b.duration || 3), 0);
     }),

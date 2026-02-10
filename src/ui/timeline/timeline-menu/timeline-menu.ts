@@ -1,5 +1,6 @@
 import { Component, inject, computed } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
+import { PlaybackService } from '../../../services/playback.service';
 
 @Component({
   selector: 'app-timeline-menu',
@@ -9,6 +10,7 @@ import { AppStore } from '../../../data/store/app.store';
 })
 export class TimelineMenu {
   readonly store = inject(AppStore);
+  readonly playback = inject(PlaybackService);
 
   currentDuration = computed(() => {
     const id = this.store.currentBoardId();
@@ -22,5 +24,15 @@ export class TimelineMenu {
       const id = this.store.currentBoardId();
       if (id) this.store.updateBoardDuration(id, Math.max(0.1, n));
     }
+  }
+
+  togglePlayback() {
+    this.playback.togglePlayback();
+  }
+
+  formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
   }
 }
