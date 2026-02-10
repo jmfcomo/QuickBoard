@@ -72,10 +72,16 @@ export const AppStore = signalStore(
       try {
         const data = JSON.parse(jsonString) as AppState;
         if (data.boards && Array.isArray(data.boards)) {
-          patchState(store, {
-            boards: data.boards,
-            currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
-          });
+          const targetBoardId = data.currentBoardId || data.boards[0]?.id || null;
+
+          patchState(store, { currentBoardId: null });
+
+          setTimeout(() => {
+            patchState(store, {
+              boards: data.boards,
+              currentBoardId: targetBoardId,
+            });
+          }, 0);
         }
       } catch (error) {
         console.error('Failed to load JSON:', error);

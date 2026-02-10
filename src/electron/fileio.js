@@ -105,7 +105,6 @@ async function loadBoardIntoRenderer(win) {
     await saveSettings();
   } catch {}
 
-  // Store data and send when renderer is ready (fixes Mac timing issues)
   pendingLoadData = { filePath, content };
 
   if (isRendererReady) {
@@ -124,20 +123,20 @@ function registerIpcHandlers() {
         lastUsedDir = dir;
         await saveSettings();
       }
-    } catch {}
+      await fs.writeFile(payload.filePath, payload.data, 'utf-8');
+    } catch (err) {
+      console.error('Failed to save file:', err);
+    }
+  });
 
-    await fs.writeFile(payload.filePath, payload.data, 'utf-8');
+  ipcMain.on('quickboard:renderer-ready', (event) => {
+    isRendererReady = true;
+    if (pendingLoadData) {
+      event.sender.send('quickboard:load-data', pendingLoadData);
+      pendingLoadData = null;
+    }
   });
 }
-
-ipcMain.on('quickboard:renderer-ready', (event) => {
-  isRendererReady = true;
-  // Send any pending load data now that renderer is ready
-  if (pendingLoadData) {
-    event.sender.send('quickboard:load-data', pendingLoadData);
-    pendingLoadData = null;
-  }
-});
 module.exports = {
   init,
   requestSaveFromRenderer,
