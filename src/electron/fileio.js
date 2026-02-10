@@ -33,11 +33,26 @@ async function requestSaveFromRenderer(win) {
   const baseDir = lastUsedDir || documentsDir;
   const defaultPath = path.join(baseDir, 'untitled.json');
 
-  const { canceled, filePath } = await dialog.showSaveDialog({
+  const saveOptions = {
     title: 'Save Board',
     defaultPath,
     filters: [{ name: 'JSON', extensions: ['json'] }],
-  });
+  };
+
+  let saveResult;
+  try {
+    saveResult = await dialog.showSaveDialog(win, saveOptions);
+  } catch (err) {
+    saveResult = await dialog.showSaveDialog(saveOptions);
+  }
+
+  if ((!saveResult || !saveResult.filePath) && process.platform !== 'darwin') {
+    try {
+      saveResult = await dialog.showSaveDialog(saveOptions);
+    } catch (err) {}
+  }
+
+  const { canceled, filePath } = saveResult || {};
 
   if (canceled || !filePath) return;
 
@@ -53,12 +68,30 @@ async function loadBoardIntoRenderer(win) {
   const documentsDir = _app.getPath('documents');
   const baseDir = lastUsedDir || documentsDir;
 
-  const { canceled, filePaths } = await dialog.showOpenDialog({
+  const openOptions = {
     title: 'Load Board',
     defaultPath: baseDir,
     properties: ['openFile'],
     filters: [{ name: 'JSON', extensions: ['json'] }],
-  });
+  };
+
+  let openResult;
+  try {
+    openResult = await dialog.showOpenDialog(win, openOptions);
+  } catch (err) {
+    openResult = await dialog.showOpenDialog(openOptions);
+  }
+
+  if (
+    (!openResult || !openResult.filePaths || openResult.filePaths.length === 0) &&
+    process.platform !== 'darwin'
+  ) {
+    try {
+      openResult = await dialog.showOpenDialog(openOptions);
+    } catch (err) {}
+  }
+
+  const { canceled, filePaths } = openResult || {};
 
   if (canceled || !filePaths || filePaths.length === 0) return;
 
