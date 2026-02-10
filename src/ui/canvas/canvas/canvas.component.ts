@@ -106,22 +106,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.initCanvasTimeout = null;
 
     const container = this.canvasContainer().nativeElement;
-    const stage = this.canvasStage().nativeElement;
-
-    // Size the container BEFORE LC.init so LC reads the correct dimensions
-    // from the very first frame — this eliminates the snap/flash bug.
-    const stageW = stage.clientWidth;
-    const stageH = stage.clientHeight;
-    if (stageW > 0 && stageH > 0) {
-      const initScale = Math.min(
-        stageW / this.defaultCanvasSize.width,
-        stageH / this.defaultCanvasSize.height
-      );
-      container.style.width = `${Math.round(this.defaultCanvasSize.width * initScale)}px`;
-      container.style.height = `${Math.round(this.defaultCanvasSize.height * initScale)}px`;
-      // Force layout so LC.init reads the updated dimensions
-      void container.offsetWidth;
-    }
 
     // Get the current board or first board
     const boards = this.store.boards();
@@ -206,7 +190,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver.disconnect();
     }
 
-    const container = this.canvasStage().nativeElement;
+    const container = this.canvasContainer().nativeElement;
     this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
     this.resizeObserver.observe(container);
   }
@@ -220,9 +204,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private fitCanvasToContainer(): void {
     if (!this.lc) return;
 
-    const stage = this.canvasStage().nativeElement;
-    const width = stage.clientWidth;
-    const height = stage.clientHeight;
+    const container = this.canvasContainer().nativeElement;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
     if (width <= 0 || height <= 0) return;
 
     const scale = Math.min(
@@ -231,14 +215,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     );
 
     if (!Number.isFinite(scale) || scale <= 0) return;
-
-    const container = this.canvasContainer().nativeElement;
-    const targetWidth = Math.round(this.defaultCanvasSize.width * scale);
-    const targetHeight = Math.round(this.defaultCanvasSize.height * scale);
-    container.style.width = `${targetWidth}px`;
-    container.style.height = `${targetHeight}px`;
-
-    void container.offsetWidth;
 
     if (this.lc.respondToSizeChange) {
       this.lc.respondToSizeChange();

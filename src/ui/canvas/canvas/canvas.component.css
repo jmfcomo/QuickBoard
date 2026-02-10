@@ -1,27 +1,19 @@
 :host {
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .canvas-container {
   display: flex;
   flex-direction: row;
-  height: 100%;
   width: 100%;
   gap: 8px;
-  min-height: 0;
   overflow: hidden;
 }
 
 .canvas-stage {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 1 1 0;
   min-width: 0;
-  min-height: 0;
-  background-color: var(--canvas-fill);
+  aspect-ratio: 16 / 9;
 }
 
 .tools-bar {
@@ -64,13 +56,12 @@
 }
 
 .literally-canvas {
-  flex: 0 0 auto;
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--border-default);
   border-radius: 4px;
   overflow: hidden;
   background-color: var(--canvas-fill);
-  min-height: 0;
-  min-width: 0;
 }
 
 .color-section {

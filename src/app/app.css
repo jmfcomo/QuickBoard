@@ -8,8 +8,8 @@
 }
 
 .app {
-  display: grid;
-  grid-template-rows: 1fr clamp(120px, 20vh, 200px);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -20,29 +20,30 @@
 .editors {
   display: flex;
   flex-direction: row;
-  gap: 1rem;
-  padding: 0 1rem 1rem 0;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 8px 8px 0;
   box-sizing: border-box;
-  min-height: 0;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 
 .editors app-canvas {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
-  min-height: 0;
   overflow: hidden;
 }
 
 .editors app-script {
-  flex: 0 0 clamp(200px, 25%, 400px);
-  min-height: 0;
+  flex: 0 1 clamp(120px, 20%, 300px);
+  min-width: 100px;
   overflow: hidden;
 }
 
 app-timeline {
+  flex: 1 1 auto;
   width: 100%;
   box-sizing: border-box;
-  min-height: 0;
+  min-height: 120px;
   overflow: hidden;
 }
