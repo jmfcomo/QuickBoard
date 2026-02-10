@@ -106,6 +106,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.initCanvasTimeout = null;
 
     const container = this.canvasContainer().nativeElement;
+    const stage = this.canvasStage().nativeElement;
+
+    // Size the container BEFORE LC.init so LC reads the correct dimensions
+    // from the very first frame — this eliminates the snap/flash bug.
+    const stageW = stage.clientWidth;
+    const stageH = stage.clientHeight;
+    if (stageW > 0 && stageH > 0) {
+      const initScale = Math.min(
+        stageW / this.defaultCanvasSize.width,
+        stageH / this.defaultCanvasSize.height
+      );
+      container.style.width = `${Math.round(this.defaultCanvasSize.width * initScale)}px`;
+      container.style.height = `${Math.round(this.defaultCanvasSize.height * initScale)}px`;
+      // Force layout so LC.init reads the updated dimensions
+      void container.offsetWidth;
+    }
 
     // Get the current board or first board
     const boards = this.store.boards();
@@ -114,7 +130,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
-    // Initialize Literally Canvas
+    // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
@@ -128,7 +144,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
 
-    this.scheduleCanvasFit();
+    // Apply the initial zoom now (synchronously, no rAF needed)
+    this.fitCanvasToContainer();
     this.observeCanvasResize();
 
     this.lc.on('drawingChange', () => {
@@ -179,7 +196,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
-    this.scheduleCanvasFit();
+    this.fitCanvasToContainer();
   }
 
   private observeCanvasResize(): void {
