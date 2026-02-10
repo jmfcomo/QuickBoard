@@ -13,9 +13,14 @@ export class PlaybackService implements OnDestroy {
       await Tone.start();
     }
 
+    const duration = this.store.totalDuration();
+    if (this.store.currentTime() >= duration && duration > 0) {
+      Tone.Transport.seconds = 0;
+      this.store.setCurrentTime(0);
+    }
+
     Tone.Transport.start();
     this.store.setIsPlaying(true);
-
     this.startUiLoop();
   }
 
@@ -55,9 +60,15 @@ export class PlaybackService implements OnDestroy {
 
     const loop = () => {
       const time = Tone.Transport.seconds;
+      const duration = this.store.totalDuration();
+
+      if (time >= duration && duration > 0) {
+        this.pause();
+        this.seek(duration);
+        return;
+      }
 
       this.store.setCurrentTime(time);
-
       this.syncVisuals(time);
 
       if (this.store.isPlaying()) {
