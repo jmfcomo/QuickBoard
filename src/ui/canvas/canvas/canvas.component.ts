@@ -22,7 +22,6 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
-  readonly canvasStage = viewChild.required<ElementRef<HTMLElement>>('canvasStage');
   readonly activeTool = signal<string>('pencil');
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
