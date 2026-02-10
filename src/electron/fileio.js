@@ -5,6 +5,8 @@ const fs = require('fs/promises');
 let _app = null;
 let lastUsedDir = null;
 let settingsFile = null;
+let pendingLoadData = null;
+let isRendererReady = false;
 
 async function loadSettings() {
   try {
@@ -103,14 +105,12 @@ async function loadBoardIntoRenderer(win) {
     await saveSettings();
   } catch {}
 
-  const sendData = () => {
-    win.webContents.send('quickboard:load-data', { filePath, content });
-  };
+  // Store data and send when renderer is ready (fixes Mac timing issues)
+  pendingLoadData = { filePath, content };
 
-  if (win.webContents.isLoading()) {
-    win.webContents.once('did-finish-load', sendData);
-  } else {
-    sendData();
+  if (isRendererReady) {
+    win.webContents.send('quickboard:load-data', pendingLoadData);
+    pendingLoadData = null;
   }
 }
 
@@ -130,6 +130,14 @@ function registerIpcHandlers() {
   });
 }
 
+ipcMain.on('quickboard:renderer-ready', (event) => {
+  isRendererReady = true;
+  // Send any pending load data now that renderer is ready
+  if (pendingLoadData) {
+    event.sender.send('quickboard:load-data', pendingLoadData);
+    pendingLoadData = null;
+  }
+});
 module.exports = {
   init,
   requestSaveFromRenderer,

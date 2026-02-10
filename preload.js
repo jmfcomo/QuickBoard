@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('quickboard', {
     return () => ipcRenderer.removeListener('quickboard:load-data', listener);
   },
   sendSaveData: (payload) => ipcRenderer.send('quickboard:save-data', payload),
+  signalReady: () => ipcRenderer.send('quickboard:renderer-ready'),
 });

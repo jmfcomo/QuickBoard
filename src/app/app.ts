@@ -32,6 +32,10 @@ export class App implements OnInit, OnDestroy {
         });
       });
     }
+
+    if (window.quickboard?.signalReady) {
+      window.quickboard.signalReady();
+    }
   }
 
   ngOnDestroy() {
