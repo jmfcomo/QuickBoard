@@ -20,7 +20,9 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
+  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
+  readonly canvasStage = viewChild.required<ElementRef<HTMLElement>>('canvasStage');
   readonly activeTool = signal<string>('pencil');
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
@@ -46,6 +48,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentBoardId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
     // Watch for board changes and reload canvas data
@@ -89,6 +92,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc = null;
     }
 
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
     // Clear tool instances to release references
     this.toolInstances.clear();
   }
@@ -111,12 +119,17 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+
     if (currentBoard?.canvasData) {
       this.lc.loadSnapshot(currentBoard.canvasData);
     }
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
+
+    this.scheduleCanvasFit();
+    this.observeCanvasResize();
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -162,9 +175,59 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     } else {
       this.lc.repaintLayer('main');
     }
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
+    this.scheduleCanvasFit();
+  }
+
+  private observeCanvasResize(): void {
+    if (!this.lc || typeof ResizeObserver === 'undefined') return;
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+
+    const container = this.canvasStage().nativeElement;
+    this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
+    this.resizeObserver.observe(container);
+  }
+
+  private scheduleCanvasFit(): void {
+    if (!this.lc) return;
+
+    window.requestAnimationFrame(() => this.fitCanvasToContainer());
+  }
+
+  private fitCanvasToContainer(): void {
+    if (!this.lc) return;
+
+    const stage = this.canvasStage().nativeElement;
+    const width = stage.clientWidth;
+    const height = stage.clientHeight;
+    if (width <= 0 || height <= 0) return;
+
+    const scale = Math.min(
+      width / this.defaultCanvasSize.width,
+      height / this.defaultCanvasSize.height
+    );
+
+    if (!Number.isFinite(scale) || scale <= 0) return;
+
+    const container = this.canvasContainer().nativeElement;
+    const targetWidth = Math.round(this.defaultCanvasSize.width * scale);
+    const targetHeight = Math.round(this.defaultCanvasSize.height * scale);
+    container.style.width = `${targetWidth}px`;
+    container.style.height = `${targetHeight}px`;
+
+    void container.offsetWidth;
+
+    if (this.lc.respondToSizeChange) {
+      this.lc.respondToSizeChange();
+    }
+
+    this.lc.setZoom(scale);
   }
 
   public setTool(toolId: string): void {

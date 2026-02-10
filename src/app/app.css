@@ -8,6 +8,7 @@
   flex-direction: column;
   width: 100%;
   height: 100vh;
+  min-height: 0;
 }
 
 .editors {
@@ -16,9 +17,10 @@
   gap: 1rem;
   width: 100%;
   height: 60%;
-  padding: 0rem 1rem 1rem 1rem;
+  padding: 0rem 1rem 1rem 0rem;
   box-sizing: border-box;
   align-items: stretch;
+  min-height: 0;
 }
 
 .editors app-canvas {
@@ -35,4 +37,5 @@ app-timeline {
   width: 100%;
   height: 40%;
   box-sizing: border-box;
+  min-height: 0;
 }
