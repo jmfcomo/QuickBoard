@@ -1,5 +1,5 @@
 const { Menu } = require('electron');
-const path = require('path');
+
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {

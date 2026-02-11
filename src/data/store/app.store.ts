@@ -71,15 +71,16 @@ export const AppStore = signalStore(
     loadFromJson(jsonString: string) {
       try {
         const data = JSON.parse(jsonString) as AppState;
-        if (data.boards && Array.isArray(data.boards)) {
-          patchState(store, {
-            boards: data.boards,
-            currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
-          });
+        if (!data || !Array.isArray(data.boards)) {
+          throw new Error('Invalid JSON structure: "boards" array is required');
         }
+        patchState(store, {
+          boards: data.boards,
+          currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
+        });
       } catch (error) {
         console.error('Failed to load JSON:', error);
-        throw new Error('Invalid JSON format');
+        throw new Error('Invalid JSON format or structure');
       }
     },
   })),

@@ -1,6 +1,5 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const fs = require('fs/promises');
 
 function createWindow() {
   const win = new BrowserWindow({
