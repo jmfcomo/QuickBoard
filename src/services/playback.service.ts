@@ -34,7 +34,11 @@ export class PlaybackService implements OnDestroy {
     if (this.store.isPlaying()) {
       this.pause();
     } else {
-      this.play();
+      void this.play().catch((error) => {
+        console.error('Failed to start playback:', error);
+        this.store.setIsPlaying(false);
+        this.stopUiLoop();
+      });
     }
   }
 
