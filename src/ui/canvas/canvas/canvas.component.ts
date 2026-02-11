@@ -38,23 +38,30 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initCanvasTimeout: number | null = null;
 
   constructor() {
-    // Watch for board changes and reload canvas data
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
-      if (this.lc && selectedBoardId && selectedBoardId !== this.currentBoardId) {
-        // Save current board data before switching
-        if (this.currentBoardId && this.lc) {
-          this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+      const boards = this.store.boards();
+
+      if (this.lc && selectedBoardId) {
+        const shouldReload = selectedBoardId !== this.currentBoardId;
+
+        if (shouldReload) {
+          if (this.currentBoardId && this.lc) {
+            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+          }
+          this.loadBoardData(selectedBoardId);
+        } else if (this.currentBoardId) {
+          const currentBoard = boards.find((b) => b.id === this.currentBoardId);
+          if (currentBoard) {
+            this.loadBoardData(this.currentBoardId);
+          }
         }
-        this.loadBoardData(selectedBoardId);
       }
     });
   }
 
   ngAfterViewInit() {
-    // Ensure we are in the browser and not in a test runner that might lack global objects
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
-      // Use a small timeout to let the view settle/paint if necessary
       this.initCanvasTimeout = window.setTimeout(() => this.initializeCanvas(), 0);
     }
   }
