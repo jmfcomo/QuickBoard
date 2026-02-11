@@ -6,15 +6,27 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+  const { buildMenu } = require('./src/electron/menu');
+  buildMenu(app, win, {
+    onSave: fileio.requestSaveFromRenderer,
+    onLoad: fileio.loadBoardIntoRenderer,
+  });
+
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
-app.whenReady().then(createWindow);
+const fileio = require('./src/electron/fileio');
+fileio.registerIpcHandlers();
+
+app.whenReady().then(async () => {
+  await fileio.init(app);
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
