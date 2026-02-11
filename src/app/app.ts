@@ -11,7 +11,7 @@ import { AppStore } from '../data/store/app.store';
   styleUrl: './app.css',
 })
 export class App implements OnInit, OnDestroy {
-  protected readonly title = signal('quickboard');
+  protected readonly title = signal('QuickBoard');
   private readonly store = inject(AppStore);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
