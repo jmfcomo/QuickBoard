@@ -11,7 +11,8 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
-import { Brush, ObjectEraser } from '../../canvas/tools/tools';
+import { Brush } from '../../canvas/tools/brush';
+import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
@@ -65,6 +66,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
+
+  // Tooltip
+  readonly tooltipText = signal('');
+  readonly tooltipVisible = signal(false);
+  readonly tooltipTop = signal(0);
+  readonly tooltipLeft = signal(0);
+  private tooltipDelay: number | null = null;
+  private tooltipCooldown: number | null = null;
+  private tooltipWarm = false;
 
   constructor() {
     effect(() => {
@@ -123,6 +133,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Clear tool instances to release references
     this.toolInstances.clear();
+
+    this.clearTimer('tooltipDelay');
+    this.clearTimer('tooltipCooldown');
   }
 
   private initializeCanvas(): void {
@@ -302,5 +315,36 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (this.currentBoardId) {
       this.store.updateBackgroundColor(this.currentBoardId, color);
     }
+  }
+
+  public showTooltip(event: MouseEvent, label: string): void {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.tooltipText.set(label);
+    this.tooltipTop.set(rect.top + rect.height / 2);
+    this.tooltipLeft.set(rect.right + 8);
+    this.clearTimer('tooltipCooldown');
+
+    if (this.tooltipWarm) {
+      this.tooltipVisible.set(true);
+    } else {
+      this.tooltipDelay = window.setTimeout(() => {
+        this.tooltipVisible.set(true);
+        this.tooltipWarm = true;
+        this.tooltipDelay = null;
+      }, 500);
+    }
+  }
+
+  public hideTooltip(): void {
+    this.clearTimer('tooltipDelay');
+    this.tooltipVisible.set(false);
+    this.tooltipCooldown = window.setTimeout(() => {
+      this.tooltipWarm = false;
+      this.tooltipCooldown = null;
+    }, 400);
+  }
+
+  private clearTimer(key: 'tooltipDelay' | 'tooltipCooldown'): void {
+    if (this[key] !== null) { clearTimeout(this[key]!); this[key] = null; }
   }
 }
