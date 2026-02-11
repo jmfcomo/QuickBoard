@@ -157,7 +157,13 @@ export class ObjectEraser {
 
   private eraseAtPoint(x: number, y: number, lc: LCInstance): void {
     const radius = this.strokeWidth / 2;
-    const shapes = lc.shapes as unknown as Array<{ id?: string; getBoundingRect?: (...args: unknown[]) => BoundingRect }>;
+    const shapes = lc.shapes as unknown as {
+      id?: string;
+      className?: string;
+      getBoundingRect?: (...args: unknown[]) => BoundingRect;
+      points?: { x: number; y: number; size?: number }[];
+      smoothedPoints?: { x: number; y: number; size?: number }[];
+    }[];
     if (!Array.isArray(shapes) || shapes.length === 0) {
       return;
     }
@@ -167,7 +173,17 @@ export class ObjectEraser {
     const remainingShapes = [] as typeof shapes;
 
     for (const shape of shapes) {
-      if ((shape as { className?: string })?.className === 'ErasedLinePath') {
+      const className = shape?.className;
+      if (className === 'ErasedLinePath') {
+        remainingShapes.push(shape);
+        continue;
+      }
+
+      if (className === 'LinePath') {
+        if (this.isLinePathHit(shape, x, y, radius)) {
+          didErase = true;
+          continue;
+        }
         remainingShapes.push(shape);
         continue;
       }
@@ -232,5 +248,71 @@ export class ObjectEraser {
       y >= rect.y - padding &&
       y <= rect.y + rect.height + padding
     );
+  }
+
+  private isLinePathHit(
+    shape: {
+      points?: { x: number; y: number; size?: number }[];
+      smoothedPoints?: { x: number; y: number; size?: number }[];
+    },
+    x: number,
+    y: number,
+    radius: number
+  ): boolean {
+    const points = (shape.smoothedPoints && shape.smoothedPoints.length > 1)
+      ? shape.smoothedPoints
+      : shape.points;
+    if (!points || points.length === 0) {
+      return false;
+    }
+
+    const defaultSize = points[0]?.size ?? 0;
+    if (points.length === 1) {
+      return this.distanceToPoint(x, y, points[0].x, points[0].y) <= radius + defaultSize / 2;
+    }
+
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      const strokeRadius = ((a.size ?? defaultSize) + (b.size ?? defaultSize)) / 4;
+      if (this.distanceToSegment(x, y, a.x, a.y, b.x, b.y) <= radius + strokeRadius) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private distanceToPoint(x: number, y: number, px: number, py: number): number {
+    const dx = x - px;
+    const dy = y - py;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private distanceToSegment(
+    x: number,
+    y: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number
+  ): number {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    if (dx === 0 && dy === 0) {
+      return this.distanceToPoint(x, y, x1, y1);
+    }
+
+    const t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
+    if (t <= 0) {
+      return this.distanceToPoint(x, y, x1, y1);
+    }
+    if (t >= 1) {
+      return this.distanceToPoint(x, y, x2, y2);
+    }
+
+    const projX = x1 + t * dx;
+    const projY = y1 + t * dy;
+    return this.distanceToPoint(x, y, projX, projY);
   }
 }

@@ -30,9 +30,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
-    { id: 'eraser', label: 'Eraser', icon: '🧽' },
-    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
+    { id: 'eraser', label: 'Eraser', icon: '🧽' },
+    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' }
   ];
 
   readonly colorPickers = [
