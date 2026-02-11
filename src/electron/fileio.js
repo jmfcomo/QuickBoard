@@ -1,4 +1,4 @@
-const { app, dialog, ipcMain } = require('electron');
+const { dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
