@@ -61,6 +61,7 @@ export class PlaybackService implements OnDestroy {
     Tone.Transport.stop();
     this.store.setIsPlaying(false);
     this.store.setCurrentTime(0);
+    this.currentBoardIndex = 0;
     this.stopUiLoop();
   }
 
@@ -174,8 +175,8 @@ export class PlaybackService implements OnDestroy {
     }
 
     // If not found in any range, return the closest valid index
-    // This handles edge cases like time >= last board's endTime
-    return Math.max(0, Math.min(right, this.boardTimeRanges.length - 1));
+    // Clamp to last board if time is beyond all boards
+    return Math.min(left, this.boardTimeRanges.length - 1);
   }
 
   ngOnDestroy() {
