@@ -63,18 +63,30 @@ async function loadBoardIntoRenderer(win) {
   if (canceled || !filePaths || filePaths.length === 0) return;
 
   const filePath = filePaths[0];
-  const content = await fs.readFile(filePath, 'utf-8');
 
   try {
-    lastUsedDir = path.dirname(filePath);
-    await saveSettings();
-  } catch {}
+    const content = await fs.readFile(filePath, 'utf-8');
 
-  win.webContents.send('quickboard:load-data', { filePath, content });
+    try {
+      lastUsedDir = path.dirname(filePath);
+      await saveSettings();
+    } catch {}
+
+    win.webContents.send('quickboard:load-data', { filePath, content });
+  } catch (err) {
+    console.error('Failed to load file:', err);
+    const message = err && err.message ? err.message : String(err);
+    try {
+      dialog.showErrorBox('Load Failed', `Failed to load file:\n${message}`);
+    } catch (e) {}
+    try {
+      win.webContents.send('quickboard:load-result', { filePath, success: false, message });
+    } catch (e) {}
+  }
 }
 
 function registerIpcHandlers() {
-  ipcMain.on('quickboard:save-data', async (_event, payload) => {
+  ipcMain.on('quickboard:save-data', async (event, payload) => {
     if (!payload || !payload.filePath || typeof payload.data !== 'string') return;
 
     try {
@@ -85,7 +97,25 @@ function registerIpcHandlers() {
       }
     } catch {}
 
-    await fs.writeFile(payload.filePath, payload.data, 'utf-8');
+    try {
+      await fs.writeFile(payload.filePath, payload.data, 'utf-8');
+      try {
+        event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
+      } catch (e) {}
+    } catch (err) {
+      console.error('Failed to save file:', err);
+      const message = err && err.message ? err.message : String(err);
+      try {
+        dialog.showErrorBox('Save Failed', `Failed to save file:\n${message}`);
+      } catch (e) {}
+      try {
+        event.sender.send('quickboard:save-result', {
+          filePath: payload.filePath,
+          success: false,
+          message,
+        });
+      } catch (e) {}
+    }
   });
 }
 

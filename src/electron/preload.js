@@ -7,13 +7,15 @@ const validateSavePayload = (payload) => {
   if (typeof payload.data !== 'string') {
     throw new Error('Invalid payload: data must be a string');
   }
-  if (typeof payload.path !== 'string' || !payload.path.length) {
-    throw new Error('Invalid payload: path must be a non-empty string');
+  const filePath = payload.filePath ?? payload.path;
+  if (typeof filePath !== 'string' || !filePath.length) {
+    throw new Error('Invalid payload: filePath must be a non-empty string');
   }
   // Prevent directory traversal
-  if (payload.path.includes('..') || payload.path.startsWith('/')) {
-    throw new Error('Invalid payload: path contains invalid characters');
+  if (filePath.includes('..') || filePath.startsWith('/')) {
+    throw new Error('Invalid payload: filePath contains invalid characters');
   }
+  return filePath;
 };
 
 contextBridge.exposeInMainWorld('quickboard', {
@@ -28,14 +30,14 @@ contextBridge.exposeInMainWorld('quickboard', {
     return () => ipcRenderer.removeListener('quickboard:load-data', listener);
   },
   sendSaveData: (payload) => {
+    let filePath;
     try {
-      validateSavePayload(payload);
+      filePath = validateSavePayload(payload);
     } catch (err) {
       // catch invalid payloads
       console.error('quickboard: rejected invalid save payload', err);
       return;
     }
-
-    ipcRenderer.send('quickboard:save-data', payload);
+    ipcRenderer.send('quickboard:save-data', { filePath, data: payload.data });
   },
 });

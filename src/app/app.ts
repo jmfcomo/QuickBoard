@@ -26,7 +26,13 @@ export class App implements OnInit, OnDestroy {
 
     if (window.quickboard?.onLoadData) {
       this.removeLoadDataListener = window.quickboard.onLoadData((payload) => {
-        this.store.loadFromJson(payload.content);
+        try {
+          this.store.loadFromJson(payload.content);
+        } catch (err) {
+          console.error('Failed to load data from file:', err);
+          const message = err instanceof Error ? err.message : String(err);
+          window.alert(`Failed to load file: ${message}`);
+        }
       });
     }
   }
