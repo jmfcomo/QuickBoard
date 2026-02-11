@@ -15,6 +15,7 @@ export class App implements OnInit, OnDestroy {
   private readonly store = inject(AppStore);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
+  private removeThemeListener?: () => void;
 
   ngOnInit() {
     if (window.quickboard?.onRequestSave) {
@@ -35,10 +36,33 @@ export class App implements OnInit, OnDestroy {
         }
       });
     }
+
+    this.initTheme();
   }
 
   ngOnDestroy() {
     this.removeRequestSaveListener?.();
     this.removeLoadDataListener?.();
+    this.removeThemeListener?.();
+  }
+
+  private initTheme(): void {
+    // Apply the initial theme from Electron (or fall back to system)
+    window.quickboard?.getThemeSource?.().then((source) => this.applyTheme(source));
+
+    if (window.quickboard?.onThemeChanged) {
+      this.removeThemeListener = window.quickboard.onThemeChanged((theme) =>
+        this.applyTheme(theme),
+      );
+    }
+  }
+
+  private applyTheme(source: 'system' | 'light' | 'dark'): void {
+    const root = document.documentElement;
+    if (source === 'system') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', source);
+    }
   }
 }

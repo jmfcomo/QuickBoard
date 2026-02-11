@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -17,11 +17,22 @@ function createWindow() {
     onLoad: fileio.loadBoardIntoRenderer,
   });
 
+  // Rebuild the menu when the theme changes so the radio buttons stay in sync
+  nativeTheme.on('updated', () => {
+    buildMenu(app, win, {
+      onSave: fileio.requestSaveFromRenderer,
+      onLoad: fileio.loadBoardIntoRenderer,
+    });
+    win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
+  });
+
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
 const fileio = require('./src/electron/fileio');
 fileio.registerIpcHandlers();
+
+ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
 
 app.whenReady().then(async () => {
   await fileio.init(app);
