@@ -49,7 +49,11 @@ export class PlaybackService implements OnDestroy {
     if (this.store.isPlaying()) {
       this.pause();
     } else {
-      this.play();
+      void this.play().catch((error) => {
+        console.error('Failed to start playback:', error);
+        this.store.setIsPlaying(false);
+        this.stopUiLoop();
+      });
     }
   }
 
@@ -95,7 +99,7 @@ export class PlaybackService implements OnDestroy {
   }
 
   private stopUiLoop() {
-    if (this.playbackFrameId) {
+    if (this.playbackFrameId !== null) {
       cancelAnimationFrame(this.playbackFrameId);
       this.playbackFrameId = null;
     }
