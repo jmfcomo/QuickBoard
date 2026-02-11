@@ -35,9 +35,24 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly colorPickers = [
-    { label: 'Stroke', signal: this.strokeColor, setter: this.setStrokeColor.bind(this), quickColors: ['transparent', '#000000'] },
-    { label: 'Fill', signal: this.fillColor, setter: this.setFillColor.bind(this), quickColors: ['transparent', '#ffffff'] },
-    { label: 'BG', signal: this.backgroundColor, setter: this.setBackgroundColor.bind(this), quickColors: ['#ffffff', '#000000'] },
+    {
+      label: 'Stroke',
+      signal: this.strokeColor,
+      setter: this.setStrokeColor.bind(this),
+      quickColors: ['transparent', '#000000'],
+    },
+    {
+      label: 'Fill',
+      signal: this.fillColor,
+      setter: this.setFillColor.bind(this),
+      quickColors: ['transparent', '#ffffff'],
+    },
+    {
+      label: 'BG',
+      signal: this.backgroundColor,
+      setter: this.setBackgroundColor.bind(this),
+      quickColors: ['#ffffff', '#000000'],
+    },
   ];
 
   readonly store = inject(AppStore);
@@ -47,27 +62,36 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentBoardId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
+  private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
-    // Watch for board changes and reload canvas data
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
-      if (this.lc && selectedBoardId && selectedBoardId !== this.currentBoardId) {
+      const boards = this.store.boards();
+
+      if (!this.lc || !selectedBoardId) return;
+
+      const currentBoard = boards.find((b) => b.id === selectedBoardId);
+      const boardIdChanged = selectedBoardId !== this.currentBoardId;
+      const canvasDataChanged = currentBoard?.canvasData !== this.lastLoadedCanvasData;
+
+      // Only reload when switching boards or when the canvas data reference changes
+      if (boardIdChanged) {
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
           this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
         }
         this.loadBoardData(selectedBoardId);
+      } else if (canvasDataChanged) {
+        this.loadBoardData(selectedBoardId);
       }
     });
   }
 
   ngAfterViewInit() {
-    // Ensure we are in the browser and not in a test runner that might lack global objects
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
-      // Use a small timeout to let the view settle/paint if necessary
       this.initCanvasTimeout = window.setTimeout(() => this.initializeCanvas(), 0);
     }
   }
@@ -139,11 +163,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
           if (this.lc && this.currentBoardId) {
+            const snapshot = this.lc.getSnapshot();
+            this.lastLoadedCanvasData = snapshot;
+
             const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
-            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot(), preview);
+
+            this.store.updateCanvasData(this.currentBoardId, snapshot, preview);
           }
           this.updateCanvasTimeout = null;
-        }, 300); // Wait 300ms after the last drawing change
+        }, 300);
       }
     });
 
@@ -172,8 +200,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // Load new board data
     if (board?.canvasData) {
       this.lc.loadSnapshot(board.canvasData);
+      // Track the loaded data reference
+      this.lastLoadedCanvasData = board.canvasData;
     } else {
       this.lc.repaintLayer('main');
+      this.lastLoadedCanvasData = null;
     }
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
     const boardBackground = board?.backgroundColor ?? '#ffffff';
@@ -210,7 +241,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const scale = Math.min(
       width / this.defaultCanvasSize.width,
-      height / this.defaultCanvasSize.height
+      height / this.defaultCanvasSize.height,
     );
 
     if (!Number.isFinite(scale) || scale <= 0) return;
@@ -246,7 +277,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public setStrokeColor(color: string): void {
     if (!this.lc) return;
-    
+
     // Handle transparent color
     const colorValue = color === 'transparent' ? 'hsla(0, 0%, 0%, 0)' : color;
     this.strokeColor.set(color);
@@ -255,7 +286,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public setFillColor(color: string): void {
     if (!this.lc) return;
-    
+
     // Handle transparent color
     const colorValue = color === 'transparent' ? 'hsla(0, 0%, 100%, 0)' : color;
     this.fillColor.set(color);

@@ -80,6 +80,31 @@ export const AppStore = signalStore(
         .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));
       patchState(store, { boards });
     },
+    exportAsJson(): string {
+      return JSON.stringify(
+        {
+          boards: store.boards(),
+          currentBoardId: store.currentBoardId(),
+        },
+        null,
+        2,
+      );
+    },
+    loadFromJson(jsonString: string) {
+      try {
+        const data = JSON.parse(jsonString) as AppState;
+        if (!data || !Array.isArray(data.boards)) {
+          throw new Error('Invalid JSON structure: "boards" array is required');
+        }
+        patchState(store, {
+          boards: data.boards,
+          currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
+        });
+      } catch (error) {
+        console.error('Failed to load JSON:', error);
+        throw new Error('Invalid JSON format or structure');
+      }
+    },
     updateBoardDuration(boardId: string, duration: number) {
       const boards = store
         .boards()
