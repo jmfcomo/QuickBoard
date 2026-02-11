@@ -5,14 +5,15 @@
         class="tool-button"
         [class.active]="activeTool() === tool.id"
         (click)="setTool(tool.id)"
-        [title]="tool.label"
+        (mouseenter)="showTooltip($event, tool.label)"
+        (mouseleave)="hideTooltip()"
         [attr.aria-label]="tool.label"
       >
         {{ tool.icon }}
       </button>
     }
     <div class="separator"></div>
-    <button (click)="clearCanvas()" class="tool-button" title="Clear Canvas" aria-label="Clear Canvas">🗑️</button>
+    <button (click)="clearCanvas()" class="tool-button" (mouseenter)="showTooltip($event, 'Clear Canvas')" (mouseleave)="hideTooltip()" aria-label="Clear Canvas">🗑️</button>
     <div class="separator"></div>
     @for (picker of colorPickers; track picker.label) {
       <div class="color-section">
@@ -29,6 +30,11 @@
       </div>
     }
   </div>
+  @if (tooltipVisible()) {
+    <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
+      {{ tooltipText() }}
+    </div>
+  }
   <div class="canvas-stage" #canvasStage>
     <div #canvasContainer class="literally-canvas"></div>
   </div>
