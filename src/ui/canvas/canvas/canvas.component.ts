@@ -20,6 +20,7 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
+  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
   readonly strokeColor = signal<string>('#000000');
@@ -46,6 +47,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentBoardId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
     // Watch for board changes and reload canvas data
@@ -89,6 +91,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc = null;
     }
 
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
     // Clear tool instances to release references
     this.toolInstances.clear();
   }
@@ -106,10 +113,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
-    // Initialize Literally Canvas
+    // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
+
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
     if (currentBoard?.canvasData) {
       this.lc.loadSnapshot(currentBoard.canvasData);
@@ -117,6 +126,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
+
+    // Apply the initial zoom now (synchronously, no rAF needed)
+    this.fitCanvasToContainer();
+    this.observeCanvasResize();
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -162,9 +175,51 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     } else {
       this.lc.repaintLayer('main');
     }
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
+    this.fitCanvasToContainer();
+  }
+
+  private observeCanvasResize(): void {
+    if (!this.lc || typeof ResizeObserver === 'undefined') return;
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+
+    const container = this.canvasContainer().nativeElement;
+    this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
+    this.resizeObserver.observe(container);
+  }
+
+  private scheduleCanvasFit(): void {
+    if (!this.lc) return;
+
+    window.requestAnimationFrame(() => this.fitCanvasToContainer());
+  }
+
+  private fitCanvasToContainer(): void {
+    if (!this.lc) return;
+
+    const container = this.canvasContainer().nativeElement;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width <= 0 || height <= 0) return;
+
+    const scale = Math.min(
+      width / this.defaultCanvasSize.width,
+      height / this.defaultCanvasSize.height
+    );
+
+    if (!Number.isFinite(scale) || scale <= 0) return;
+
+    if (this.lc.respondToSizeChange) {
+      this.lc.respondToSizeChange();
+    }
+
+    this.lc.setZoom(scale);
   }
 
   public setTool(toolId: string): void {

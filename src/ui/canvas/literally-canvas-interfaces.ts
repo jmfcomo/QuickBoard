@@ -21,6 +21,9 @@ export interface LCInstance {
   tool: LCTool;
   getColor(type: string): string;
   setColor(type: string, color: string): void;
+  setImageSize(width: number, height: number): void;
+  setZoom(scale: number): void;
+  respondToSizeChange?: () => void;
   setShapesInProgress(shapes: unknown[]): void;
   saveShape(shape: unknown): void;
   on(event: string, handler: (data: unknown) => void): void;
@@ -33,7 +36,13 @@ export interface LCInstance {
 export type LiterallyCanvasTool = new (lc: LCInstance) => LCTool;
 
 export interface LiterallyCanvas {
-  init(element: HTMLElement, options?: { imageURLPrefix?: string }): LCInstance;
+  init(
+    element: HTMLElement,
+    options?: {
+      imageURLPrefix?: string;
+      imageSize?: { width: number; height: number };
+    }
+  ): LCInstance;
   tools: {
     Pencil: LiterallyCanvasTool;
     Eraser: LiterallyCanvasTool;
