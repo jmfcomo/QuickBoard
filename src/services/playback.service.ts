@@ -80,7 +80,7 @@ export class PlaybackService implements OnDestroy {
   }
 
   private stopUiLoop() {
-    if (this.playbackFrameId) {
+    if (this.playbackFrameId !== null) {
       cancelAnimationFrame(this.playbackFrameId);
       this.playbackFrameId = null;
     }
