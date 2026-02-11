@@ -1,5 +1,3 @@
-// Master custom tools file
-
 import { LCInstance } from '../literally-canvas-interfaces';
 
 interface Point {
