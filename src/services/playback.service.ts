@@ -1,12 +1,27 @@
-import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Injectable, OnDestroy, inject, effect } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
 import * as Tone from 'tone';
+
+interface BoardTimeRange {
+  id: string;
+  startTime: number;
+  endTime: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class PlaybackService implements OnDestroy {
   readonly store = inject(AppStore);
 
   private playbackFrameId: number | null = null;
+  private boardTimeRanges: BoardTimeRange[] = [];
+  private currentBoardIndex = 0;
+
+  constructor() {
+    // Precompute time ranges whenever boards change
+    effect(() => {
+      this.precomputeTimeRanges(this.store.boards());
+    });
+  }
 
   async play() {
     if (Tone.context.state !== 'running') {
@@ -46,6 +61,7 @@ export class PlaybackService implements OnDestroy {
     Tone.Transport.stop();
     this.store.setIsPlaying(false);
     this.store.setCurrentTime(0);
+    this.currentBoardIndex = 0;
     this.stopUiLoop();
   }
 
@@ -90,23 +106,77 @@ export class PlaybackService implements OnDestroy {
     }
   }
 
-  private syncVisuals(time: number) {
+  private precomputeTimeRanges(boards: { id: string; duration: number }[]) {
     let accumulatedTime = 0;
-    const boards = this.store.boards();
+    this.boardTimeRanges = boards.map((board) => {
+      const range: BoardTimeRange = {
+        id: board.id,
+        startTime: accumulatedTime,
+        endTime: accumulatedTime + board.duration,
+      };
+      accumulatedTime += board.duration;
+      return range;
+    });
+    this.currentBoardIndex = 0;
+  }
 
-    for (const board of boards) {
-      const duration = board.duration;
-      const startTime = accumulatedTime;
-      const endTime = accumulatedTime + duration;
+  private syncVisuals(time: number) {
+    if (this.boardTimeRanges.length === 0) {
+      return;
+    }
 
-      if (time >= startTime && time < endTime) {
-        if (this.store.currentBoardId() !== board.id) {
-          this.store.setCurrentBoard(board.id);
+    // Fast path: check current index first (O(1) for sequential playback)
+    const current = this.boardTimeRanges[this.currentBoardIndex];
+    if (current && time >= current.startTime && time < current.endTime) {
+      if (this.store.currentBoardId() !== current.id) {
+        this.store.setCurrentBoard(current.id);
+      }
+      return;
+    }
+
+    // Check next board (handles most forward playback cases in O(1))
+    if (
+      this.currentBoardIndex + 1 < this.boardTimeRanges.length &&
+      time >= this.boardTimeRanges[this.currentBoardIndex + 1].startTime
+    ) {
+      this.currentBoardIndex++;
+      const next = this.boardTimeRanges[this.currentBoardIndex];
+      if (time >= next.startTime && time < next.endTime) {
+        if (this.store.currentBoardId() !== next.id) {
+          this.store.setCurrentBoard(next.id);
         }
         return;
       }
-      accumulatedTime += duration;
     }
+
+    // Binary search for seeking or large jumps (O(log n))
+    this.currentBoardIndex = this.binarySearchBoard(time);
+    const found = this.boardTimeRanges[this.currentBoardIndex];
+    if (found && this.store.currentBoardId() !== found.id) {
+      this.store.setCurrentBoard(found.id);
+    }
+  }
+
+  private binarySearchBoard(time: number): number {
+    let left = 0;
+    let right = this.boardTimeRanges.length - 1;
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const range = this.boardTimeRanges[mid];
+
+      if (time >= range.startTime && time < range.endTime) {
+        return mid;
+      } else if (time < range.startTime) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
+    }
+
+    // If not found in any range, return the closest valid index
+    // Clamp to last board if time is beyond all boards
+    return Math.min(left, this.boardTimeRanges.length - 1);
   }
 
   ngOnDestroy() {
