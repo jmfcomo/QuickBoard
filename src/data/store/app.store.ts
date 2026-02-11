@@ -5,6 +5,9 @@ interface Board {
   id: string;
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
+  previewUrl: string | null;
+  backgroundColor: string;
+  duration: number;
 }
 
 interface AppState {
@@ -20,6 +23,9 @@ const initialState: AppState = {
       id: firstBoardId,
       canvasData: null,
       scriptData: null,
+      previewUrl: null,
+      backgroundColor: '#ffffff',
+      duration: 3,
     },
   ],
   currentBoardId: firstBoardId,
@@ -33,10 +39,16 @@ export const AppStore = signalStore(
       patchState(store, { currentBoardId: boardId });
     },
     addBoard() {
+      const currentBoard = store.boards().find((board) => board.id === store.currentBoardId());
+      const backgroundColor = currentBoard?.backgroundColor ?? '#ffffff';
+      const duration = currentBoard?.duration ?? 3;
       const newBoard: Board = {
         id: crypto.randomUUID(),
         canvasData: null,
         scriptData: null,
+        previewUrl: null,
+        backgroundColor,
+        duration,
       };
       patchState(store, { boards: [...store.boards(), newBoard] });
       return newBoard.id;
@@ -45,10 +57,20 @@ export const AppStore = signalStore(
       const boards = store.boards().filter((b) => b.id !== boardId);
       patchState(store, { boards });
     },
-    updateCanvasData(boardId: string, canvasData: Record<string, unknown>) {
+    updateCanvasData(boardId: string, canvasData: Record<string, unknown>, previewUrl?: string) {
       const boards = store
         .boards()
-        .map((board) => (board.id === boardId ? { ...board, canvasData } : board));
+        .map((board) =>
+          board.id === boardId
+            ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl }
+            : board,
+        );
+      patchState(store, { boards });
+    },
+    updateBackgroundColor(boardId: string, backgroundColor: string) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, backgroundColor } : board));
       patchState(store, { boards });
     },
     updateScriptData(boardId: string, scriptData: OutputData) {
@@ -82,6 +104,12 @@ export const AppStore = signalStore(
         console.error('Failed to load JSON:', error);
         throw new Error('Invalid JSON format or structure');
       }
+    },
+    updateBoardDuration(boardId: string, duration: number) {
+      const boards = store
+        .boards()
+        .map((board) => (board.id === boardId ? { ...board, duration } : board));
+      patchState(store, { boards });
     },
   })),
 );

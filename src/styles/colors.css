@@ -1,0 +1,27 @@
+:root {
+  --border-default: #d1d5db;
+  --border-darker: #9ca3af;
+  --border-light: #ccc;
+  
+  --bg-hover: #f0f0f0;
+  --bg-hover-light: #f3f4f6;
+  --bg-active: #fbbf24;
+  --bg-transparent-checker: #e5e7eb;
+  --bg-panel: #f9fafb;
+  
+  --border-active: #f59e0b;
+  --selection-glow: rgba(251, 191, 36, 0.3);
+  
+  --text-default: #374151;
+  --text-muted: #4b5563;
+  --text-light: #6b7280;
+  
+  --focus-ring: #3b82f6;
+  
+  --canvas-stroke: #000000;
+  --canvas-fill: #ffffff;
+  
+  --danger: #dc2626;
+  --shadow-sm: rgba(0, 0, 0, 0.1);
+  --overlay-light: rgba(255, 255, 255, 0.85);
+}

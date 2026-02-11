@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
-import { Brush } from '../../canvas/tools/brush';
+import { Brush } from '../../canvas/tools/tools';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
@@ -20,13 +20,39 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
+  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
+  readonly strokeColor = signal<string>('#000000');
+  readonly fillColor = signal<string>('#ffffff');
+  readonly backgroundColor = signal<string>('#ffffff');
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
+    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
+  ];
+
+  readonly colorPickers = [
+    {
+      label: 'Stroke',
+      signal: this.strokeColor,
+      setter: this.setStrokeColor.bind(this),
+      quickColors: ['transparent', '#000000'],
+    },
+    {
+      label: 'Fill',
+      signal: this.fillColor,
+      setter: this.setFillColor.bind(this),
+      quickColors: ['transparent', '#ffffff'],
+    },
+    {
+      label: 'BG',
+      signal: this.backgroundColor,
+      setter: this.setBackgroundColor.bind(this),
+      quickColors: ['#ffffff', '#000000'],
+    },
   ];
 
   readonly store = inject(AppStore);
@@ -37,23 +63,29 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
       const boards = this.store.boards();
 
-      if (this.lc && selectedBoardId) {
-        const currentBoard = boards.find((b) => b.id === selectedBoardId);
-        const boardIdChanged = selectedBoardId !== this.currentBoardId;
-        const canvasDataChanged = currentBoard?.canvasData !== this.lastLoadedCanvasData;
+      if (!this.lc || !selectedBoardId) return;
 
-        if (boardIdChanged || canvasDataChanged) {
-          if (boardIdChanged && this.currentBoardId && this.lc) {
-            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
-          }
-          this.loadBoardData(selectedBoardId);
+      const currentBoard = boards.find((b) => b.id === selectedBoardId);
+      const boardIdChanged = selectedBoardId !== this.currentBoardId;
+      const canvasDataChanged = currentBoard?.canvasData !== this.lastLoadedCanvasData;
+
+      // Only reload when switching boards or when the canvas data reference changes
+      if (boardIdChanged) {
+        // Save current board data before switching
+        if (this.currentBoardId && this.lc) {
+          this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+          this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
         }
+        this.loadBoardData(selectedBoardId);
+      } else if (canvasDataChanged) {
+        this.loadBoardData(selectedBoardId);
       }
     });
   }
@@ -83,6 +115,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc = null;
     }
 
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
     // Clear tool instances to release references
     this.toolInstances.clear();
   }
@@ -100,14 +137,23 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
-    // Initialize Literally Canvas
+    // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+
     if (currentBoard?.canvasData) {
       this.lc.loadSnapshot(currentBoard.canvasData);
     }
+    const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
+    this.lc.setColor('background', initialBackground);
+    this.backgroundColor.set(initialBackground);
+
+    // Apply the initial zoom now (synchronously, no rAF needed)
+    this.fitCanvasToContainer();
+    this.observeCanvasResize();
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -121,6 +167,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             this.store.updateCanvasData(this.currentBoardId, snapshot);
             // Track this data so we don't reload when the store updates
             this.lastLoadedCanvasData = snapshot;
+            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
+            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot(), preview);
           }
           this.updateCanvasTimeout = null;
         }, 300); // Wait 300ms after the last drawing change
@@ -131,6 +179,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
+    this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
 
     // Activate the default tool
     this.setTool('pencil');
@@ -157,6 +206,51 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.repaintLayer('main');
       this.lastLoadedCanvasData = null;
     }
+    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+    const boardBackground = board?.backgroundColor ?? '#ffffff';
+    this.lc.setColor('background', boardBackground);
+    this.backgroundColor.set(boardBackground);
+    this.fitCanvasToContainer();
+  }
+
+  private observeCanvasResize(): void {
+    if (!this.lc || typeof ResizeObserver === 'undefined') return;
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+
+    const container = this.canvasContainer().nativeElement;
+    this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
+    this.resizeObserver.observe(container);
+  }
+
+  private scheduleCanvasFit(): void {
+    if (!this.lc) return;
+
+    window.requestAnimationFrame(() => this.fitCanvasToContainer());
+  }
+
+  private fitCanvasToContainer(): void {
+    if (!this.lc) return;
+
+    const container = this.canvasContainer().nativeElement;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width <= 0 || height <= 0) return;
+
+    const scale = Math.min(
+      width / this.defaultCanvasSize.width,
+      height / this.defaultCanvasSize.height,
+    );
+
+    if (!Number.isFinite(scale) || scale <= 0) return;
+
+    if (this.lc.respondToSizeChange) {
+      this.lc.respondToSizeChange();
+    }
+
+    this.lc.setZoom(scale);
   }
 
   public setTool(toolId: string): void {
@@ -179,5 +273,32 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Trigger clear event
     this.lc.trigger('clear');
+  }
+
+  public setStrokeColor(color: string): void {
+    if (!this.lc) return;
+
+    // Handle transparent color
+    const colorValue = color === 'transparent' ? 'hsla(0, 0%, 0%, 0)' : color;
+    this.strokeColor.set(color);
+    this.lc.setColor('primary', colorValue);
+  }
+
+  public setFillColor(color: string): void {
+    if (!this.lc) return;
+
+    // Handle transparent color
+    const colorValue = color === 'transparent' ? 'hsla(0, 0%, 100%, 0)' : color;
+    this.fillColor.set(color);
+    this.lc.setColor('secondary', colorValue);
+  }
+
+  public setBackgroundColor(color: string): void {
+    if (!this.lc) return;
+    this.backgroundColor.set(color);
+    this.lc.setColor('background', color);
+    if (this.currentBoardId) {
+      this.store.updateBackgroundColor(this.currentBoardId, color);
+    }
   }
 }

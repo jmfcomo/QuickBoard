@@ -1,28 +1,4 @@
-<div class="timeline-container">
-  <button class="add-board-btn" (click)="addBoard()">+ New Board</button>
-
-  <div class="boards-list">
-    @for (board of store.boards(); track board.id) {
-      <div
-        class="board-item"
-        [class.selected]="board.id === store.currentBoardId()"
-        (click)="selectBoard(board.id)"
-        (keyup.space)="selectBoard(board.id)"
-        tabindex="0"
-      >
-        <div class="board-content">
-          <span class="board-label">Board {{ $index + 1 }}</span>
-          @if (store.boards().length > 1) {
-            <button
-              class="delete-btn"
-              (click)="deleteBoard(board.id); $event.stopPropagation()"
-              title="Delete board"
-            >
-              ×
-            </button>
-          }
-        </div>
-      </div>
-    }
-  </div>
+<div class="timeline">
+  <app-timeline-menu></app-timeline-menu>
+  <app-timeline-editor></app-timeline-editor>
 </div>

@@ -1,4 +1,4 @@
-// Brush Tool - paints with squares for a pixel effect
+// Master custom tools file
 
 import { LCInstance } from '../literally-canvas-interfaces';
 
@@ -7,6 +7,7 @@ interface Point {
   y: number;
 }
 
+// Brush Tool - paints with squares for a pixel effect
 export class Brush {
   name = 'Brush';
   iconName = 'brush';
