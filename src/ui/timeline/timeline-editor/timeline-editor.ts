@@ -69,12 +69,21 @@ export class TimelineEditor {
     }
   }
 
-  stopScrub() {
+  onRulerClick(event: MouseEvent) {
+    event.preventDefault();
+    this.seekToMouse(event);
+  }
+
+  async stopScrub(): Promise<void> {
     if (this.isScrubbing()) {
       this.isScrubbing.set(false);
 
       if (this.wasPlaying) {
-        this.playback.play();
+        try {
+          await this.playback.play();
+        } catch (err) {
+          console.error('Failed to resume playback after scrubbing:', err);
+        }
       }
     }
   }

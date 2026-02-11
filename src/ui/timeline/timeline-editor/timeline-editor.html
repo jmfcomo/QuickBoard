@@ -1,6 +1,6 @@
 <div class="timeline-editor custom-scrollbar" role="region" aria-label="Timeline Editor">
   <div #timelineContent class="timeline-content" [style.width.px]="totalWidth()">
-    <div class="timeline-ruler" aria-hidden="true">
+    <div class="timeline-ruler" aria-hidden="true" (click)="onRulerClick($event)">
       @for (tick of rulerTicks(); track tick.time) {
         <div class="timeline-tick" [style.left.px]="tick.left">
           <span class="tick-label">{{ tick.label }}</span>
