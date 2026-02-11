@@ -160,7 +160,7 @@ export class PlaybackService implements OnDestroy {
     let left = 0;
     let right = this.boardTimeRanges.length - 1;
 
-    while (left < right) {
+    while (left <= right) {
       const mid = Math.floor((left + right) / 2);
       const range = this.boardTimeRanges[mid];
 
@@ -173,7 +173,9 @@ export class PlaybackService implements OnDestroy {
       }
     }
 
-    return Math.max(0, Math.min(left, this.boardTimeRanges.length - 1));
+    // If not found in any range, return the closest valid index
+    // This handles edge cases like time >= last board's endTime
+    return Math.max(0, Math.min(right, this.boardTimeRanges.length - 1));
   }
 
   ngOnDestroy() {
