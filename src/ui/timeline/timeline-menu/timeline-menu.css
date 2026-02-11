@@ -8,14 +8,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #ddd;
+  color: var(--text-default);
 }
 
 .duration-control input {
   width: 80px;
   padding: 4px 6px;
   border-radius: 4px;
-  border: 1px solid #444;
-  background: #1b1b1b;
-  color: #fff;
+  border: 1px solid var(--border-default);
+  background: var(--bg-panel);
+  color: var(--text-default);
 }

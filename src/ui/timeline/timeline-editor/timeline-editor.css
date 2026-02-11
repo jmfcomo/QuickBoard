@@ -11,16 +11,16 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--scrollbar-track);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--scrollbar-thumb);
   border-radius: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .timeline-content {
@@ -32,8 +32,8 @@
 /* Ruler */
 .timeline-ruler {
   height: 24px;
-  background-color: #262626;
-  border-bottom: 1px solid #333;
+  background-color: var(--bg-hover-light);
+  border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -43,7 +43,7 @@
 }
 
 .timeline-ruler:hover {
-  background-color: #2b2b2b;
+  background-color: var(--bg-hover);
 }
 
 .timeline-ruler,
@@ -56,13 +56,13 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 1px solid #444;
+  border-left: 1px solid var(--border-darker);
   padding-left: 4px;
 }
 
 .tick-label {
   font-size: 10px;
-  color: #888;
+  color: var(--text-light);
 }
 
 /* Playhead */
@@ -84,8 +84,8 @@
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 12px solid #ef4444;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  border-top: 12px solid var(--playhead);
+  filter: drop-shadow(0 1px 2px var(--shadow-md));
   pointer-events: auto;
   cursor: ew-resize;
 }
@@ -106,8 +106,8 @@
   bottom: 0;
   left: 0;
   width: 1px;
-  background-color: #ef4444;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  background-color: var(--playhead);
+  box-shadow: 0 0 4px var(--shadow-md);
 }
 
 /* Tracks */
@@ -118,18 +118,18 @@
 .boards-track {
   position: relative;
   height: 80px;
-  background: rgba(255, 255, 255, 0.02);
-  border-top: 1px solid #333;
-  border-bottom: 1px solid #333;
+  background: var(--bg-hover-light);
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
 }
 
 /* Boards (renamed from .timeline-clip) */
 .timeline-board {
   position: absolute;
   top: 4px;
-  bottom: 4px; /* Fixed typo (4pm -> 4px) */
-  background-color: #3b82f6;
-  border: 0.5px solid #60a5fa;
+  bottom: 4px;
+  background-color: var(--accent);
+  border: 0.5px solid var(--accent-border);
   border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
@@ -137,14 +137,14 @@
 }
 
 .timeline-board:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-hover);
   z-index: 5;
 }
 
 .timeline-board.selected {
-  background-color: #2563eb;
-  border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  background-color: var(--accent-hover);
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--selection-glow);
   z-index: 10;
 }
 
@@ -165,15 +165,15 @@
   height: 40px;
   width: auto;
   border-radius: 2px;
-  background: #000;
+  background: var(--canvas-stroke);
 }
 
 .board-number {
   position: absolute;
   top: 4px;
   left: 6px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  background: var(--overlay-dark);
+  color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 700;
   min-width: 20px;
@@ -183,7 +183,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--overlay-light);
   z-index: 2;
 }
 
@@ -192,9 +192,9 @@
   position: absolute;
   top: 2px;
   right: 2px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--overlay-dark-light);
   border: none;
-  color: #fff;
+  color: var(--text-on-accent);
   border-radius: 50%;
   width: 16px;
   height: 16px;
@@ -212,7 +212,7 @@
 }
 
 .delete-btn:hover {
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-dark);
 }
 
 /* Add Button */
@@ -220,9 +220,9 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: #333;
-  color: #fff;
-  border: 1px solid #555;
+  background: var(--bg-panel);
+  color: var(--text-default);
+  border: 1px solid var(--border-default);
   padding: 4px 12px;
   border-radius: 4px;
   cursor: pointer;
@@ -230,5 +230,5 @@
 }
 
 .add-board-btn:hover {
-  background: #444;
+  background: var(--bg-hover);
 }
