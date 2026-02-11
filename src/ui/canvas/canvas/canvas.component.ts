@@ -36,6 +36,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentBoardId: string | null = null;
   private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
+  private lastLoadedCanvasData: Record<string, unknown> | null = null;
 
   constructor() {
     effect(() => {
@@ -43,18 +44,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       const boards = this.store.boards();
 
       if (this.lc && selectedBoardId) {
-        const shouldReload = selectedBoardId !== this.currentBoardId;
+        const currentBoard = boards.find((b) => b.id === selectedBoardId);
+        const boardIdChanged = selectedBoardId !== this.currentBoardId;
+        const canvasDataChanged = currentBoard?.canvasData !== this.lastLoadedCanvasData;
 
-        if (shouldReload) {
-          if (this.currentBoardId && this.lc) {
+        if (boardIdChanged || canvasDataChanged) {
+          if (boardIdChanged && this.currentBoardId && this.lc) {
             this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
           }
           this.loadBoardData(selectedBoardId);
-        } else if (this.currentBoardId) {
-          const currentBoard = boards.find((b) => b.id === this.currentBoardId);
-          if (currentBoard) {
-            this.loadBoardData(this.currentBoardId);
-          }
         }
       }
     });
@@ -119,7 +117,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
           if (this.lc && this.currentBoardId) {
-            this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+            const snapshot = this.lc.getSnapshot();
+            this.store.updateCanvasData(this.currentBoardId, snapshot);
+            // Track this data so we don't reload when the store updates
+            this.lastLoadedCanvasData = snapshot;
           }
           this.updateCanvasTimeout = null;
         }, 300); // Wait 300ms after the last drawing change
@@ -150,8 +151,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // Load new board data
     if (board?.canvasData) {
       this.lc.loadSnapshot(board.canvasData);
+      // Track the loaded data reference
+      this.lastLoadedCanvasData = board.canvasData;
     } else {
       this.lc.repaintLayer('main');
+      this.lastLoadedCanvasData = null;
     }
   }
 
