@@ -103,7 +103,24 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
-      this.initCanvasTimeout = window.setTimeout(() => this.initializeCanvas(), 0);
+      this.initCanvasTimeout = window.setTimeout(() => {
+        this.initializeCanvas();
+        // Ensure preview is generated for the first board if missing
+        const boards = this.store.boards();
+        const firstBoard = boards[0];
+        if (firstBoard && !firstBoard.previewUrl) {
+          // Generate preview for empty board
+          if (this.lc) {
+            // Render background color
+            this.lc.setColor('background', firstBoard.backgroundColor ?? '#ffffff');
+            this.lc.repaintLayer('main');
+            // Save preview
+            const snapshot = this.lc.getSnapshot();
+            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
+            this.store.updateCanvasData(firstBoard.id, snapshot, preview);
+          }
+        }
+      }, 0);
     }
   }
 
