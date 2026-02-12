@@ -12,7 +12,7 @@ const validateSavePayload = (payload) => {
     throw new Error('Invalid payload: filePath must be a non-empty string');
   }
   // Prevent directory traversal
-  if (filePath.includes('..') || filePath.startsWith('/')) {
+  if (filePath.includes('..')) {
     throw new Error('Invalid payload: filePath contains invalid characters');
   }
   return filePath;
