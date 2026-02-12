@@ -1,21 +1,140 @@
 .timeline-menu {
   display: flex;
-  flex-direction: row;
-  padding: 8px;
+  align-items: center;
+  padding: 6px 12px;
+  gap: 12px;
 }
 
+/* Three-column layout: left / center / right */
+.menu-section {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+}
+
+.menu-left {
+  justify-content: flex-start;
+}
+
+.menu-center {
+  justify-content: center;
+  gap: 10px;
+}
+
+.menu-right {
+  justify-content: flex-end;
+}
+
+/* ─── Duration control ───────────────────────────────────── */
 .duration-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: var(--text-default);
 }
 
-.duration-control input {
-  width: 80px;
-  padding: 4px 6px;
+.control-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.duration-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.duration-input-wrap input {
+  width: 52px;
+  padding: 3px 6px;
   border-radius: 4px;
   border: 1px solid var(--border-default);
   background: var(--bg-panel);
   color: var(--text-default);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s;
+}
+
+.duration-input-wrap input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.control-unit {
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+/* ─── Play / Pause button ────────────────────────────────── */
+.play-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+  color: var(--text-default);
+}
+
+.play-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.play-btn.active {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  color: var(--text-on-accent);
+}
+
+/* ─── Animated play / pause icon ─────────────────────────── */
+.play-icon {
+  position: relative;
+  width: 14px;
+  height: 16px;
+}
+
+.play-icon .bar {
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Play state (triangle from two halves) */
+.bar.bar-left {
+  clip-path: polygon(0% 0%, 55% 25%, 55% 75%, 0% 100%);
+}
+
+.bar.bar-right {
+  clip-path: polygon(55% 25%, 100% 50%, 100% 50%, 55% 75%);
+}
+
+/* Pause state (two vertical bars) */
+.play-icon.playing .bar.bar-left {
+  clip-path: polygon(0% 0%, 36% 0%, 36% 100%, 0% 100%);
+}
+
+.play-icon.playing .bar.bar-right {
+  clip-path: polygon(64% 0%, 100% 0%, 100% 100%, 64% 100%);
+}
+
+/* ─── Time display ───────────────────────────────────────── */
+.time-display {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: center;
 }

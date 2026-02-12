@@ -9,9 +9,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-body);
   color: var(--text-default);
-  border-top: 1px solid var(--border-default);
   user-select: none;
   overflow: hidden;
 }

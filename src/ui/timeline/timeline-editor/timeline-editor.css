@@ -7,16 +7,16 @@
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -29,43 +29,37 @@
   min-width: 100%;
 }
 
-/* Ruler */
+/* ─── Ruler ──────────────────────────────────────────────── */
 .timeline-ruler {
-  height: 24px;
-  background-color: var(--bg-hover-light);
+  height: 22px;
+  background-color: transparent;
   border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
   z-index: 10;
   cursor: pointer;
   pointer-events: auto;
-  transition: background-color 120ms ease-in-out;
-}
-
-.timeline-ruler:hover {
-  background-color: var(--bg-hover);
-}
-
-.timeline-ruler,
-.timeline-ruler .timeline-tick,
-.timeline-ruler .tick-label {
-  cursor: pointer;
 }
 
 .timeline-tick {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: 1px solid var(--border-darker);
-  padding-left: 4px;
+  border-left: 1px solid var(--border-light);
+  padding-left: 5px;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 3px;
 }
 
 .tick-label {
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text-light);
 }
 
-/* Playhead */
+/* ─── Playhead ───────────────────────────────────────────── */
 .timeline-playhead {
   position: absolute;
   top: 0;
@@ -79,13 +73,13 @@
 .playhead-head {
   position: absolute;
   top: 0;
-  left: -6px;
+  left: -5px;
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 12px solid var(--playhead);
-  filter: drop-shadow(0 1px 2px var(--shadow-md));
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 10px solid var(--playhead);
+  filter: drop-shadow(0 1px 3px var(--shadow-sm));
   pointer-events: auto;
   cursor: ew-resize;
 }
@@ -93,7 +87,7 @@
 .playhead-head::before {
   content: '';
   position: absolute;
-  top: -12px;
+  top: -10px;
   left: -12px;
   width: 24px;
   height: 24px;
@@ -107,33 +101,33 @@
   left: 0;
   width: 1px;
   background-color: var(--playhead);
-  box-shadow: 0 0 4px var(--shadow-md);
+  opacity: 0.7;
 }
 
-/* Tracks */
+/* ─── Tracks ─────────────────────────────────────────────── */
 .timeline-tracks {
-  padding: 8px 0;
+  padding: 6px 0;
 }
 
 .boards-track {
   position: relative;
   height: 80px;
-  background: var(--bg-hover-light);
-  border-top: 1px solid var(--border-default);
-  border-bottom: 1px solid var(--border-default);
 }
 
-/* Boards (renamed from .timeline-clip) */
+/* ─── Board clips ────────────────────────────────────────── */
 .timeline-board {
   position: absolute;
   top: 4px;
   bottom: 4px;
   background-color: var(--accent);
-  border: 0.5px solid var(--accent-border);
+  border: 1px solid var(--accent-border);
   border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .timeline-board:hover {
@@ -148,7 +142,6 @@
   z-index: 10;
 }
 
-/* Always show delete on selected board */
 .timeline-board.selected .delete-btn {
   display: flex;
 }
@@ -164,7 +157,7 @@
 .board-content img {
   height: 40px;
   width: auto;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--canvas-stroke);
 }
 
@@ -174,30 +167,29 @@
   left: 6px;
   background: var(--overlay-dark);
   color: var(--text-on-accent);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  min-width: 20px;
-  height: 20px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  border: 1px solid var(--overlay-light);
+  border-radius: 9px;
   z-index: 2;
 }
 
-/* Delete Button */
+/* ─── Delete button ──────────────────────────────────────── */
 .delete-btn {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   background: var(--overlay-dark-light);
   border: none;
   color: var(--text-on-accent);
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
@@ -205,6 +197,7 @@
   align-items: center;
   justify-content: center;
   z-index: 3;
+  transition: background 0.15s;
 }
 
 .timeline-board:hover .delete-btn {
@@ -212,23 +205,30 @@
 }
 
 .delete-btn:hover {
-  background: var(--overlay-dark);
+  background: var(--danger);
 }
 
-/* Add Button */
+/* ─── Add board button ───────────────────────────────────── */
 .add-board-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--bg-panel);
-  color: var(--text-default);
-  border: 1px solid var(--border-default);
-  padding: 4px 12px;
-  border-radius: 4px;
+  background: transparent;
+  color: var(--text-light);
+  border: 1px dashed var(--border-default);
+  padding: 4px 14px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
+  font-weight: 500;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
 .add-board-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
   background: var(--bg-hover);
 }
