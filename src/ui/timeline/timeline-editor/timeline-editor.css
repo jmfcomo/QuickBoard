@@ -208,6 +208,40 @@
   background: var(--danger);
 }
 
+/* ─── Resize handles ─────────────────────────────────────── */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 4;
+  transition: background-color 0.15s;
+}
+
+.resize-handle-left {
+  left: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.resize-handle-right {
+  right: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.resize-handle:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.timeline-board.resizing {
+  z-index: 15;
+  user-select: none;
+}
+
 /* ─── Add board button ───────────────────────────────────── */
 .add-board-btn {
   position: absolute;

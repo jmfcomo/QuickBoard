@@ -25,6 +25,7 @@
             role="option"
             [attr.aria-selected]="store.currentBoardId() === board.id"
             [class.selected]="store.currentBoardId() === board.id"
+            [class.resizing]="resizingBoardId() === board.id"
             [style.left.px]="board.leftPx"
             [style.width.px]="board.widthPx"
             (click)="selectBoard(board.id)"
@@ -32,6 +33,20 @@
             (keydown.space)="selectBoard(board.id)"
             tabindex="0"
           >
+            @if ($index > 0) {
+              <div
+                class="resize-handle resize-handle-left"
+                aria-label="Resize board {{ $index + 1 }} left edge"
+                (mousedown)="startResize($event, board.id, 'left')"
+              ></div>
+            }
+
+            <div
+              class="resize-handle resize-handle-right"
+              aria-label="Resize board {{ $index + 1 }} right edge"
+              (mousedown)="startResize($event, board.id, 'right')"
+            ></div>
+
             <div class="board-content">
               @if (board.previewUrl) {
                 <img
