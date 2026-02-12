@@ -1,6 +1,7 @@
 import { Component, inject, computed } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { PlaybackService } from '../../../services/playback.service';
+import { formatTime as formatTimeUtil } from '../helpers/format-time';
 
 @Component({
   selector: 'app-timeline-menu',
@@ -30,9 +31,7 @@ export class TimelineMenu {
     this.playback.togglePlayback();
   }
 
-  formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  formatTime(seconds: number, hundredths = false): string {
+    return formatTimeUtil(seconds, hundredths);
   }
 }

@@ -12,7 +12,7 @@ const validateSavePayload = (payload) => {
     throw new Error('Invalid payload: filePath must be a non-empty string');
   }
   // Prevent directory traversal
-  if (filePath.includes('..') || filePath.startsWith('/')) {
+  if (filePath.includes('..')) {
     throw new Error('Invalid payload: filePath contains invalid characters');
   }
   return filePath;
@@ -40,4 +40,10 @@ contextBridge.exposeInMainWorld('quickboard', {
     }
     ipcRenderer.send('quickboard:save-data', { filePath, data: payload.data });
   },
+  onThemeChanged: (handler) => {
+    const listener = (_event, theme) => handler(theme);
+    ipcRenderer.on('quickboard:theme-changed', listener);
+    return () => ipcRenderer.removeListener('quickboard:theme-changed', listener);
+  },
+  getThemeSource: () => ipcRenderer.invoke('quickboard:get-theme-source'),
 });

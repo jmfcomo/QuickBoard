@@ -10,4 +10,6 @@ body {
 
 body {
 	overflow: hidden;
+	background-color: var(--bg-body);
+	color: var(--text-default);
 }

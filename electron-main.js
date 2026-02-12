@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -12,16 +12,19 @@ function createWindow() {
     },
   });
   const { buildMenu } = require('./src/electron/menu');
-  buildMenu(app, win, {
+  const hooks = {
     onSave: fileio.requestSaveFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
-  });
+  };
 
+  buildMenu(app, win, hooks);
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 
 const fileio = require('./src/electron/fileio');
 fileio.registerIpcHandlers();
+
+ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
 
 app.whenReady().then(async () => {
   await fileio.init(app);

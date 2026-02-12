@@ -1,5 +1,4 @@
-const { Menu } = require('electron');
-
+const { Menu, nativeTheme } = require('electron');
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
@@ -22,6 +21,44 @@ function buildMenu(app, win, hooks = {}) {
     ],
   };
 
+  const viewMenu = {
+    label: 'View',
+    submenu: [
+      {
+        label: 'Appearance',
+        submenu: [
+          {
+            label: 'System',
+            type: 'radio',
+            checked: nativeTheme.themeSource === 'system',
+            click: () => {
+              nativeTheme.themeSource = 'system';
+              win.webContents.send('quickboard:theme-changed', 'system');
+            },
+          },
+          {
+            label: 'Light',
+            type: 'radio',
+            checked: nativeTheme.themeSource === 'light',
+            click: () => {
+              nativeTheme.themeSource = 'light';
+              win.webContents.send('quickboard:theme-changed', 'light');
+            },
+          },
+          {
+            label: 'Dark',
+            type: 'radio',
+            checked: nativeTheme.themeSource === 'dark',
+            click: () => {
+              nativeTheme.themeSource = 'dark';
+              win.webContents.send('quickboard:theme-changed', 'dark');
+            },
+          },
+        ],
+      },
+    ],
+  };
+
   const template = [];
 
   if (process.platform === 'darwin') {
@@ -31,8 +68,10 @@ function buildMenu(app, win, hooks = {}) {
       submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }],
     });
     template.push(fileMenu);
+    template.push(viewMenu);
   } else {
     template.push(fileMenu);
+    template.push(viewMenu);
     template.push({ role: 'quit' });
   }
 
@@ -42,3 +81,19 @@ function buildMenu(app, win, hooks = {}) {
 }
 
 module.exports = { buildMenu };
+function registerThemeListener(app, win, hooks = {}) {
+  const handler = () => {
+    buildMenu(app, win, hooks);
+    try {
+      win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
+    } catch (err) {}
+  };
+
+  nativeTheme.on('updated', handler);
+
+  return () => {
+    nativeTheme.removeListener('updated', handler);
+  };
+}
+
+module.exports = { buildMenu, registerThemeListener };

@@ -11,7 +11,7 @@ import { PlaybackService } from '../../../services/playback.service';
   styleUrl: './timeline-editor.css',
   host: {
     '(document:mousemove)': 'handleDrag($event)',
-    '(document:mouseup)': 'stopScrub()',
+    '(document:mouseup)': 'stopDrag()',
   },
 })
 export class TimelineEditor {
@@ -21,8 +21,19 @@ export class TimelineEditor {
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
 
+  readonly MIN_DURATION = 0.5;
+
   scale = signal(40); // pixels per second
   isScrubbing = signal(false);
+
+  // Resize state
+  private isResizing = signal(false);
+  resizingBoardId = signal<string | null>(null);
+  private resizeEdge = signal<'left' | 'right' | null>(null);
+  private resizeStartX = 0;
+  private resizeStartDuration = 0;
+  private resizeStartPrevDuration = 0;
+  private resizePrevBoardId: string | null = null;
 
   private wasPlaying = false;
 
@@ -66,6 +77,9 @@ export class TimelineEditor {
     if (this.isScrubbing()) {
       event.preventDefault();
       this.seekToMouse(event);
+    } else if (this.isResizing()) {
+      event.preventDefault();
+      this.handleResizeDrag(event);
     }
   }
 
@@ -74,7 +88,7 @@ export class TimelineEditor {
     this.seekToMouse(event);
   }
 
-  async stopScrub(): Promise<void> {
+  async stopDrag(): Promise<void> {
     if (this.isScrubbing()) {
       this.isScrubbing.set(false);
 
@@ -85,6 +99,73 @@ export class TimelineEditor {
           console.error('Failed to resume playback after scrubbing:', err);
         }
       }
+    }
+
+    if (this.isResizing()) {
+      this.isResizing.set(false);
+      this.resizingBoardId.set(null);
+      this.resizeEdge.set(null);
+      this.resizePrevBoardId = null;
+    }
+  }
+
+  startResize(event: MouseEvent, boardId: string, edge: 'left' | 'right') {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.isResizing.set(true);
+    this.resizingBoardId.set(boardId);
+    this.resizeEdge.set(edge);
+    this.resizeStartX = event.clientX;
+
+    const board = this.store.boards().find((b) => b.id === boardId);
+    this.resizeStartDuration = board?.duration ?? 3;
+
+    if (edge === 'left') {
+      const boards = this.store.boards();
+      const idx = boards.findIndex((b) => b.id === boardId);
+      if (idx > 0) {
+        this.resizePrevBoardId = boards[idx - 1].id;
+        this.resizeStartPrevDuration = boards[idx - 1].duration ?? 3;
+      } else {
+        this.resizePrevBoardId = null;
+        this.resizeStartPrevDuration = 0;
+      }
+    }
+  }
+
+  /** Round to nearest hundredth of a second to avoid floating-point drift. */
+  private snap(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  private handleResizeDrag(event: MouseEvent) {
+    const deltaX = event.clientX - this.resizeStartX;
+    const deltaSec = this.snap(deltaX / this.scale());
+    const boardId = this.resizingBoardId();
+    if (!boardId) return;
+
+    if (this.resizeEdge() === 'right') {
+      const newDuration = this.snap(
+        Math.max(this.MIN_DURATION, this.resizeStartDuration + deltaSec),
+      );
+      this.store.updateBoardDuration(boardId, newDuration);
+    } else if (this.resizeEdge() === 'left' && this.resizePrevBoardId) {
+      let clampedDelta = deltaSec;
+
+      // Clamp so the previous board doesn't go below minimum
+      if (this.resizeStartPrevDuration + clampedDelta < this.MIN_DURATION) {
+        clampedDelta = this.snap(this.MIN_DURATION - this.resizeStartPrevDuration);
+      }
+      // Clamp so the current board doesn't go below minimum
+      if (this.resizeStartDuration - clampedDelta < this.MIN_DURATION) {
+        clampedDelta = this.snap(this.resizeStartDuration - this.MIN_DURATION);
+      }
+
+      const prevDuration = this.snap(this.resizeStartPrevDuration + clampedDelta);
+      const currDuration = this.snap(this.resizeStartDuration - clampedDelta);
+      this.store.updateBoardDuration(this.resizePrevBoardId, prevDuration);
+      this.store.updateBoardDuration(boardId, currDuration);
     }
   }
 

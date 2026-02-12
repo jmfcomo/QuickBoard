@@ -3,6 +3,7 @@ import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
 import { AppStore } from '../data/store/app.store';
+import { ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +16,8 @@ export class App implements OnInit, OnDestroy {
   private readonly store = inject(AppStore);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
+  private removeThemeListener?: () => void;
+  private readonly themeService = inject(ThemeService);
 
   ngOnInit() {
     if (window.quickboard?.onRequestSave) {
@@ -35,10 +38,13 @@ export class App implements OnInit, OnDestroy {
         }
       });
     }
+
+    this.removeThemeListener = this.themeService.initTheme();
   }
 
   ngOnDestroy() {
     this.removeRequestSaveListener?.();
     this.removeLoadDataListener?.();
+    this.removeThemeListener?.();
   }
 }

@@ -1,27 +1,98 @@
+/* ─── Shared (same in both modes) ───────────────────────── */
 :root {
+  /* Accent (purple – 10 % rule) */
+  --accent: #c97fff;
+  --accent-light: #cc8cfa;
+  --accent-hover: #b039df;
+  --accent-border: #c464f6;
+  --accent-glow: rgba(167, 99, 246, 0.25);
+
+  /* Active / Selection */
+  --bg-active: #b872ff;
+  --border-active: #a758f6;
+  --selection-glow: rgba(174, 88, 251, 0.35);
+
+  /* Text */
+  --text-on-accent: #ffffff;
+
+  /* Scrollbar */
+  --scrollbar-track: var(--bg-panel);
+}
+
+/* ─── Light mode (default) ──────────────────────────────── */
+:root {
+  /* Borders */
   --border-default: #d1d5db;
   --border-darker: #9ca3af;
   --border-light: #ccc;
-  
+
+  /* Backgrounds */
   --bg-hover: #f0f0f0;
   --bg-hover-light: #f3f4f6;
-  --bg-active: #fbbf24;
   --bg-transparent-checker: #e5e7eb;
   --bg-panel: #f9fafb;
-  
-  --border-active: #f59e0b;
-  --selection-glow: rgba(251, 191, 36, 0.3);
-  
+  --bg-body: #ffffff;
+
+  /* Text */
   --text-default: #374151;
   --text-muted: #4b5563;
   --text-light: #6b7280;
-  
+
+  /* Focus */
   --focus-ring: #3b82f6;
-  
+
+  /* Canvas defaults */
   --canvas-stroke: #000000;
   --canvas-fill: #ffffff;
-  
+
+  /* Status */
   --danger: #dc2626;
+  --playhead: #ef4444;
+
+  /* Shadows & Overlays */
   --shadow-sm: rgba(0, 0, 0, 0.1);
+  --shadow-md: rgba(0, 0, 0, 0.15);
   --overlay-light: rgba(255, 255, 255, 0.85);
+  --overlay-dark: rgba(0, 0, 0, 0.55);
+  --overlay-dark-light: rgba(0, 0, 0, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-thumb: var(--border-darker);
+  --scrollbar-thumb-hover: var(--text-light);
+}
+
+/* ─── Dark mode ─────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']), :root[data-theme='dark'] {
+    --border-default: #4a4a4a;
+    --border-darker: #6a6a6a;
+    --border-light: #4a4a4a;
+
+    --bg-hover: #2a2a2a;
+    --bg-hover-light: #232323;
+    --bg-transparent-checker: #4a4a4a;
+    --bg-panel: #1a1a1a;
+    --bg-body: #0a0a0a;
+
+    --text-default: #f0f0f0;
+    --text-muted: #b1b1b1;
+    --text-light: #818181;
+
+    --focus-ring: #70b5fa;
+
+    --canvas-stroke: #ffffff;
+    --canvas-fill: #1a1a1a;
+
+    --danger: #ff8a8a;
+    --playhead: #ff8a8a;
+
+    --shadow-sm: rgba(0, 0, 0, 0.4);
+    --shadow-md: rgba(0, 0, 0, 0.6);
+    --overlay-light: rgba(0, 0, 0, 0.8);
+    --overlay-dark: rgba(0, 0, 0, 0.7);
+    --overlay-dark-light: rgba(0, 0, 0, 0.5);
+
+    --scrollbar-thumb: #6a6a6a;
+    --scrollbar-thumb-hover: #818181;
+  }
 }
