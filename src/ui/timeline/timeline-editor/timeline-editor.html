@@ -61,9 +61,10 @@
           type="button"
           class="add-board-btn"
           [style.left.px]="addButtonLeftPx()"
+          aria-label="Add Board"
           (click)="addBoard()"
         >
-          + Add Board
+          <span class="add-board-icon" aria-hidden="true">+</span>
         </button>
       </div>
     </div>
