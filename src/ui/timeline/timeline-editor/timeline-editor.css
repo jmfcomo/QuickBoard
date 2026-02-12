@@ -172,24 +172,6 @@
   background: transparent;
 }
 
-.board-number {
-  position: absolute;
-  top: 4px;
-  left: 6px;
-  background: var(--overlay-dark);
-  color: var(--text-default);
-  font-size: 10px;
-  font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  z-index: 2;
-}
-
 /* ─── Delete button ──────────────────────────────────────── */
 .delete-btn {
   position: absolute;
