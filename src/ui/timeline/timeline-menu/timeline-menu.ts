@@ -9,6 +9,12 @@ import { PlaybackService } from '../../../services/playback.service';
   styleUrl: './timeline-menu.css',
 })
 export class TimelineMenu {
+    formatTimeHundredths(seconds: number): string {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      const h = Math.floor((seconds % 1) * 100);
+      return `${m}:${s.toString().padStart(2, '0')}.${h.toString().padStart(2, '0')}`;
+    }
   readonly store = inject(AppStore);
   readonly playback = inject(PlaybackService);
 

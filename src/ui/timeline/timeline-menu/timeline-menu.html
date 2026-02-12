@@ -1,18 +1,6 @@
 <div class="timeline-menu">
   <div class="menu-section menu-left">
-    <label class="duration-control">
-      <span class="control-label">Duration</span>
-      <div class="duration-input-wrap">
-        <input
-          type="number"
-          min="0.1"
-          step="0.1"
-          [value]="currentDuration()"
-          (input)="updateDuration($any($event.target).value)"
-        />
-        <span class="control-unit">s</span>
-      </div>
-    </label>
+    <span class="timecode-display">{{ formatTimeHundredths(store.currentTime()) }}</span>
   </div>
 
   <div class="menu-section menu-center">
@@ -27,8 +15,21 @@
         <span class="bar bar-right"></span>
       </div>
     </button>
-    <span class="time-display">{{ formatTime(store.currentTime()) }}</span>
   </div>
 
-  <div class="menu-section menu-right"></div>
+  <div class="menu-section menu-right">
+    <label class="duration-control">
+      <span class="control-label">Duration</span>
+      <div class="duration-input-wrap">
+        <input
+          type="number"
+          min="0.1"
+          step="0.1"
+          [value]="currentDuration()"
+          (input)="updateDuration($any($event.target).value)"
+        />
+        <span class="control-unit">s</span>
+      </div>
+    </label>
+  </div>
 </div>

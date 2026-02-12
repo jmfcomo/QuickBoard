@@ -3,6 +3,7 @@
   align-items: center;
   padding: 6px 12px;
   gap: 12px;
+  position: relative;
 }
 
 /* Three-column layout: left / center / right */
@@ -10,19 +11,37 @@
   flex: 1 1 0;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .menu-left {
   justify-content: flex-start;
+  min-width: 120px;
+  flex: 0 0 auto;
 }
 
 .menu-center {
   justify-content: center;
-  gap: 10px;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .menu-right {
   justify-content: flex-end;
+  min-width: 160px;
+  flex: 0 0 auto;
+}
+/* ─── Timecode Display (Left) ──────────────────────────── */
+.timecode-display {
+  font-size: 1.6em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-default);
+  letter-spacing: 0.5px;
+  min-width: 90px;
+  text-align: left;
+  user-select: text;
 }
 
 /* ─── Duration control ───────────────────────────────────── */
@@ -31,6 +50,8 @@
   align-items: center;
   gap: 6px;
   color: var(--text-default);
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .control-label {
