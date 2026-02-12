@@ -12,20 +12,12 @@ function createWindow() {
     },
   });
   const { buildMenu } = require('./src/electron/menu');
-  buildMenu(app, win, {
+  const hooks = {
     onSave: fileio.requestSaveFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
-  });
+  };
 
-  // Rebuild the menu when the theme changes so the radio buttons stay in sync
-  nativeTheme.on('updated', () => {
-    buildMenu(app, win, {
-      onSave: fileio.requestSaveFromRenderer,
-      onLoad: fileio.loadBoardIntoRenderer,
-    });
-    win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
-  });
-
+  buildMenu(app, win, hooks);
   win.loadFile(path.join(__dirname, 'dist/browser/index.html'));
 }
 

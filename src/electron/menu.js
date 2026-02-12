@@ -1,6 +1,5 @@
 const { Menu, nativeTheme } = require('electron');
 
-
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
     label: 'File',
@@ -82,3 +81,19 @@ function buildMenu(app, win, hooks = {}) {
 }
 
 module.exports = { buildMenu };
+function registerThemeListener(app, win, hooks = {}) {
+  const handler = () => {
+    buildMenu(app, win, hooks);
+    try {
+      win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
+    } catch (err) {}
+  };
+
+  nativeTheme.on('updated', handler);
+
+  return () => {
+    nativeTheme.removeListener('updated', handler);
+  };
+}
+
+module.exports = { buildMenu, registerThemeListener };
