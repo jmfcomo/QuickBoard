@@ -39,6 +39,7 @@
     "@editorjs/paragraph": "^2.11.7",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@fortawesome/fontawesome-free": "^7.2.0",
     "@ngrx/signals": "^21.0.1",
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",

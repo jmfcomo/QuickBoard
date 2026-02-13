@@ -5,6 +5,22 @@
 
   <div class="menu-section menu-center">
     <button
+      class="back-to-start-btn"
+      [class.active]="store.isPlaying()"
+      (click)="goToStart()"
+      aria-label="Go to start"
+    >
+      <i class="fa-solid fa-step-backward" aria-hidden="true"></i>
+    </button>
+    <button
+      class="back-one-board-btn"
+      [class.active]="store.isPlaying()"
+      (click)="backOneBoard()"
+      aria-label="Back one board"
+    >
+      <i class="fa-solid fa-backward" aria-hidden="true"></i>
+    </button>
+    <button
       class="play-btn"
       [class.active]="store.isPlaying()"
       (click)="togglePlayback()"
@@ -14,6 +30,22 @@
         <span class="bar bar-left"></span>
         <span class="bar bar-right"></span>
       </div>
+    </button>
+    <button
+      class="forward-one-board-btn"
+      [class.active]="store.isPlaying()"
+      (click)="forwardOneBoard()"
+      aria-label="Forward one board"
+    >
+      <i class="fa-solid fa-forward" aria-hidden="true"></i>
+    </button>
+    <button
+      class="forward-to-end-btn"
+      [class.active]="store.isPlaying()"
+      (click)="goToEnd()"
+      aria-label="Go to end"
+    >
+      <i class="fa-solid fa-step-forward" aria-hidden="true"></i>
     </button>
   </div>
 

@@ -26,11 +26,18 @@
                 "glob": "**/*",
                 "input": "public"
               }
+              ,
+              {
+                "glob": "**/*",
+                "input": "node_modules/@fortawesome/fontawesome-free/webfonts",
+                "output": "assets/webfonts"
+              }
             ],
             "index": "src/index.html",
             "styles": [
               "src/styles.css",
-              "node_modules/literallycanvas/lib/css/literallycanvas.css"
+              "node_modules/literallycanvas/lib/css/literallycanvas.css",
+              "node_modules/@fortawesome/fontawesome-free/css/all.min.css"
             ],
             "scripts": ["node_modules/literallycanvas/lib/js/literallycanvas-core.js"]
           },

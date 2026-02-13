@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild, ElementRef, effect } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
@@ -20,6 +20,7 @@ export class TimelineEditor {
   readonly playback = inject(PlaybackService);
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
+  @ViewChild('scrollContainer') scrollContainer!: ElementRef<HTMLDivElement>;
 
   readonly MIN_DURATION = 0.5;
 
@@ -47,6 +48,17 @@ export class TimelineEditor {
   totalWidth = this._shared.totalWidth;
   addButtonLeftPx = this._shared.addButtonLeftPx;
   rulerTicks = this._shared.rulerTicks;
+
+  constructor() {
+    effect(() => {
+      const playheadPos = this.playheadPosition();
+      const isPlaying = this.store.isPlaying();
+
+      if ((isPlaying || !this.isScrubbing()) && this.scrollContainer?.nativeElement) {
+        this.scrollToPlayhead(playheadPos);
+      }
+    });
+  }
 
   addBoard() {
     this.actions.addBoard();
@@ -177,5 +189,27 @@ export class TimelineEditor {
     const seconds = Math.max(0, x / this.scale());
 
     this.playback.seek(seconds);
+  }
+
+  private scrollToPlayhead(playheadPos: number) {
+    const container = this.scrollContainer?.nativeElement;
+    if (!container) return;
+
+    const scrollLeft = container.scrollLeft;
+    const containerWidth = container.clientWidth;
+    const scrollRight = scrollLeft + containerWidth;
+
+    // Add padding so playhead doesn't sit right at the edge (20% from edges)
+    const leftPadding = containerWidth * 0.2;
+    const rightPadding = containerWidth * 0.2;
+
+    // Check if playhead is out of view or too close to edges
+    if (playheadPos < scrollLeft + leftPadding) {
+      // Scroll left to keep playhead visible with padding
+      container.scrollLeft = Math.max(0, playheadPos - leftPadding);
+    } else if (playheadPos > scrollRight - rightPadding) {
+      // Scroll right to keep playhead visible with padding
+      container.scrollLeft = playheadPos - containerWidth + rightPadding;
+    }
   }
 }
