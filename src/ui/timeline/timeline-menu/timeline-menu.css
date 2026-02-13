@@ -162,7 +162,6 @@
 }
 
 /* ─── Navigation buttons (start/prev/next/end) ───────────── */
-.nav-btn,
 .back-to-start-btn,
 .back-one-board-btn,
 .forward-one-board-btn,
@@ -199,14 +198,6 @@
   color: var(--text-on-accent);
 }
 
-.nav-icon {
-  position: relative;
-  width: 14px;
-  height: 12px;
-  display: block;
-}
-
-/* Font Awesome icon sizing for timeline nav buttons */
 .menu-center button i.fa-solid,
 .menu-center button i.fas,
 .menu-center button i.fa {
@@ -214,12 +205,4 @@
   line-height: 1;
   color: currentColor;
   display: inline-block;
-}
-
-/* Slightly tighten spacing so icons sit visually centered */
-.back-to-start-btn i,
-.back-one-board-btn i,
-.forward-one-board-btn i,
-.forward-to-end-btn i {
-  margin: 0 0px;
 }

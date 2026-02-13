@@ -40,16 +40,12 @@ export class TimelineMenu {
     const currentId = this.store.currentBoardId();
     if (!currentId) return this.playback.seek(0);
 
-    for (let i = 0; i < boards.length; i++) {
-      const b = boards[i];
-      if (b.id === currentId) {
-        const targetIndex = Math.max(0, i - 1);
-        const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
-        this.playback.seek(targetTime);
-        return;
-      }
-    }
-    this.playback.seek(0);
+    const currentIndex = boards.findIndex((b) => b.id === currentId);
+    if (currentIndex === -1) return this.playback.seek(0);
+
+    const targetIndex = Math.max(0, currentIndex - 1);
+    const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
+    this.playback.seek(targetTime);
   }
 
   forwardOneBoard() {
@@ -58,16 +54,12 @@ export class TimelineMenu {
     const total = this.store.totalDuration();
     if (!currentId) return this.playback.seek(total);
 
-    for (let i = 0; i < boards.length; i++) {
-      const b = boards[i];
-      if (b.id === currentId) {
-        const targetIndex = Math.min(boards.length - 1, i + 1);
-        const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
-        this.playback.seek(targetTime);
-        return;
-      }
-    }
-    this.playback.seek(total);
+    const currentIndex = boards.findIndex((b) => b.id === currentId);
+    if (currentIndex === -1) return this.playback.seek(total);
+
+    const targetIndex = Math.min(boards.length - 1, currentIndex + 1);
+    const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
+    this.playback.seek(targetTime);
   }
 
   goToEnd() {
