@@ -31,6 +31,50 @@ export class TimelineMenu {
     this.playback.togglePlayback();
   }
 
+  goToStart() {
+    this.playback.seek(0);
+  }
+
+  backOneBoard() {
+    const boards = this.store.boards();
+    const currentId = this.store.currentBoardId();
+    if (!currentId) return this.playback.seek(0);
+
+    for (let i = 0; i < boards.length; i++) {
+      const b = boards[i];
+      if (b.id === currentId) {
+        const targetIndex = Math.max(0, i - 1);
+        const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
+        this.playback.seek(targetTime);
+        return;
+      }
+    }
+    this.playback.seek(0);
+  }
+
+  forwardOneBoard() {
+    const boards = this.store.boards();
+    const currentId = this.store.currentBoardId();
+    const total = this.store.totalDuration();
+    if (!currentId) return this.playback.seek(total);
+
+    for (let i = 0; i < boards.length; i++) {
+      const b = boards[i];
+      if (b.id === currentId) {
+        const targetIndex = Math.min(boards.length - 1, i + 1);
+        const targetTime = boards.slice(0, targetIndex).reduce((s, x) => s + x.duration, 0);
+        this.playback.seek(targetTime);
+        return;
+      }
+    }
+    this.playback.seek(total);
+  }
+
+  goToEnd() {
+    const total = this.store.totalDuration();
+    this.playback.seek(total);
+  }
+
   formatTime(seconds: number, hundredths = false): string {
     return formatTimeUtil(seconds, hundredths);
   }
