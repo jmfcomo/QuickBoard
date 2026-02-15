@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.quickboard.app',
   appName: 'QuickBoard',
-  webDir: 'dist/browser',
+  webDir: 'dist',
   server: {
     androidScheme: 'https',
   },
