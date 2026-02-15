@@ -39,8 +39,7 @@ jobs:
         with:
           name: windows-build
           path: |
-            release/*.exe
-            release/*.msi
+            release/QuickBoard-Setup-*.exe
           retention-days: 7
 
       - name: Upload to release
@@ -48,8 +47,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/*.exe
-            release/*.msi
+            release/QuickBoard-Setup-*.exe
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,8 +81,8 @@ jobs:
         with:
           name: macos-build
           path: |
-            release/*.dmg
-            release/*.zip
+            release/QuickBoard-*-x64.dmg
+            release/QuickBoard-*-arm64.dmg
           retention-days: 7
 
       - name: Upload to release
@@ -92,8 +90,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/*.dmg
-            release/*.zip
+            release/QuickBoard-*-x64.dmg
+            release/QuickBoard-*-arm64.dmg
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,9 +125,8 @@ jobs:
         with:
           name: linux-build
           path: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
+            release/quickboard-*.AppImage
+            release/quickboard-*.deb
           retention-days: 7
 
       - name: Upload to release
@@ -137,9 +134,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
+            release/quickboard-*.AppImage
+            release/quickboard-*.deb
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
