@@ -1,6 +1,6 @@
 {
   "name": "quickboard",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A storyboarding tool",
   "author": {
     "name": "QuickBoard Team",
@@ -77,7 +77,6 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "QuickBoard",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
