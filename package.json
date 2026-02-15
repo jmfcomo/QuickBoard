@@ -138,7 +138,6 @@
     "@ffmpeg/util": "^0.12.2",
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@ngrx/signals": "^21.0.1",
-    "astral-regex": "^2.0.0",
     "jspdf": "^4.0.0",
     "jszip": "^3.10.1",
     "literallycanvas": "^0.5.2",
