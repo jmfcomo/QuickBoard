@@ -6,6 +6,16 @@
 /out-tsc
 /bazel-out
 
+# Electron build output
+/release
+
+# Capacitor
+/android
+/ios
+*.apk
+*.aab
+*.ipa
+
 # Node
 /node_modules
 npm-debug.log
