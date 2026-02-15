@@ -1,10 +1,13 @@
-name: Build Mobile Apps
+name: Build Mobile Apps (Manual Only)
 
+# Mobile builds are disabled by default
+# To run: Go to Actions tab > Build Mobile Apps > Run workflow
 on:
-  push:
-    tags:
-      - 'v*.*.*'
   workflow_dispatch:
+  # Uncomment below to enable automatic builds on tags
+  # push:
+  #   tags:
+  #     - 'v*.*.*'
 
 permissions:
   contents: write
