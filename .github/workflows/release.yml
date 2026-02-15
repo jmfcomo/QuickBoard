@@ -7,12 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-
-    runs-on: ${{ matrix.os }}
+  build-windows:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -31,25 +27,11 @@ jobs:
         run: npm run build
 
       - name: Build Electron app (Windows)
-        if: matrix.os == 'windows-latest'
         run: npm run electron:build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Electron app (macOS)
-        if: matrix.os == 'macos-latest'
-        run: npm run electron:build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Electron app (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run electron:build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifacts (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
@@ -58,8 +40,42 @@ jobs:
             release/*.msi
           retention-days: 7
 
-      - name: Upload artifacts (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.exe
+            release/*.msi
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular app
+        run: npm run build
+
+      - name: Build Electron app (macOS)
+        run: npm run electron:build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
@@ -68,8 +84,42 @@ jobs:
             release/*.zip
           retention-days: 7
 
-      - name: Upload artifacts (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular app
+        run: npm run build
+
+      - name: Build Electron app (Linux)
+        run: npm run electron:build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
@@ -79,19 +129,14 @@ jobs:
             release/*.rpm
           retention-days: 7
 
-      - name: Release
+      - name: Upload to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/*.exe
-            release/*.msi
-            release/*.dmg
-            release/*.zip
             release/*.AppImage
             release/*.deb
             release/*.rpm
           draft: true
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

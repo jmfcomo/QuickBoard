@@ -1,6 +1,17 @@
 {
   "name": "quickboard",
   "version": "0.1.0",
+  "description": "A storyboarding tool",
+  "author": {
+    "name": "QuickBoard Team",
+    "email": "sav@savannah.lol"
+  },
+  "homepage": "https://github.com/jmfcomo/QuickBoard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmfcomo/QuickBoard.git"
+  },
+  "license": "MIT",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
