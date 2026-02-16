@@ -23,7 +23,7 @@
     </div>
 
     <div class="timeline-tracks" role="listbox" aria-label="Timeline Boards">
-      <div class="boards-track">
+      <div class="boards-track" (dragover)="onTrackDragOver($event)" (drop)="onTrackDrop($event)">
         @for (board of timelineBoards(); track board.id) {
           <div
             class="timeline-board"
@@ -31,11 +31,21 @@
             [attr.aria-selected]="store.currentBoardId() === board.id"
             [class.selected]="store.currentBoardId() === board.id"
             [class.resizing]="resizingBoardId() === board.id"
+            [class.dragging]="draggingBoardId() === board.id"
+            [class.drag-over]="dragOverBoardId() === board.id"
+            [class.insert-space-before]="shouldShowSpaceBefore($index)"
             [style.left.px]="board.leftPx"
             [style.width.px]="board.widthPx"
+            [style.transform]="'translateX(' + getBoardDragOffset($index) + 'px)'"
+            [attr.draggable]="true"
             (click)="selectBoard(board.id)"
             (keydown.enter)="selectBoard(board.id)"
             (keydown.space)="selectBoard(board.id)"
+            (dragstart)="onDragStart($event, board.id, $index)"
+            (dragover)="onDragOver($event, board.id)"
+            (dragleave)="onDragLeave($event)"
+            (drop)="onDrop($event)"
+            (dragend)="onDragEnd($event)"
             tabindex="0"
           >
             @if ($index > 0) {
