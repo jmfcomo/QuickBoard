@@ -37,7 +37,7 @@
             [style.left.px]="board.leftPx"
             [style.width.px]="board.widthPx"
             [style.transform]="'translateX(' + getBoardDragOffset($index) + 'px)'"
-            [attr.draggable]="true"
+            [attr.draggable]="resizingBoardId() === null && !store.isPlaying()"
             (click)="selectBoard(board.id)"
             (keydown.enter)="selectBoard(board.id)"
             (keydown.space)="selectBoard(board.id)"
