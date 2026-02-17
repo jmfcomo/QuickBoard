@@ -1,14 +1,38 @@
 {
   "name": "quickboard",
-  "version": "0.0.0",
+  "version": "0.1.6",
+  "description": "A storyboarding tool",
+  "author": {
+    "name": "QuickBoard Team",
+    "email": "sav@savannah.lol"
+  },
+  "homepage": "https://github.com/jmfcomo/QuickBoard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmfcomo/QuickBoard.git"
+  },
+  "license": "MIT",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:mobile": "ng build --configuration mobile",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "electron": "npm run build && electron electron-main.js",
     "electron:dev": "ng build --watch & wait-on dist/index.html && electron electron-main.js",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "npm run build && electron-builder --windows",
+    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:linux": "npm run build && electron-builder --linux",
+    "cap:init": "cap init",
+    "cap:sync": "npm run build:mobile && cap sync",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "cap:build:android": "npm run build:mobile && cap sync android && cd android && ./gradlew assembleRelease",
+    "cap:build:ios": "npm run build:mobile && cap sync ios",
     "lint": "ng lint",
     "postinstall": "node patch-literallycanvas.js"
   },
@@ -26,6 +50,79 @@
   },
   "private": true,
   "packageManager": "npm@11.6.1",
+  "main": "electron-main.js",
+  "build": {
+    "appId": "com.quickboard.app",
+    "productName": "QuickBoard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.js",
+      "src/electron/**/*",
+      "package.json"
+    ],
+    "publish": {
+      "provider": "github",
+      "releaseType": "draft"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "QuickBoard"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "writeUpdateInfo": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "artifactName": "${name}-${version}.${ext}"
+    }
+  },
   "dependencies": {
     "@angular/common": "^21.1.0",
     "@angular/compiler": "^21.1.0",
@@ -54,6 +151,10 @@
     "@angular/build": "^21.1.1",
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0",
     "@types/node": "^25.2.0",
     "angular-eslint": "21.1.0",
     "concurrently": "^9.2.1",
