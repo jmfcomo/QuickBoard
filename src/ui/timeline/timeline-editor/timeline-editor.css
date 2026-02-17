@@ -274,7 +274,7 @@
   box-shadow:
     0 0 12px var(--selection-glow),
     0 0 4px var(--border-active);
-  animation: pulse-indicator 0.8s ease-in-out infinite;
+  animation: pulse-indicator 0.3s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -290,12 +290,14 @@
   }
 }
 
-.timeline-board:not(.resizing):not(.dragging) {
+.timeline-board .board-content {
   cursor: grab;
+  cursor: -webkit-grab;
 }
 
-.timeline-board:not(.resizing):not(.dragging):active {
+.timeline-board .board-content:active {
   cursor: grabbing;
+  cursor: -webkit-grabbing;
 }
 
 /* ─── Add board button ───────────────────────────────────── */
