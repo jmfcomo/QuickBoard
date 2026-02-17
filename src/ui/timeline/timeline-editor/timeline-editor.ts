@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed, ViewChild, ElementRef, effect } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
+import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
 import { PlaybackService } from '../../../services/playback.service';
 
@@ -17,6 +18,7 @@ import { PlaybackService } from '../../../services/playback.service';
 export class TimelineEditor {
   readonly store = inject(AppStore);
   readonly actions = inject(TimelineActions);
+  readonly drag = inject(TimelineDrag);
   readonly playback = inject(PlaybackService);
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
@@ -211,5 +213,41 @@ export class TimelineEditor {
       // Scroll right to keep playhead visible with padding
       container.scrollLeft = playheadPos - containerWidth + rightPadding;
     }
+  }
+
+  onDragStart(event: DragEvent, boardId: string, boardIndex: number) {
+    this.drag.startDrag(event, boardId, boardIndex);
+  }
+
+  onDragOver(event: DragEvent, boardId: string) {
+    this.drag.handleDragOver(event, boardId);
+  }
+
+  onDragLeave(event: DragEvent) {
+    this.drag.handleDragLeave(event);
+  }
+
+  onTrackDragOver(event: DragEvent) {
+    this.drag.handleTrackDragOver(event);
+  }
+
+  onTrackDrop(event: DragEvent) {
+    this.drag.handleTrackDrop(event);
+  }
+
+  onDrop(event: DragEvent) {
+    this.drag.handleDrop(event);
+  }
+
+  onDragEnd(event: DragEvent) {
+    this.drag.handleDragEnd(event);
+  }
+
+  shouldShowSpaceBefore(boardIndex: number): boolean {
+    return this.drag.shouldShowSpaceBefore(boardIndex);
+  }
+
+  getBoardDragOffset(boardIndex: number): number {
+    return this.drag.getBoardDragOffset(boardIndex);
   }
 }

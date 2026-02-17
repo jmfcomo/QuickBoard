@@ -116,6 +116,12 @@ export const AppStore = signalStore(
         .map((board) => (board.id === boardId ? { ...board, duration } : board));
       patchState(store, { boards });
     },
+    reorderBoards(fromIndex: number, toIndex: number) {
+      const boards = [...store.boards()];
+      const [movedBoard] = boards.splice(fromIndex, 1);
+      boards.splice(toIndex, 0, movedBoard);
+      patchState(store, { boards });
+    },
     setIsPlaying(isPlaying: boolean) {
       patchState(store, { isPlaying });
     },
