@@ -13,6 +13,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { Brush } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
+import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
@@ -33,7 +34,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
-    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' }
+    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
+    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' }
   ];
 
   readonly colorPickers = [
@@ -212,6 +214,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('brush', new Brush(this.lc));
     this.toolInstances.set('object-eraser', new ObjectEraser(this.lc));
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
+    this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
     // Activate the default tool
     this.setTool('pencil');
