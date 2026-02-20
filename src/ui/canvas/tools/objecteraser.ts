@@ -15,9 +15,15 @@ export class ObjectEraser {
   optionsStyle = 'stroke-width';
   usesSimpleAPI = true;
 
+  private readonly sampleCanvas: HTMLCanvasElement;
+  private readonly sampleCtx: CanvasRenderingContext2D;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_lc: LCInstance) {
-    // Constructor for LiterallyCanvas tool
+    this.sampleCanvas = document.createElement('canvas');
+    this.sampleCanvas.width = 1;
+    this.sampleCanvas.height = 1;
+    this.sampleCtx = this.sampleCanvas.getContext('2d')!;
   }
 
   willBecomeActive(): void {
@@ -81,6 +87,15 @@ export class ObjectEraser {
         remainingShapes.push(shape);
         continue;
       }
+      if (className === 'Image') {
+        if (this.isImageShapeHit(shape as unknown as { x?: number; y?: number; scale?: number; image?: HTMLImageElement }, x, y)) {
+          didErase = true;
+          continue;
+        }
+        remainingShapes.push(shape);
+        continue;
+      }
+
       if (!shape?.getBoundingRect) {
         remainingShapes.push(shape);
         continue;
@@ -175,6 +190,26 @@ export class ObjectEraser {
     }
 
     return false;
+  }
+
+  // For Image shapes (bucket fills), use pixel-level hit testing rather than bounding rect.
+  // All fills share the same full-canvas bounding rect, so bounding rect checks would
+  // erase every fill at once. Instead, sample the alpha of the clicked pixel in each image.
+  private isImageShapeHit(
+    shape: { x?: number; y?: number; scale?: number; image?: HTMLImageElement },
+    x: number,
+    y: number
+  ): boolean {
+    const img = shape.image;
+    if (!img || !img.width || !img.height) return false;
+    const scale = shape.scale ?? 1;
+    const imgX = Math.round((x - (shape.x ?? 0)) / scale);
+    const imgY = Math.round((y - (shape.y ?? 0)) / scale);
+    if (imgX < 0 || imgY < 0 || imgX >= img.width || imgY >= img.height) return false;
+    // Draw only the target pixel into the 1×1 canvas by shifting the image.
+    this.sampleCtx.clearRect(0, 0, 1, 1);
+    this.sampleCtx.drawImage(img, -imgX, -imgY);
+    return this.sampleCtx.getImageData(0, 0, 1, 1).data[3] > 0;
   }
 
   private distanceToPoint(x: number, y: number, px: number, py: number): number {

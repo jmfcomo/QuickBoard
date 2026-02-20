@@ -117,6 +117,9 @@ export class BucketFill {
     return [(num >> 16) & 255, (num >> 8) & 255, num & 255, 255];
   }
 
+  end(): void { /* no-op */ }
+  ['continue'](): void { /* no-op */ }
+
   willBecomeActive(): void { /* no-op */ }
   didBecomeActive(): void { /* no-op */ }
   willBecomeInactive(): void { /* no-op */ }
