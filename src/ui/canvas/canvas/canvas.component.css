@@ -10,11 +10,232 @@
   overflow: hidden;
 }
 
-.canvas-stage {
+/* ── Right column: properties bar + canvas ────────────── */
+
+.canvas-right {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 0;
+  min-width: 0;
+  gap: 4px;
+}
+
+.canvas-stage {
   min-width: 0;
   aspect-ratio: 16 / 9;
 }
+
+/* ── Properties bar ───────────────────────────────────── */
+
+.properties-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 2px;
+}
+
+.properties-context {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.property-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.property-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.property-slider {
+  width: 120px;
+  height: 4px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.number-input-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.number-steppers {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-default);
+  border-radius: 0 3px 3px 0;
+  overflow: hidden;
+}
+
+.stepper-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.stepper-btn::before {
+  content: '';
+  display: block;
+  width: 0;
+  height: 0;
+}
+
+.stepper-btn.up::before {
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 3.5px solid currentColor;
+}
+
+.stepper-btn.down::before {
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 3.5px solid currentColor;
+}
+
+.stepper-btn + .stepper-btn {
+  border-top: 1px solid var(--border-default);
+}
+
+.stepper-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-default);
+}
+
+.property-number {
+  width: 62px;
+  height: 26px;
+  padding: 0 18px 0 6px;
+  background-color: var(--bg-body);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--text-default);
+  font-size: 12px;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.property-number:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+  border-color: var(--border-darker);
+}
+
+/* Hide native spinner arrows so they don't crowd the number */
+.property-number::-webkit-outer-spin-button,
+.property-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.property-number[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ── Color pickers (properties bar, horizontal) ───────── */
+
+.properties-colors {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-label {
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1;
+}
+
+.color-picker-container {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.color-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-preview {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.quick-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quick-color-btn {
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  cursor: pointer;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
+
+.quick-color-btn:hover {
+  background-color: var(--bg-hover-light);
+  border-color: var(--border-darker);
+}
+
+.quick-color-btn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* ── Vertical tools bar (left) ────────────────────────── */
 
 .tools-bar {
   display: flex;
@@ -55,6 +276,8 @@
   margin: 3px 0;
 }
 
+/* ── Canvas ───────────────────────────────────────────── */
+
 .literally-canvas {
   width: 100%;
   height: 100%;
@@ -64,74 +287,7 @@
   background-color: var(--canvas-fill);
 }
 
-.color-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.color-label {
-  font-size: 8px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  line-height: 1;
-}
-
-.color-picker-container {
-  position: relative;
-  width: 28px;
-  height: 28px;
-}
-
-.color-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.color-preview {
-  width: 100%;
-  height: 100%;
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
-  pointer-events: none;
-  box-sizing: border-box;
-}
-
-.quick-colors {
-  display: flex;
-  gap: 2px;
-  justify-content: center;
-}
-
-.quick-color-btn {
-  padding: 0;
-  background-color: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: 2px;
-  cursor: pointer;
-  width: 12px;
-  height: 12px;
-  box-sizing: border-box;
-  transition: all 0.15s;
-}
-
-.quick-color-btn:hover {
-  background-color: var(--bg-hover-light);
-  border-color: var(--border-darker);
-}
-
-.quick-color-btn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
-}
+/* ── Shared utilities ─────────────────────────────────── */
 
 .transparent-checker {
   background-image: conic-gradient(var(--bg-transparent-checker) 0 25%, var(--canvas-fill) 0 50%, var(--bg-transparent-checker) 0 75%, var(--canvas-fill) 0);
