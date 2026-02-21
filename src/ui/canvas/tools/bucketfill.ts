@@ -6,6 +6,7 @@ export class BucketFill {
   iconName = 'bucket-fill';
   optionsStyle = '';
   usesSimpleAPI = true;
+  tolerance = 16;
 
   // Render source image at half resolution for faster flood fill (4× fewer pixels).
   // The saved Image shape uses scale: 2 to stretch it back to full world size.
@@ -84,7 +85,7 @@ export class BucketFill {
       visited[flat] = 1;
 
       const idx = flat * 4;
-      if (!this.colorsMatch(source.data.slice(idx, idx + 4), target)) continue;
+      if (!this.colorsMatch(source.data.slice(idx, idx + 4), target, this.tolerance)) continue;
 
       for (let i = 0; i < 4; i++) output.data[idx + i] = fill[i];
 

@@ -4,6 +4,7 @@ import {
   AfterViewInit,
   OnDestroy,
   signal,
+  computed,
   viewChild,
   inject,
   PLATFORM_ID,
@@ -25,9 +26,31 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
+  private readonly toolSizeMap = signal<Record<string, number>>({
+    pencil: 5, brush: 5, rectangle: 5, eraser: 5,
+  });
+  readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
+  readonly colorTolerance = signal<number>(16);
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
   readonly backgroundColor = signal<string>('#ffffff');
+
+  readonly showStrokeSize = computed(() =>
+    ['pencil', 'brush', 'rectangle', 'eraser'].includes(this.activeTool())
+  );
+  readonly showColorTolerance = computed(() => this.activeTool() === 'bucket-fill');
+
+  // "Stroke" for rectangle, "Size" for everything else
+  readonly propertyLabel = computed(() =>
+    this.activeTool() === 'rectangle' ? 'Stroke' : 'Size'
+  );
+
+  // Logarithmic slider position (0–100) mapped to strokeSize (1–4000+)
+  readonly strokeSizeSliderPos = computed(() => {
+    const v = this.strokeSize();
+    if (v <= 1) return 0;
+    return Math.min(100, Math.round(Math.log(v) / Math.log(4000) * 100));
+  });
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
@@ -216,6 +239,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
+    // Apply default stroke size to all tools that support it; object-eraser is fixed at 1
+    this.toolInstances.forEach((tool, id) => {
+      if (tool.strokeWidth !== undefined) {
+        tool.strokeWidth = id === 'object-eraser' ? 1 : (this.toolSizeMap()[id] ?? 5);
+      }
+    });
+
     // Activate the default tool
     this.setTool('pencil');
   }
@@ -293,8 +323,36 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const tool = this.toolInstances.get(toolId);
     if (tool) {
+      if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
+        tool.strokeWidth = this.toolSizeMap()[toolId] ?? 5;
+      }
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
+    }
+  }
+
+  public setStrokeSize(size: number): void {
+    if (isNaN(size) || size < 1) return;
+    const value = Math.max(1, Math.round(size));
+    this.toolSizeMap.update(m => ({ ...m, [this.activeTool()]: value }));
+    if (this.lc?.tool) {
+      this.lc.tool.strokeWidth = value;
+    }
+  }
+
+  public setStrokeSizeFromSlider(pos: number): void {
+    // Exponential mapping: slider 0–100 → value 1–4000
+    const value = Math.round(Math.pow(4000, pos / 100));
+    this.setStrokeSize(Math.max(1, value));
+  }
+
+  public setColorTolerance(tol: number): void {
+    if (isNaN(tol)) return;
+    const clamped = Math.max(0, Math.min(128, Math.round(tol)));
+    this.colorTolerance.set(clamped);
+    const bucketTool = this.toolInstances.get('bucket-fill') as BucketFill | undefined;
+    if (bucketTool) {
+      bucketTool.tolerance = clamped;
     }
   }
 
