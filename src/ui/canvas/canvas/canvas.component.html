@@ -14,28 +14,24 @@
     }
     <div class="separator"></div>
     <button (click)="clearCanvas()" class="tool-button" (mouseenter)="showTooltip($event, 'Clear Canvas')" (mouseleave)="hideTooltip()" aria-label="Clear Canvas">🗑️</button>
-    <div class="separator"></div>
-    @for (picker of colorPickers; track picker.label) {
-      <div class="color-section">
-        <span class="color-label">{{ picker.label }}</span>
-        <div class="color-picker-container">
-          <input type="color" [value]="picker.signal()" (input)="picker.setter($any($event.target).value)" class="color-input">
-          <div class="color-preview" [class.transparent-checker]="picker.signal() === 'transparent'" [style.background-color]="picker.signal()"></div>
-        </div>
-        <div class="quick-colors">
-          @for (color of picker.quickColors; track color) {
-            <button (click)="picker.setter(color)" class="quick-color-btn" [class.transparent-checker]="color === 'transparent'" [style.background-color]="color === 'transparent' ? null : color" [attr.aria-label]="picker.label + ': ' + color" type="button"></button>
-          }
-        </div>
-      </div>
-    }
   </div>
   @if (tooltipVisible()) {
     <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
       {{ tooltipText() }}
     </div>
   }
-  <div class="canvas-stage" #canvasStage>
-    <div #canvasContainer class="literally-canvas"></div>
+  <div class="canvas-right">
+    <app-properties-bar
+      [activeTool]="activeTool()"
+      [strokeSize]="strokeSize()"
+      [colorTolerance]="colorTolerance()"
+      [colorPickers]="colorPickers"
+      (strokeSizeChange)="setStrokeSize($event)"
+      (strokeSizeFromSliderChange)="setStrokeSizeFromSlider($event)"
+      (colorToleranceChange)="setColorTolerance($event)"
+    ></app-properties-bar>
+    <div class="canvas-stage" #canvasStage>
+      <div #canvasContainer class="literally-canvas"></div>
+    </div>
   </div>
 </div>
