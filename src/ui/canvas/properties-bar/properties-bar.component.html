@@ -1,0 +1,66 @@
+<div class="properties-bar">
+  <div class="properties-context">
+    @if (showStrokeSize()) {
+      <div class="property-group">
+        <span class="property-label">{{ propertyLabel() }}</span>
+        <input
+          type="range" min="0" max="100" step="1"
+          [value]="strokeSizeSliderPos()"
+          (input)="strokeSizeFromSliderChange.emit(+$any($event.target).value)"
+          class="property-slider"
+        >
+        <div class="number-input-wrapper">
+          <input
+            type="number" min="1"
+            [value]="strokeSize()"
+            (change)="strokeSizeChange.emit(+$any($event.target).value)"
+            class="property-number"
+          >
+          <div class="number-steppers">
+            <button class="stepper-btn up" (click)="strokeSizeChange.emit(strokeSize() + 1)" tabindex="-1" aria-label="Increase"></button>
+            <button class="stepper-btn down" (click)="strokeSizeChange.emit(strokeSize() - 1)" tabindex="-1" aria-label="Decrease"></button>
+          </div>
+        </div>
+      </div>
+    }
+    @if (showColorTolerance()) {
+      <div class="property-group">
+        <span class="property-label">Sensitivity</span>
+        <input
+          type="range" min="0" max="128" step="1"
+          [value]="colorTolerance()"
+          (input)="colorToleranceChange.emit(+$any($event.target).value)"
+          class="property-slider"
+        >
+        <div class="number-input-wrapper">
+          <input
+            type="number" min="0" max="128"
+            [value]="colorTolerance()"
+            (change)="colorToleranceChange.emit(+$any($event.target).value)"
+            class="property-number"
+          >
+          <div class="number-steppers">
+            <button class="stepper-btn up" (click)="colorToleranceChange.emit(colorTolerance() + 1)" tabindex="-1" aria-label="Increase"></button>
+            <button class="stepper-btn down" (click)="colorToleranceChange.emit(colorTolerance() - 1)" tabindex="-1" aria-label="Decrease"></button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+  <div class="properties-colors">
+    @for (picker of colorPickers(); track picker.label) {
+      <div class="color-section">
+        <span class="color-label">{{ picker.label }}</span>
+        <div class="color-picker-container">
+          <input type="color" [value]="picker.signal()" (input)="picker.setter($any($event.target).value)" class="color-input">
+          <div class="color-preview" [class.transparent-checker]="picker.signal() === 'transparent'" [style.background-color]="picker.signal()"></div>
+        </div>
+        <div class="quick-colors">
+          @for (color of picker.quickColors; track color) {
+            <button (click)="picker.setter(color)" class="quick-color-btn" [class.transparent-checker]="color === 'transparent'" [style.background-color]="color === 'transparent' ? null : color" [attr.aria-label]="picker.label + ': ' + color" type="button"></button>
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
+import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
 import { Brush } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
@@ -19,6 +20,7 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 
 @Component({
   selector: 'app-canvas',
+  imports: [PropertiesBarComponent],
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
@@ -34,23 +36,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
   readonly backgroundColor = signal<string>('#ffffff');
-
-  readonly showStrokeSize = computed(() =>
-    ['pencil', 'brush', 'rectangle', 'eraser'].includes(this.activeTool())
-  );
-  readonly showColorTolerance = computed(() => this.activeTool() === 'bucket-fill');
-
-  // "Stroke" for rectangle, "Size" for everything else
-  readonly propertyLabel = computed(() =>
-    this.activeTool() === 'rectangle' ? 'Stroke' : 'Size'
-  );
-
-  // Logarithmic slider position (0–100) mapped to strokeSize (1–4000+)
-  readonly strokeSizeSliderPos = computed(() => {
-    const v = this.strokeSize();
-    if (v <= 1) return 0;
-    return Math.min(100, Math.round(Math.log(v) / Math.log(4000) * 100));
-  });
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
