@@ -326,8 +326,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public setStrokeSizeFromSlider(pos: number): void {
-    // Exponential mapping: slider 0–100 → value 1–4000
-    const value = Math.round(Math.pow(4000, pos / 100));
+    // Exponential mapping: slider 0–100 → value 1–500
+    const value = Math.round(Math.pow(500, pos / 100));
     this.setStrokeSize(Math.max(1, value));
   }
 

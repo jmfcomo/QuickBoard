@@ -35,6 +35,6 @@ export class PropertiesBarComponent {
   readonly strokeSizeSliderPos = computed(() => {
     const v = this.strokeSize();
     if (v <= 1) return 0;
-    return Math.min(100, Math.round(Math.log(v) / Math.log(4000) * 100));
+    return Math.min(100, Math.round(Math.log(v) / Math.log(500) * 100));
   });
 }
