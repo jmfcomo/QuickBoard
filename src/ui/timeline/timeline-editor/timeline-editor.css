@@ -453,7 +453,7 @@
   overflow: visible;
   display: flex;
   align-items: center;
-  padding: 0 22px 0 6px;
+  padding: 0 6px;
   min-width: 40px;
   user-select: none;
   transition:
@@ -547,7 +547,6 @@
 .audio-clip-delete {
   position: absolute;
   top: 50%;
-  right: 3px;
   transform: translateY(-50%);
   width: 16px;
   height: 16px;
@@ -557,17 +556,13 @@
   border-radius: 50%;
   font-size: 11px;
   line-height: 1;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  z-index: 3;
+  z-index: 10;
   transition: background 0.15s;
-}
-
-.audio-clip:hover .audio-clip-delete {
-  display: flex;
 }
 
 .audio-clip-delete:hover {

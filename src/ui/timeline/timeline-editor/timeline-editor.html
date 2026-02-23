@@ -151,14 +151,6 @@
                       </svg>
                     }
                     <span class="audio-clip-name">{{ clip.name }}</span>
-                    <button
-                      type="button"
-                      class="audio-clip-delete"
-                      [attr.aria-label]="'Remove ' + clip.name"
-                      (click)="$event.stopPropagation(); removeAudioTrack(clip.id)"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
                   </div>
                 }
 
@@ -176,6 +168,22 @@
               </div>
               <!-- project end marker -->
               <div class="audio-lane-end-marker" [style.left.px]="projectWidthPx()"></div>
+
+              <!-- Delete buttons outside clip-zone so they stay visible
+                   when a clip is cut off by the project end boundary -->
+              @for (clip of lane.clips; track clip.id) {
+                @if (hoveredClipId() === clip.id) {
+                  <button
+                    type="button"
+                    class="audio-clip-delete"
+                    [style.left.px]="clip.deleteLeftPx"
+                    [attr.aria-label]="'Remove ' + clip.name"
+                    (click)="$event.stopPropagation(); removeAudioTrack(clip.id)"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                }
+              }
 
               <button
                 type="button"

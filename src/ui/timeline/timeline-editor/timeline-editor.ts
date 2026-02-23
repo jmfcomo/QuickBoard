@@ -79,6 +79,7 @@ export class TimelineEditor implements AfterViewInit {
   // Lane hover state for the floating add button
   hoverLaneIndex = signal<number | null>(null);
   hoverLaneX = signal(0);
+  hoveredClipId = signal<string | null>(null);
 
   private wasPlaying = false;
 
@@ -100,16 +101,21 @@ export class TimelineEditor implements AfterViewInit {
     const s = this.scale();
     const waveforms = this.audio.waveforms();
     const clipH = 36; // lane 48px - 6px top - 6px bottom
+    const projW = this.store.totalDuration() * s;
     return Array.from({ length: this.store.audioLaneCount() }, (_, i) => ({
       laneIndex: i,
       clips: tracks
         .filter((t) => t.laneIndex === i)
         .map((t) => {
           const w = Math.max(t.duration * s, 40);
+          const leftPx = t.startTime * s;
+          const visibleRight = Math.min(leftPx + w, projW);
+          const deleteLeftPx = Math.max(leftPx + 4, visibleRight - 20);
           return {
             ...t,
-            leftPx: t.startTime * s,
+            leftPx,
             widthPx: w,
+            deleteLeftPx,
             waveformPath: this.buildWaveformPath(waveforms[t.id] ?? [], w, clipH),
           };
         }),
@@ -357,17 +363,32 @@ export class TimelineEditor implements AfterViewInit {
   }
 
   onLaneMouseMove(event: MouseEvent, laneIndex: number) {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const cursorX = event.clientX - rect.left;
+
+    // Position-based clip hover detection (works even when clip overflows the zone)
+    const s = this.scale();
+    const projW = this.projectWidthPx();
+    const tracks = this.store.audioTracks().filter((t) => t.laneIndex === laneIndex);
+    const hoveredTrack = tracks.find((t) => {
+      const left = t.startTime * s;
+      const right = Math.min(left + Math.max(t.duration * s, 40), projW);
+      return cursorX >= left && cursorX <= right;
+    });
+    this.hoveredClipId.set(hoveredTrack?.id ?? null);
+
+    // Show + add button only when not over a clip or handle
     if ((event.target as Element).closest('.audio-clip, .audio-trim-handle')) {
       this.hoverLaneIndex.set(null);
       return;
     }
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     this.hoverLaneIndex.set(laneIndex);
-    this.hoverLaneX.set(event.clientX - rect.left);
+    this.hoverLaneX.set(cursorX);
   }
 
   onLaneMouseLeave() {
     this.hoverLaneIndex.set(null);
+    this.hoveredClipId.set(null);
   }
 
   addAudioAtHover(laneIndex: number) {
@@ -406,6 +427,7 @@ export class TimelineEditor implements AfterViewInit {
     this._audioDragOriginalLane = track?.laneIndex ?? 0;
     this.audioDragTrackId.set(trackId);
     this.audioDragTargetLane.set(track?.laneIndex ?? 0);
+    this.hoveredClipId.set(null);
   }
 
   startAudioTrim(event: MouseEvent, trackId: string, edge: 'left' | 'right') {
