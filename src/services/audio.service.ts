@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { AppStore, AudioTrack } from '../data/store/app.store';
 import * as Tone from 'tone';
 
@@ -6,6 +6,23 @@ import * as Tone from 'tone';
 export class AudioService {
   readonly store = inject(AppStore);
   private players = new Map<string, Tone.Player>();
+
+  readonly waveforms = signal<Record<string, number[]>>({});
+
+  private buildWaveform(buffer: Tone.ToneAudioBuffer, samples = 300): number[] {
+    const raw = buffer.toArray(0) as Float32Array;
+    const blockSize = Math.max(1, Math.floor(raw.length / samples));
+    const peaks: number[] = [];
+    for (let i = 0; i < samples; i++) {
+      let peak = 0;
+      for (let j = 0; j < blockSize; j++) {
+        const v = Math.abs(raw[i * blockSize + j] ?? 0);
+        if (v > peak) peak = v;
+      }
+      peaks.push(peak);
+    }
+    return peaks;
+  }
 
   async importAudioFile(file: File, startTime = 0, laneIndex = 0): Promise<void> {
     const url = URL.createObjectURL(file);
@@ -23,12 +40,16 @@ export class AudioService {
 
           this.players.set(id, player);
 
+          this.waveforms.update((w) => ({ ...w, [id]: this.buildWaveform(player.buffer) }));
+
           const newTrack: AudioTrack = {
             id,
             name: file.name,
             url,
             startTime,
             duration,
+            trimStart: 0,
+            fileDuration: duration,
             laneIndex,
           };
 
@@ -44,10 +65,25 @@ export class AudioService {
   updatePlayerStartTime(trackId: string, newStartTime: number) {
     const player = this.players.get(trackId);
     if (player) {
+      const track = this.store.audioTracks().find((t) => t.id === trackId);
+      const trimStart = track?.trimStart ?? 0;
       player.unsync();
-      player.sync().start(newStartTime);
+      player.sync().start(newStartTime, trimStart);
       this.store.updateAudioStartTime(trackId, newStartTime);
     }
+  }
+
+  updateTrim(trackId: string, startTime: number, duration: number, trimStart: number) {
+    const player = this.players.get(trackId);
+    if (player) {
+      player.unsync();
+      player.sync().start(startTime, trimStart);
+    }
+    this.store.updateAudioTrim(trackId, startTime, duration, trimStart);
+  }
+
+  updateLane(trackId: string, laneIndex: number) {
+    this.store.updateAudioLane(trackId, laneIndex);
   }
 
   removeTrack(trackId: string) {
@@ -57,19 +93,30 @@ export class AudioService {
       this.players.delete(trackId);
       this.store.removeAudioTrack(trackId);
     }
+    this.waveforms.update((w) => {
+      const next = { ...w };
+      delete next[trackId];
+      return next;
+    });
   }
 
   removeLane(laneIndex: number) {
-    this.store
+    const ids = this.store
       .audioTracks()
       .filter((t) => t.laneIndex === laneIndex)
-      .forEach((t) => {
-        const player = this.players.get(t.id);
-        if (player) {
-          player.dispose();
-          this.players.delete(t.id);
-        }
-      });
+      .map((t) => t.id);
+    ids.forEach((id) => {
+      const player = this.players.get(id);
+      if (player) {
+        player.dispose();
+        this.players.delete(id);
+      }
+    });
+    this.waveforms.update((w) => {
+      const next = { ...w };
+      ids.forEach((id) => delete next[id]);
+      return next;
+    });
     this.store.removeAudioLane(laneIndex);
   }
 }

@@ -104,37 +104,78 @@
       <!-- Audio lanes -->
       <div class="audio-tracks-section">
         @for (lane of audioLanes(); track lane.laneIndex) {
-          <div class="audio-lane">
-            <div class="audio-lane-track">
-              @for (clip of lane.clips; track clip.id) {
-                <div
-                  class="audio-clip"
-                  [class.dragging]="audioDragTrackId() === clip.id"
-                  [style.left.px]="clip.leftPx"
-                  [style.width.px]="clip.widthPx"
-                  [title]="clip.name"
-                  (mousedown)="startAudioClipDrag($event, clip.id, clip.startTime)"
-                >
-                  <span class="audio-clip-name">{{ clip.name }}</span>
+          <div
+            class="audio-lane"
+            [attr.data-lane-index]="lane.laneIndex"
+            [class.drag-target]="
+              audioDragTargetLane() === lane.laneIndex && audioDragTrackId() !== null
+            "
+          >
+            <div
+              class="audio-lane-track"
+              (mousemove)="onLaneMouseMove($event, lane.laneIndex)"
+              (mouseleave)="onLaneMouseLeave()"
+            >
+              <!-- clips clipped to project duration -->
+              <div class="audio-lane-clip-zone" [style.width.px]="projectWidthPx()">
+                @for (clip of lane.clips; track clip.id) {
+                  <div
+                    class="audio-clip"
+                    [class.dragging]="audioDragTrackId() === clip.id"
+                    [class.trimming]="audioTrimTrackId() === clip.id"
+                    [style.left.px]="clip.leftPx"
+                    [style.width.px]="clip.widthPx"
+                    [title]="clip.name"
+                    (mousedown)="startAudioClipDrag($event, clip.id, clip.startTime)"
+                  >
+                    <div
+                      class="audio-trim-handle audio-trim-handle-left"
+                      (mousedown)="
+                        $event.stopPropagation(); startAudioTrim($event, clip.id, 'left')
+                      "
+                    ></div>
+                    <div
+                      class="audio-trim-handle audio-trim-handle-right"
+                      (mousedown)="
+                        $event.stopPropagation(); startAudioTrim($event, clip.id, 'right')
+                      "
+                    ></div>
+                    @if (clip.waveformPath) {
+                      <svg
+                        class="audio-waveform"
+                        [attr.viewBox]="'0 0 ' + clip.widthPx + ' 36'"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        <path [attr.d]="clip.waveformPath" class="waveform-path" />
+                      </svg>
+                    }
+                    <span class="audio-clip-name">{{ clip.name }}</span>
+                    <button
+                      type="button"
+                      class="audio-clip-delete"
+                      [attr.aria-label]="'Remove ' + clip.name"
+                      (click)="$event.stopPropagation(); removeAudioTrack(clip.id)"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </div>
+                }
+
+                @if (hoverLaneIndex() === lane.laneIndex && hoverLaneX() < projectWidthPx()) {
                   <button
                     type="button"
-                    class="audio-clip-delete"
-                    [attr.aria-label]="'Remove ' + clip.name"
-                    (click)="$event.stopPropagation(); removeAudioTrack(clip.id)"
+                    class="lane-add-cursor-btn"
+                    [style.left.px]="hoverLaneX()"
+                    aria-label="Add audio here"
+                    (click)="$event.stopPropagation(); addAudioAtHover(lane.laneIndex)"
                   >
-                    <span aria-hidden="true">×</span>
+                    +
                   </button>
-                </div>
-              }
-
-              <button
-                type="button"
-                class="add-audio-btn"
-                [attr.aria-label]="'Add audio to lane ' + (lane.laneIndex + 1)"
-                (click)="openAudioFile(lane.laneIndex)"
-              >
-                + Audio
-              </button>
+                }
+              </div>
+              <!-- project end marker -->
+              <div class="audio-lane-end-marker" [style.left.px]="projectWidthPx()"></div>
 
               <button
                 type="button"

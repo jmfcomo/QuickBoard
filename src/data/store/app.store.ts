@@ -17,6 +17,8 @@ export interface AudioTrack {
   url: string;
   startTime: number;
   duration: number;
+  trimStart: number;
+  fileDuration: number;
   laneIndex: number;
 }
 
@@ -173,10 +175,24 @@ export const AppStore = signalStore(
       }));
     },
 
+    updateAudioTrim(trackId: string, startTime: number, duration: number, trimStart: number) {
+      patchState(store, (state) => ({
+        audioTracks: state.audioTracks.map((t) =>
+          t.id === trackId ? { ...t, startTime, duration, trimStart } : t,
+        ),
+      }));
+    },
+
     addAudioLane() {
       if (store.audioLaneCount() < 4) {
         patchState(store, { audioLaneCount: store.audioLaneCount() + 1 });
       }
+    },
+
+    updateAudioLane(trackId: string, laneIndex: number) {
+      patchState(store, (state) => ({
+        audioTracks: state.audioTracks.map((t) => (t.id === trackId ? { ...t, laneIndex } : t)),
+      }));
     },
 
     removeAudioLane(laneIndex: number) {
