@@ -1,3 +1,11 @@
+<input
+  #audioFileInput
+  type="file"
+  accept="audio/*"
+  style="display: none"
+  (change)="handleFileInput($event)"
+/>
+
 <div
   #scrollContainer
   class="timeline-editor custom-scrollbar"
@@ -92,6 +100,68 @@
         >
           <span class="add-board-icon" aria-hidden="true">+</span>
         </button>
+      </div>
+      <!-- Audio lanes -->
+      <div class="audio-tracks-section">
+        @for (lane of audioLanes(); track lane.laneIndex) {
+          <div class="audio-lane">
+            <div class="audio-lane-track">
+              @for (clip of lane.clips; track clip.id) {
+                <div
+                  class="audio-clip"
+                  [class.dragging]="audioDragTrackId() === clip.id"
+                  [style.left.px]="clip.leftPx"
+                  [style.width.px]="clip.widthPx"
+                  [title]="clip.name"
+                  (mousedown)="startAudioClipDrag($event, clip.id, clip.startTime)"
+                >
+                  <span class="audio-clip-name">{{ clip.name }}</span>
+                  <button
+                    type="button"
+                    class="audio-clip-delete"
+                    [attr.aria-label]="'Remove ' + clip.name"
+                    (click)="$event.stopPropagation(); removeAudioTrack(clip.id)"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+              }
+
+              <button
+                type="button"
+                class="add-audio-btn"
+                [attr.aria-label]="'Add audio to lane ' + (lane.laneIndex + 1)"
+                (click)="openAudioFile(lane.laneIndex)"
+              >
+                + Audio
+              </button>
+
+              <button
+                type="button"
+                class="audio-lane-delete"
+                aria-label="Remove audio lane {{ lane.laneIndex + 1 }}"
+                (click)="removeAudioLane(lane.laneIndex)"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (canAddLane()) {
+          <div class="audio-lane audio-lane-add-row">
+            <div class="audio-lane-track">
+              <button
+                type="button"
+                class="add-audio-lane-btn"
+                aria-label="Add audio lane"
+                (click)="addAudioLane()"
+              >
+                + Audio Lane
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
   </div>

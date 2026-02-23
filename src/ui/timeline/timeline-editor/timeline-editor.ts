@@ -4,6 +4,7 @@ import { TimelineActions } from '../helpers/timeline.actions';
 import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
 import { PlaybackService } from '../../../services/playback.service';
+import { AudioService } from '../../../services/audio.service';
 
 @Component({
   selector: 'app-timeline-editor',
@@ -20,11 +21,14 @@ export class TimelineEditor {
   readonly actions = inject(TimelineActions);
   readonly drag = inject(TimelineDrag);
   readonly playback = inject(PlaybackService);
+  readonly audio = inject(AudioService);
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
   @ViewChild('scrollContainer') scrollContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('audioFileInput') audioFileInputRef!: ElementRef<HTMLInputElement>;
 
   readonly MIN_DURATION = 0.5;
+  readonly MAX_AUDIO_LANES = 4;
 
   scale = signal(40); // pixels per second
   isScrubbing = signal(false);
@@ -38,6 +42,14 @@ export class TimelineEditor {
   private resizeStartPrevDuration = 0;
   private resizePrevBoardId: string | null = null;
 
+  // Audio clip drag state
+  audioDragTrackId = signal<string | null>(null);
+  private _audioDragging = false;
+  private _audioDragTrackId: string | null = null;
+  private _audioDragStartX = 0;
+  private _audioDragOriginalStartTime = 0;
+  private _pendingAudioLane = 0;
+
   private wasPlaying = false;
 
   playheadPosition = computed(() => {
@@ -50,6 +62,23 @@ export class TimelineEditor {
   totalWidth = this._shared.totalWidth;
   addButtonLeftPx = this._shared.addButtonLeftPx;
   rulerTicks = this._shared.rulerTicks;
+
+  audioLanes = computed(() => {
+    const tracks = this.store.audioTracks();
+    const s = this.scale();
+    return Array.from({ length: this.store.audioLaneCount() }, (_, i) => ({
+      laneIndex: i,
+      clips: tracks
+        .filter((t) => t.laneIndex === i)
+        .map((t) => ({
+          ...t,
+          leftPx: t.startTime * s,
+          widthPx: Math.max(t.duration * s, 40),
+        })),
+    }));
+  });
+
+  canAddLane = computed(() => this.store.audioLaneCount() < this.MAX_AUDIO_LANES);
 
   constructor() {
     effect(() => {
@@ -94,6 +123,9 @@ export class TimelineEditor {
     } else if (this.isResizing()) {
       event.preventDefault();
       this.handleResizeDrag(event);
+    } else if (this._audioDragging) {
+      event.preventDefault();
+      this.handleAudioClipDragMove(event);
     }
   }
 
@@ -120,6 +152,12 @@ export class TimelineEditor {
       this.resizingBoardId.set(null);
       this.resizeEdge.set(null);
       this.resizePrevBoardId = null;
+    }
+
+    if (this._audioDragging) {
+      this._audioDragging = false;
+      this._audioDragTrackId = null;
+      this.audioDragTrackId.set(null);
     }
   }
 
@@ -214,6 +252,53 @@ export class TimelineEditor {
       container.scrollLeft = playheadPos - containerWidth + rightPadding;
     }
   }
+
+  // ─── Audio track methods ────────────────────────────────────────
+
+  openAudioFile(laneIndex: number) {
+    this._pendingAudioLane = laneIndex;
+    this.audioFileInputRef.nativeElement.value = '';
+    this.audioFileInputRef.nativeElement.click();
+  }
+
+  async handleFileInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    await this.audio.importAudioFile(file, 0, this._pendingAudioLane);
+  }
+
+  removeAudioTrack(trackId: string) {
+    this.audio.removeTrack(trackId);
+  }
+
+  addAudioLane() {
+    this.store.addAudioLane();
+  }
+
+  removeAudioLane(laneIndex: number) {
+    this.audio.removeLane(laneIndex);
+  }
+
+  startAudioClipDrag(event: MouseEvent, trackId: string, currentStartTime: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    this._audioDragging = true;
+    this._audioDragTrackId = trackId;
+    this._audioDragStartX = event.clientX;
+    this._audioDragOriginalStartTime = currentStartTime;
+    this.audioDragTrackId.set(trackId);
+  }
+
+  private handleAudioClipDragMove(event: MouseEvent) {
+    if (!this._audioDragTrackId) return;
+    const deltaX = event.clientX - this._audioDragStartX;
+    const deltaSec = this.snap(deltaX / this.scale());
+    const newStartTime = Math.max(0, this.snap(this._audioDragOriginalStartTime + deltaSec));
+    this.audio.updatePlayerStartTime(this._audioDragTrackId, newStartTime);
+  }
+
+  // ─── Board drag / drop ─────────────────────────────────────────
 
   onDragStart(event: DragEvent, boardId: string, boardIndex: number) {
     this.drag.startDrag(event, boardId, boardIndex);

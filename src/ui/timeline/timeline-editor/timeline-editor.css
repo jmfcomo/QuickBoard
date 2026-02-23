@@ -1,13 +1,23 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .timeline-editor {
   flex: 1;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   position: relative;
+  min-height: 0;
 }
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   height: 8px;
+  width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -25,7 +35,7 @@
 
 .timeline-content {
   position: relative;
-  height: 100%;
+  height: auto;
   min-width: 100%;
 }
 
@@ -328,6 +338,185 @@
 }
 
 .add-board-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
+  background: var(--bg-hover);
+}
+
+/* ─── Audio Tracks ───────────────────────────────────────── */
+.audio-tracks-section {
+  border-top: 1px solid var(--border-default);
+}
+
+.audio-lane {
+  height: 48px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.audio-lane:last-child {
+  border-bottom: none;
+}
+
+.audio-lane-delete {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--overlay-dark-light, rgba(0, 0, 0, 0.3));
+  color: var(--text-on-accent, #fff);
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 4;
+  transition: background 0.15s;
+}
+
+.audio-lane:hover .audio-lane-delete {
+  display: flex;
+}
+
+.audio-lane-delete:hover {
+  background: var(--danger);
+}
+
+.audio-lane-add-row {
+  height: 32px;
+}
+
+.add-audio-lane-btn {
+  background: transparent;
+  border: 1px dashed var(--border-default);
+  color: var(--text-light);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.add-audio-lane-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
+  background: var(--bg-hover);
+}
+
+.audio-lane-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.audio-clip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  background-color: color-mix(in srgb, var(--border-active, #3b82f6) 20%, transparent);
+  border: 1px solid var(--border-active, #3b82f6);
+  border-radius: 4px;
+  cursor: grab;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 22px 0 6px;
+  min-width: 40px;
+  user-select: none;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.audio-clip:hover {
+  background-color: color-mix(in srgb, var(--border-active, #3b82f6) 35%, transparent);
+  box-shadow: 0 0 0 1px var(--border-active, #3b82f6);
+  z-index: 5;
+}
+
+.audio-clip.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  will-change: left;
+  transition: none;
+}
+
+.audio-clip-name {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.audio-clip-delete {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--overlay-dark-light, rgba(0, 0, 0, 0.3));
+  color: var(--text-on-accent, #fff);
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 3;
+  transition: background 0.15s;
+}
+
+.audio-clip:hover .audio-clip-delete {
+  display: flex;
+}
+
+.audio-clip-delete:hover {
+  background: var(--danger);
+}
+
+.add-audio-btn {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 1px dashed var(--border-default);
+  color: var(--text-light);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.add-audio-btn:hover {
   color: var(--text-default);
   border-color: var(--border-darker);
   background: var(--bg-hover);
