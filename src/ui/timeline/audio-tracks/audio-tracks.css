@@ -1,0 +1,258 @@
+:host {
+  display: block;
+}
+
+/* ─── Audio Tracks ───────────────────────────────────────── */
+.audio-tracks-section {
+  border-top: 1px solid var(--border-default);
+}
+
+.audio-lane {
+  height: 48px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.audio-lane:last-child {
+  border-bottom: none;
+}
+
+.audio-lane-delete {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--overlay-dark-light, rgba(0, 0, 0, 0.3));
+  color: var(--text-on-accent, #fff);
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 4;
+  transition: background 0.15s;
+}
+
+.audio-lane:hover .audio-lane-delete {
+  display: flex;
+}
+
+.audio-lane-delete:hover {
+  background: var(--danger);
+}
+
+.audio-lane-add-row {
+  height: 32px;
+}
+
+.add-audio-lane-btn {
+  background: transparent;
+  border: 1px dashed var(--border-default);
+  color: var(--text-light);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.add-audio-lane-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
+  background: var(--bg-hover);
+}
+
+.audio-lane-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  background: transparent;
+}
+
+.audio-lane-clip-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.audio-lane-end-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-default);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.audio-clip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  background-color: color-mix(in srgb, var(--border-active, #3b82f6) 20%, transparent);
+  border: 1px solid var(--border-active, #3b82f6);
+  border-radius: 4px;
+  cursor: grab;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  min-width: 40px;
+  user-select: none;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.audio-clip:hover {
+  background-color: color-mix(in srgb, var(--border-active, #3b82f6) 35%, transparent);
+  box-shadow: 0 0 0 1px var(--border-active, #3b82f6);
+  z-index: 5;
+}
+
+.audio-clip.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  will-change: left;
+  transition: none;
+}
+
+.audio-clip.trimming {
+  z-index: 15;
+  user-select: none;
+  transition: none;
+}
+
+.audio-lane.drag-target .audio-lane-track {
+  background-color: color-mix(in srgb, var(--border-active, #3b82f6) 12%, transparent);
+  outline: 1px dashed var(--border-active, #3b82f6);
+  outline-offset: -1px;
+}
+
+.audio-trim-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 5;
+  transition: background 0.15s;
+}
+
+.audio-trim-handle-left {
+  left: -5px;
+  border-radius: 4px 0 0 4px;
+}
+
+.audio-trim-handle-right {
+  right: -5px;
+  border-radius: 0 4px 4px 0;
+}
+
+.audio-trim-handle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.audio-trim-handle:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.audio-clip-name {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+
+.audio-waveform {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.waveform-path {
+  fill: color-mix(in srgb, var(--border-active, #3b82f6) 45%, transparent);
+  stroke: color-mix(in srgb, var(--border-active, #3b82f6) 80%, transparent);
+  stroke-width: 0.5;
+}
+
+.audio-clip-delete {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: var(--overlay-dark-light, rgba(0, 0, 0, 0.3));
+  color: var(--text-on-accent, #fff);
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.audio-clip-delete:hover {
+  background: var(--danger);
+}
+
+.lane-add-cursor-btn {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-active, #3b82f6);
+  background: var(--bg-body);
+  color: var(--border-active, #3b82f6);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+  pointer-events: auto;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.lane-add-cursor-btn:hover {
+  background: var(--border-active, #3b82f6);
+  color: #fff;
+}

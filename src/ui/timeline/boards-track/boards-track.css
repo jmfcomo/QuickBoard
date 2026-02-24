@@ -1,0 +1,227 @@
+:host {
+  display: block;
+}
+
+.boards-track {
+  position: relative;
+  height: 80px;
+}
+
+/* ─── Board clips ────────────────────────────────────────── */
+.timeline-board {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.timeline-board.dragging {
+  will-change: transform;
+}
+
+.timeline-board:hover {
+  background-color: var(--bg-hover);
+  z-index: 5;
+}
+
+.timeline-board.selected {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--selection-glow);
+  z-index: 10;
+}
+
+.timeline-board.selected .delete-btn {
+  display: flex;
+}
+
+.board-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  background: inherit;
+  pointer-events: none;
+}
+
+.board-preview-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.board-content img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 3px;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* ─── Delete button ──────────────────────────────────────── */
+.delete-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: var(--overlay-dark-light);
+  border: none;
+  color: var(--text-on-accent);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transition: background 0.15s;
+}
+
+.timeline-board:hover .delete-btn {
+  display: flex;
+}
+
+.delete-btn:hover {
+  background: var(--danger);
+}
+
+/* ─── Resize handles ─────────────────────────────────────── */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 4;
+  transition: background-color 0.15s;
+}
+
+.resize-handle-left {
+  left: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.resize-handle-right {
+  right: 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.resize-handle:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.timeline-board.resizing {
+  z-index: 15;
+  user-select: none;
+}
+
+/* ─── Drag and drop states ───────────────────────────────── */
+.timeline-board.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.timeline-board.dragging * {
+  pointer-events: none !important;
+}
+
+.timeline-board.drag-over {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 1px var(--selection-glow);
+  z-index: 12;
+}
+
+.timeline-board.insert-space-before::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 70%;
+  background: var(--border-active);
+  border-radius: 3px;
+  box-shadow:
+    0 0 12px var(--selection-glow),
+    0 0 4px var(--border-active);
+  animation: pulse-indicator 0.3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-indicator {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translateY(-50%) scaleY(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1.05);
+  }
+}
+
+.timeline-board .board-content {
+  cursor: grab;
+  cursor: -webkit-grab;
+}
+
+.timeline-board .board-content:active {
+  cursor: grabbing;
+  cursor: -webkit-grabbing;
+}
+
+/* ─── Add board button ───────────────────────────────────── */
+.add-board-btn {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 72px;
+  background: transparent;
+  color: var(--text-light);
+  border: 1px dashed var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.add-board-icon {
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.add-board-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
+  background: var(--bg-hover);
+}
