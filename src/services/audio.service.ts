@@ -38,7 +38,7 @@ export class AudioService {
           const duration = player.buffer.duration;
 
           player.toDestination();
-          player.sync().start(startTime);
+          player.sync().start(startTime, 0, duration);
           this.players.set(id, player);
           this._fileBuffers.set(id, { buffer: arrayBuffer, fileName: file.name });
 
@@ -69,8 +69,9 @@ export class AudioService {
     if (player) {
       const track = this.store.audioTracks().find((t) => t.id === trackId);
       const trimStart = track?.trimStart ?? 0;
+      const duration = track?.duration;
       player.unsync();
-      player.sync().start(newStartTime, trimStart);
+      player.sync().start(newStartTime, trimStart, duration);
       this.store.updateAudioStartTime(trackId, newStartTime);
     }
   }
@@ -79,7 +80,7 @@ export class AudioService {
     const player = this.players.get(trackId);
     if (player) {
       player.unsync();
-      player.sync().start(startTime, trimStart);
+      player.sync().start(startTime, trimStart, duration);
     }
     this.store.updateAudioTrim(trackId, startTime, duration, trimStart);
   }
@@ -127,11 +128,7 @@ export class AudioService {
   getFileBuffers(): Map<string, { buffer: ArrayBuffer; fileName: string }> {
     return new Map(this._fileBuffers);
   }
-  async loadFromSavedTracks(
-    tracks: AudioTrack[],
-    files: Map<string, Blob>,
-  ): Promise<void> {
-
+  async loadFromSavedTracks(tracks: AudioTrack[], files: Map<string, Blob>): Promise<void> {
     this.players.forEach((p) => p.dispose());
     this.players.clear();
     this._fileBuffers.clear();
@@ -153,7 +150,7 @@ export class AudioService {
               url,
               onload: () => {
                 player.toDestination();
-                player.sync().start(track.startTime, track.trimStart);
+                player.sync().start(track.startTime, track.trimStart, track.duration);
                 this.players.set(track.id, player);
 
                 blob.arrayBuffer().then((buf) => {
