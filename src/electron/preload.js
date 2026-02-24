@@ -34,11 +34,21 @@ contextBridge.exposeInMainWorld('quickboard', {
     try {
       filePath = validateSavePayload(payload);
     } catch (err) {
-      // catch invalid payloads
       console.error('quickboard: rejected invalid save payload', err);
       return;
     }
     ipcRenderer.send('quickboard:save-data', { filePath, data: payload.data });
+  },
+  sendSaveBinary: (payload) => {
+    if (!payload || typeof payload.filePath !== 'string' || !payload.filePath.length) {
+      console.error('quickboard: rejected invalid binary save payload');
+      return;
+    }
+    if (!(payload.data instanceof Uint8Array)) {
+      console.error('quickboard: binary save data must be Uint8Array');
+      return;
+    }
+    ipcRenderer.send('quickboard:save-binary', { filePath: payload.filePath, data: payload.data });
   },
   onThemeChanged: (handler) => {
     const listener = (_event, theme) => handler(theme);

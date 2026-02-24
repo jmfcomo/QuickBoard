@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
-import { AppStore } from '../data/store/app.store';
+import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 
 @Component({
@@ -13,7 +13,7 @@ import { ThemeService } from '../services/theme.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-  private readonly store = inject(AppStore);
+  private readonly sbd = inject(SbdService);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -21,16 +21,25 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (window.quickboard?.onRequestSave) {
-      this.removeRequestSaveListener = window.quickboard.onRequestSave((payload) => {
-        const data = this.store.exportAsJson();
-        window.quickboard?.sendSaveData({ filePath: payload.filePath, data });
+      this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
+        try {
+          const zipData = await this.sbd.buildSbdZip();
+          window.quickboard?.sendSaveBinary({ filePath: payload.filePath, data: zipData });
+        } catch (err) {
+          console.error('Failed to build .sbd file:', err);
+        }
       });
     }
 
     if (window.quickboard?.onLoadData) {
-      this.removeLoadDataListener = window.quickboard.onLoadData((payload) => {
+      this.removeLoadDataListener = window.quickboard.onLoadData(async (payload) => {
         try {
-          this.store.loadFromJson(payload.content);
+          if (payload.isBinary) {
+            await this.sbd.loadSbdZip(payload.content);
+          } else {
+            // Legacy plain-JSON fallback
+            this.sbd.loadLegacyJson(payload.content);
+          }
         } catch (err) {
           console.error('Failed to load data from file:', err);
           const message = err instanceof Error ? err.message : String(err);

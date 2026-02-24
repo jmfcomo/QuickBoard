@@ -111,6 +111,8 @@ export const AppStore = signalStore(
         {
           boards: store.boards(),
           currentBoardId: store.currentBoardId(),
+          audioTracks: store.audioTracks(),
+          audioLaneCount: store.audioLaneCount(),
         },
         null,
         2,
@@ -126,6 +128,8 @@ export const AppStore = signalStore(
         patchState(store, {
           boards: data.boards,
           currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
+          audioTracks: Array.isArray(data.audioTracks) ? data.audioTracks : [],
+          audioLaneCount: typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1,
         });
       } catch (error) {
         console.error('Failed to load JSON:', error);
@@ -153,6 +157,12 @@ export const AppStore = signalStore(
 
     setCurrentTime(time: number) {
       patchState(store, { currentTime: time });
+    },
+
+    updateAudioUrl(trackId: string, url: string) {
+      patchState(store, (state) => ({
+        audioTracks: state.audioTracks.map((t) => (t.id === trackId ? { ...t, url } : t)),
+      }));
     },
 
     addAudioTrack(track: AudioTrack) {

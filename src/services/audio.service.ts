@@ -6,6 +6,7 @@ import * as Tone from 'tone';
 export class AudioService {
   readonly store = inject(AppStore);
   private players = new Map<string, Tone.Player>();
+  private _fileBuffers = new Map<string, { buffer: ArrayBuffer; fileName: string }>();
 
   readonly waveforms = signal<Record<string, number[]>>({});
 
@@ -28,6 +29,8 @@ export class AudioService {
     const url = URL.createObjectURL(file);
     const id = crypto.randomUUID();
 
+    const arrayBuffer = await file.arrayBuffer();
+
     try {
       const player = new Tone.Player({
         url: url,
@@ -35,10 +38,9 @@ export class AudioService {
           const duration = player.buffer.duration;
 
           player.toDestination();
-
           player.sync().start(startTime);
-
           this.players.set(id, player);
+          this._fileBuffers.set(id, { buffer: arrayBuffer, fileName: file.name });
 
           this.waveforms.update((w) => ({ ...w, [id]: this.buildWaveform(player.buffer) }));
 
@@ -93,6 +95,7 @@ export class AudioService {
       this.players.delete(trackId);
       this.store.removeAudioTrack(trackId);
     }
+    this._fileBuffers.delete(trackId);
     this.waveforms.update((w) => {
       const next = { ...w };
       delete next[trackId];
@@ -111,6 +114,7 @@ export class AudioService {
         player.dispose();
         this.players.delete(id);
       }
+      this._fileBuffers.delete(id);
     });
     this.waveforms.update((w) => {
       const next = { ...w };
@@ -118,5 +122,55 @@ export class AudioService {
       return next;
     });
     this.store.removeAudioLane(laneIndex);
+  }
+
+  getFileBuffers(): Map<string, { buffer: ArrayBuffer; fileName: string }> {
+    return new Map(this._fileBuffers);
+  }
+  async loadFromSavedTracks(
+    tracks: AudioTrack[],
+    files: Map<string, Blob>,
+  ): Promise<void> {
+
+    this.players.forEach((p) => p.dispose());
+    this.players.clear();
+    this._fileBuffers.clear();
+    this.waveforms.set({});
+
+    await Promise.all(
+      tracks.map(
+        (track) =>
+          new Promise<void>((resolve) => {
+            const blob = files.get(track.id);
+            if (!blob) {
+              console.warn(`Audio file not found in zip for track ${track.id}`);
+              resolve();
+              return;
+            }
+
+            const url = URL.createObjectURL(blob);
+            const player = new Tone.Player({
+              url,
+              onload: () => {
+                player.toDestination();
+                player.sync().start(track.startTime, track.trimStart);
+                this.players.set(track.id, player);
+
+                blob.arrayBuffer().then((buf) => {
+                  this._fileBuffers.set(track.id, { buffer: buf, fileName: track.name });
+                });
+
+                this.waveforms.update((w) => ({
+                  ...w,
+                  [track.id]: this.buildWaveform(player.buffer),
+                }));
+
+                this.store.updateAudioUrl(track.id, url);
+                resolve();
+              },
+            });
+          }),
+      ),
+    );
   }
 }
