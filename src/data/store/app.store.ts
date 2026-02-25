@@ -22,11 +22,17 @@ export interface AudioTrack {
   laneIndex: number;
 }
 
+export interface AudioLaneMixer {
+  volume: number; // 0–1 linear gain
+  muted: boolean;
+}
+
 interface AppState {
   boards: Board[];
   currentBoardId: string | null;
   audioTracks: AudioTrack[];
   audioLaneCount: number;
+  audioLaneMixers: AudioLaneMixer[];
   isPlaying: boolean;
   currentTime: number; // seconds
 }
@@ -47,6 +53,7 @@ const initialState: AppState = {
   currentBoardId: firstBoardId,
   audioTracks: [],
   audioLaneCount: 1,
+  audioLaneMixers: [{ volume: 1, muted: false }],
   isPlaying: false,
   currentTime: 0,
 };
@@ -113,6 +120,7 @@ export const AppStore = signalStore(
           currentBoardId: store.currentBoardId(),
           audioTracks: store.audioTracks(),
           audioLaneCount: store.audioLaneCount(),
+          audioLaneMixers: store.audioLaneMixers(),
         },
         null,
         2,
@@ -125,11 +133,19 @@ export const AppStore = signalStore(
         if (!data || !Array.isArray(data.boards)) {
           throw new Error('Invalid JSON structure: "boards" array is required');
         }
+        const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
+        const defaultMixers = Array.from({ length: laneCount }, () => ({
+          volume: 1,
+          muted: false,
+        }));
         patchState(store, {
           boards: data.boards,
           currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
           audioTracks: Array.isArray(data.audioTracks) ? data.audioTracks : [],
-          audioLaneCount: typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1,
+          audioLaneCount: laneCount,
+          audioLaneMixers: Array.isArray(data.audioLaneMixers)
+            ? data.audioLaneMixers
+            : defaultMixers,
         });
       } catch (error) {
         console.error('Failed to load JSON:', error);
@@ -195,8 +211,23 @@ export const AppStore = signalStore(
 
     addAudioLane() {
       if (store.audioLaneCount() < 4) {
-        patchState(store, { audioLaneCount: store.audioLaneCount() + 1 });
+        patchState(store, {
+          audioLaneCount: store.audioLaneCount() + 1,
+          audioLaneMixers: [...store.audioLaneMixers(), { volume: 1, muted: false }],
+        });
       }
+    },
+
+    setAudioLaneVolume(laneIndex: number, volume: number) {
+      const mixers = store
+        .audioLaneMixers()
+        .map((m, i) => (i === laneIndex ? { ...m, volume } : m));
+      patchState(store, { audioLaneMixers: mixers });
+    },
+
+    setAudioLaneMuted(laneIndex: number, muted: boolean) {
+      const mixers = store.audioLaneMixers().map((m, i) => (i === laneIndex ? { ...m, muted } : m));
+      patchState(store, { audioLaneMixers: mixers });
     },
 
     updateAudioLane(trackId: string, laneIndex: number) {
@@ -212,6 +243,7 @@ export const AppStore = signalStore(
           .filter((t) => t.laneIndex !== laneIndex)
           .map((t) => (t.laneIndex > laneIndex ? { ...t, laneIndex: t.laneIndex - 1 } : t)),
         audioLaneCount: Math.max(1, state.audioLaneCount - 1),
+        audioLaneMixers: state.audioLaneMixers.filter((_, i) => i !== laneIndex),
       }));
     },
   })),

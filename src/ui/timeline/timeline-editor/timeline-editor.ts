@@ -14,10 +14,11 @@ import { createTimelineData } from '../helpers/timeline.editor.graphics';
 import { PlaybackService } from '../../../services/playback.service';
 import { BoardsTrackComponent } from '../boards-track/boards-track';
 import { AudioTracksComponent } from '../audio-tracks/audio-tracks';
+import { TimelineControlsComponent } from '../timeline-controls/timeline-controls';
 
 @Component({
   selector: 'app-timeline-editor',
-  imports: [BoardsTrackComponent, AudioTracksComponent],
+  imports: [BoardsTrackComponent, AudioTracksComponent, TimelineControlsComponent],
   templateUrl: './timeline-editor.html',
   styleUrl: './timeline-editor.css',
   host: {

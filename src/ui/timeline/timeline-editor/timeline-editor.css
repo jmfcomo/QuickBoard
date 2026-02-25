@@ -6,12 +6,19 @@
   overflow: hidden;
 }
 
-.timeline-editor {
+.timeline-scroll-area {
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
   position: relative;
   min-height: 0;
+}
+
+.timeline-inner {
+  display: flex;
+  flex-direction: row;
+  min-width: fit-content;
+  height: 100%;
 }
 
 /* Custom Scrollbar */
@@ -36,13 +43,12 @@
 .timeline-content {
   position: relative;
   height: auto;
-  min-width: 100%;
 }
 
 /* ─── Ruler ─────────────────────────────────────────────── */
 .timeline-ruler {
   height: 22px;
-  background-color: transparent;
+  background-color: var(--bg-body, #fff);
   border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;

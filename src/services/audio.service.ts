@@ -2,6 +2,9 @@ import { Injectable, inject, signal } from '@angular/core';
 import { AppStore, AudioTrack } from '../data/store/app.store';
 import * as Tone from 'tone';
 
+const DEFAULT_VOLUME = 1;
+const DEFAULT_MUTED = false;
+
 @Injectable({ providedIn: 'root' })
 export class AudioService {
   readonly store = inject(AppStore);
@@ -36,6 +39,9 @@ export class AudioService {
         url: url,
         onload: () => {
           const duration = player.buffer.duration;
+          const mixer = this.store.audioLaneMixers()[laneIndex];
+          player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+          player.mute = mixer?.muted ?? DEFAULT_MUTED;
 
           player.toDestination();
           player.sync().start(startTime, 0, duration);
@@ -125,6 +131,28 @@ export class AudioService {
     this.store.removeAudioLane(laneIndex);
   }
 
+  setLaneVolume(laneIndex: number, volume: number) {
+    const tracks = this.store.audioTracks().filter((t) => t.laneIndex === laneIndex);
+    tracks.forEach((t) => {
+      const player = this.players.get(t.id);
+      if (player) {
+        player.volume.value = Tone.gainToDb(Math.max(0, volume));
+      }
+    });
+    this.store.setAudioLaneVolume(laneIndex, volume);
+  }
+
+  setLaneMuted(laneIndex: number, muted: boolean) {
+    const tracks = this.store.audioTracks().filter((t) => t.laneIndex === laneIndex);
+    tracks.forEach((t) => {
+      const player = this.players.get(t.id);
+      if (player) {
+        player.mute = muted;
+      }
+    });
+    this.store.setAudioLaneMuted(laneIndex, muted);
+  }
+
   getFileBuffers(): Map<string, { buffer: ArrayBuffer; fileName: string }> {
     return new Map(this._fileBuffers);
   }
@@ -149,6 +177,10 @@ export class AudioService {
             const player = new Tone.Player({
               url,
               onload: () => {
+                const mixer = this.store.audioLaneMixers()[track.laneIndex];
+                player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+                player.mute = mixer?.muted ?? DEFAULT_MUTED;
+
                 player.toDestination();
                 player.sync().start(track.startTime, track.trimStart, track.duration);
                 this.players.set(track.id, player);

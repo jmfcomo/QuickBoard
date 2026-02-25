@@ -16,36 +16,6 @@
   border-bottom: none;
 }
 
-.audio-lane-delete {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: none;
-  width: 16px;
-  height: 16px;
-  border: none;
-  background: var(--overlay-dark-light, rgba(0, 0, 0, 0.3));
-  color: var(--text-on-accent, #fff);
-  border-radius: 50%;
-  font-size: 11px;
-  line-height: 1;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  z-index: 4;
-  transition: background 0.15s;
-}
-
-.audio-lane:hover .audio-lane-delete {
-  display: flex;
-}
-
-.audio-lane-delete:hover {
-  background: var(--danger);
-}
-
 .audio-lane-add-row {
   height: 32px;
 }
