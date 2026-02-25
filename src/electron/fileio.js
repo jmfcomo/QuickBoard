@@ -31,12 +31,12 @@ async function init(appInstance) {
 async function requestSaveFromRenderer(win) {
   const documentsDir = _app.getPath('documents');
   const baseDir = lastUsedDir || documentsDir;
-  const defaultPath = path.join(baseDir, 'untitled.json');
+  const defaultPath = path.join(baseDir, 'untitled.sbd');
 
   const { canceled, filePath } = await dialog.showSaveDialog({
     title: 'Save Board',
     defaultPath,
-    filters: [{ name: 'JSON', extensions: ['json'] }],
+    filters: [{ name: 'QuickBoard', extensions: ['sbd'] }],
   });
 
   if (canceled || !filePath) return;
@@ -57,7 +57,7 @@ async function loadBoardIntoRenderer(win) {
     title: 'Load Board',
     defaultPath: baseDir,
     properties: ['openFile'],
-    filters: [{ name: 'JSON', extensions: ['json'] }],
+    filters: [{ name: 'QuickBoard', extensions: ['sbd'] }],
   });
 
   if (canceled || !filePaths || filePaths.length === 0) return;
@@ -65,14 +65,15 @@ async function loadBoardIntoRenderer(win) {
   const filePath = filePaths[0];
 
   try {
-    const content = await fs.readFile(filePath, 'utf-8');
+    const buffer = await fs.readFile(filePath);
+    const content = buffer.toString('base64');
 
     try {
       lastUsedDir = path.dirname(filePath);
       await saveSettings();
     } catch {}
 
-    win.webContents.send('quickboard:load-data', { filePath, content });
+    win.webContents.send('quickboard:load-data', { filePath, content, isBinary: true });
   } catch (err) {
     console.error('Failed to load file:', err);
     const message = err && err.message ? err.message : String(err);
@@ -117,11 +118,64 @@ function registerIpcHandlers() {
       } catch (e) {}
     }
   });
+
+  ipcMain.on('quickboard:save-binary', async (event, payload) => {
+    if (!payload || !payload.filePath || !(payload.data instanceof Uint8Array)) return;
+
+    try {
+      const dir = path.dirname(payload.filePath);
+      if (dir) {
+        lastUsedDir = dir;
+        await saveSettings();
+      }
+    } catch {}
+
+    try {
+      await fs.writeFile(payload.filePath, Buffer.from(payload.data));
+      try {
+        event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
+      } catch (e) {}
+    } catch (err) {
+      console.error('Failed to save binary file:', err);
+      const message = err && err.message ? err.message : String(err);
+      try {
+        dialog.showErrorBox('Save Failed', `Failed to save file:\n${message}`);
+      } catch (e) {}
+      try {
+        event.sender.send('quickboard:save-result', {
+          filePath: payload.filePath,
+          success: false,
+          message,
+        });
+      } catch (e) {}
+    }
+  });
+}
+
+async function loadBoardFromPath(win, filePath) {
+  try {
+    const buffer = await fs.readFile(filePath);
+    const content = buffer.toString('base64');
+
+    try {
+      lastUsedDir = path.dirname(filePath);
+      await saveSettings();
+    } catch {}
+
+    win.webContents.send('quickboard:load-data', { filePath, content, isBinary: true });
+  } catch (err) {
+    console.error('Failed to load file from path:', err);
+    const message = err && err.message ? err.message : String(err);
+    try {
+      dialog.showErrorBox('Load Failed', `Failed to load file:\n${message}`);
+    } catch (e) {}
+  }
 }
 
 module.exports = {
   init,
   requestSaveFromRenderer,
   loadBoardIntoRenderer,
+  loadBoardFromPath,
   registerIpcHandlers,
 };

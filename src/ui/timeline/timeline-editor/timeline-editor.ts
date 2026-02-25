@@ -1,100 +1,84 @@
-import { Component, inject, signal, computed, ViewChild, ElementRef, effect } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  DestroyRef,
+  ElementRef,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
-import { TimelineActions } from '../helpers/timeline.actions';
-import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
 import { PlaybackService } from '../../../services/playback.service';
+import { BoardsTrackComponent } from '../boards-track/boards-track';
+import { AudioTracksComponent } from '../audio-tracks/audio-tracks';
 
 @Component({
   selector: 'app-timeline-editor',
-  imports: [],
+  imports: [BoardsTrackComponent, AudioTracksComponent],
   templateUrl: './timeline-editor.html',
   styleUrl: './timeline-editor.css',
   host: {
-    '(document:mousemove)': 'handleDrag($event)',
-    '(document:mouseup)': 'stopDrag()',
+    '(document:mousemove)': 'onMouseMove($event)',
+    '(document:mouseup)': 'onMouseUp()',
   },
 })
-export class TimelineEditor {
+export class TimelineEditor implements AfterViewInit {
   readonly store = inject(AppStore);
-  readonly actions = inject(TimelineActions);
-  readonly drag = inject(TimelineDrag);
   readonly playback = inject(PlaybackService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
   @ViewChild('scrollContainer') scrollContainer!: ElementRef<HTMLDivElement>;
 
-  readonly MIN_DURATION = 0.5;
-
   scale = signal(40); // pixels per second
+  containerWidth = signal(800);
   isScrubbing = signal(false);
-
-  // Resize state
-  private isResizing = signal(false);
-  resizingBoardId = signal<string | null>(null);
-  private resizeEdge = signal<'left' | 'right' | null>(null);
-  private resizeStartX = 0;
-  private resizeStartDuration = 0;
-  private resizeStartPrevDuration = 0;
-  private resizePrevBoardId: string | null = null;
 
   private wasPlaying = false;
 
-  playheadPosition = computed(() => {
-    const time = this.store.currentTime();
-    return time * this.scale();
-  });
+  playheadPosition = computed(() => this.store.currentTime() * this.scale());
 
-  private readonly _shared = createTimelineData(this.store, this.scale);
-  timelineBoards = this._shared.timelineBoards;
-  totalWidth = this._shared.totalWidth;
-  addButtonLeftPx = this._shared.addButtonLeftPx;
-  rulerTicks = this._shared.rulerTicks;
+  private readonly _data = createTimelineData(this.store, this.scale, this.containerWidth);
+  totalWidth = this._data.totalWidth;
+  rulerTicks = this._data.rulerTicks;
 
   constructor() {
     effect(() => {
       const playheadPos = this.playheadPosition();
       const isPlaying = this.store.isPlaying();
-
       if ((isPlaying || !this.isScrubbing()) && this.scrollContainer?.nativeElement) {
         this.scrollToPlayhead(playheadPos);
       }
     });
   }
 
-  addBoard() {
-    this.actions.addBoard();
-  }
-
-  selectBoard(boardId: string) {
-    this.actions.selectBoard(boardId);
-  }
-
-  deleteBoard(boardId: string) {
-    this.actions.deleteBoard(boardId);
+  ngAfterViewInit() {
+    const el = this.scrollContainer.nativeElement;
+    this.containerWidth.set(el.clientWidth);
+    const observer = new ResizeObserver((entries) => {
+      this.containerWidth.set(entries[0].contentRect.width);
+    });
+    observer.observe(el);
+    this.destroyRef.onDestroy(() => observer.disconnect());
   }
 
   startScrub(event: MouseEvent) {
     event.preventDefault();
-
     this.wasPlaying = this.store.isPlaying();
     if (this.wasPlaying) {
       this.playback.pause();
     }
-
     this.isScrubbing.set(true);
-
     this.seekToMouse(event);
   }
 
-  handleDrag(event: MouseEvent) {
-    if (this.isScrubbing()) {
-      event.preventDefault();
-      this.seekToMouse(event);
-    } else if (this.isResizing()) {
-      event.preventDefault();
-      this.handleResizeDrag(event);
-    }
+  onMouseMove(event: MouseEvent) {
+    if (!this.isScrubbing()) return;
+    event.preventDefault();
+    this.seekToMouse(event);
   }
 
   onRulerClick(event: MouseEvent) {
@@ -102,152 +86,37 @@ export class TimelineEditor {
     this.seekToMouse(event);
   }
 
-  async stopDrag(): Promise<void> {
-    if (this.isScrubbing()) {
-      this.isScrubbing.set(false);
-
-      if (this.wasPlaying) {
-        try {
-          await this.playback.play();
-        } catch (err) {
-          console.error('Failed to resume playback after scrubbing:', err);
-        }
+  async onMouseUp(): Promise<void> {
+    if (!this.isScrubbing()) return;
+    this.isScrubbing.set(false);
+    if (this.wasPlaying) {
+      try {
+        await this.playback.play();
+      } catch (err) {
+        console.error('Failed to resume playback after scrubbing:', err);
       }
-    }
-
-    if (this.isResizing()) {
-      this.isResizing.set(false);
-      this.resizingBoardId.set(null);
-      this.resizeEdge.set(null);
-      this.resizePrevBoardId = null;
-    }
-  }
-
-  startResize(event: MouseEvent, boardId: string, edge: 'left' | 'right') {
-    event.preventDefault();
-    event.stopPropagation();
-
-    this.isResizing.set(true);
-    this.resizingBoardId.set(boardId);
-    this.resizeEdge.set(edge);
-    this.resizeStartX = event.clientX;
-
-    const board = this.store.boards().find((b) => b.id === boardId);
-    this.resizeStartDuration = board?.duration ?? 3;
-
-    if (edge === 'left') {
-      const boards = this.store.boards();
-      const idx = boards.findIndex((b) => b.id === boardId);
-      if (idx > 0) {
-        this.resizePrevBoardId = boards[idx - 1].id;
-        this.resizeStartPrevDuration = boards[idx - 1].duration ?? 3;
-      } else {
-        this.resizePrevBoardId = null;
-        this.resizeStartPrevDuration = 0;
-      }
-    }
-  }
-
-  /** Round to nearest hundredth of a second to avoid floating-point drift. */
-  private snap(value: number): number {
-    return Math.round(value * 100) / 100;
-  }
-
-  private handleResizeDrag(event: MouseEvent) {
-    const deltaX = event.clientX - this.resizeStartX;
-    const deltaSec = this.snap(deltaX / this.scale());
-    const boardId = this.resizingBoardId();
-    if (!boardId) return;
-
-    if (this.resizeEdge() === 'right') {
-      const newDuration = this.snap(
-        Math.max(this.MIN_DURATION, this.resizeStartDuration + deltaSec),
-      );
-      this.store.updateBoardDuration(boardId, newDuration);
-    } else if (this.resizeEdge() === 'left' && this.resizePrevBoardId) {
-      let clampedDelta = deltaSec;
-
-      // Clamp so the previous board doesn't go below minimum
-      if (this.resizeStartPrevDuration + clampedDelta < this.MIN_DURATION) {
-        clampedDelta = this.snap(this.MIN_DURATION - this.resizeStartPrevDuration);
-      }
-      // Clamp so the current board doesn't go below minimum
-      if (this.resizeStartDuration - clampedDelta < this.MIN_DURATION) {
-        clampedDelta = this.snap(this.resizeStartDuration - this.MIN_DURATION);
-      }
-
-      const prevDuration = this.snap(this.resizeStartPrevDuration + clampedDelta);
-      const currDuration = this.snap(this.resizeStartDuration - clampedDelta);
-      this.store.updateBoardDuration(this.resizePrevBoardId, prevDuration);
-      this.store.updateBoardDuration(boardId, currDuration);
     }
   }
 
   private seekToMouse(event: MouseEvent) {
     if (!this.timelineContent?.nativeElement) return;
-
     const rect = this.timelineContent.nativeElement.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const seconds = Math.max(0, x / this.scale());
-
+    const seconds = Math.max(0, (event.clientX - rect.left) / this.scale());
     this.playback.seek(seconds);
   }
 
   private scrollToPlayhead(playheadPos: number) {
     const container = this.scrollContainer?.nativeElement;
     if (!container) return;
-
     const scrollLeft = container.scrollLeft;
     const containerWidth = container.clientWidth;
     const scrollRight = scrollLeft + containerWidth;
-
-    // Add padding so playhead doesn't sit right at the edge (20% from edges)
     const leftPadding = containerWidth * 0.2;
     const rightPadding = containerWidth * 0.2;
-
-    // Check if playhead is out of view or too close to edges
     if (playheadPos < scrollLeft + leftPadding) {
-      // Scroll left to keep playhead visible with padding
       container.scrollLeft = Math.max(0, playheadPos - leftPadding);
     } else if (playheadPos > scrollRight - rightPadding) {
-      // Scroll right to keep playhead visible with padding
       container.scrollLeft = playheadPos - containerWidth + rightPadding;
     }
-  }
-
-  onDragStart(event: DragEvent, boardId: string, boardIndex: number) {
-    this.drag.startDrag(event, boardId, boardIndex);
-  }
-
-  onDragOver(event: DragEvent, boardId: string) {
-    this.drag.handleDragOver(event, boardId);
-  }
-
-  onDragLeave(event: DragEvent) {
-    this.drag.handleDragLeave(event);
-  }
-
-  onTrackDragOver(event: DragEvent) {
-    this.drag.handleTrackDragOver(event);
-  }
-
-  onTrackDrop(event: DragEvent) {
-    this.drag.handleTrackDrop(event);
-  }
-
-  onDrop(event: DragEvent) {
-    this.drag.handleDrop(event);
-  }
-
-  onDragEnd(event: DragEvent) {
-    this.drag.handleDragEnd(event);
-  }
-
-  shouldShowSpaceBefore(boardIndex: number): boolean {
-    return this.drag.shouldShowSpaceBefore(boardIndex);
-  }
-
-  getBoardDragOffset(boardIndex: number): number {
-    return this.drag.getBoardDragOffset(boardIndex);
   }
 }

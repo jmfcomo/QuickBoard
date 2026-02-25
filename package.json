@@ -67,6 +67,15 @@
       "provider": "github",
       "releaseType": "draft"
     },
+    "fileAssociations": [
+      {
+        "ext": "sbd",
+        "name": "QuickBoard Board",
+        "description": "QuickBoard storyboard file",
+        "mimeType": "application/x-quickboard-sbd",
+        "role": "Editor"
+      }
+    ],
     "win": {
       "target": [
         {
@@ -120,7 +129,10 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility",
-      "artifactName": "${name}-${version}.${ext}"
+      "artifactName": "${name}-${version}.${ext}",
+      "mimeTypes": [
+        "application/x-quickboard-sbd"
+      ]
     }
   },
   "dependencies": {

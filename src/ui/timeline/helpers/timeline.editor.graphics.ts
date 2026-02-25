@@ -2,7 +2,11 @@ import { computed, Signal } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { formatTime } from './format-time';
 
-export function createTimelineData(store: InstanceType<typeof AppStore>, scale: Signal<number>) {
+export function createTimelineData(
+  store: InstanceType<typeof AppStore>,
+  scale: Signal<number>,
+  containerWidth: Signal<number>,
+) {
   const timelineBoards = computed(() => {
     let currentTime = 0;
     return store.boards().map((board) => {
@@ -26,7 +30,7 @@ export function createTimelineData(store: InstanceType<typeof AppStore>, scale: 
     const lastBoard = timelineBoards().slice(-1)[0];
     const endSecond = lastBoard ? lastBoard.startTime + lastBoard.duration : 0;
     const s = scale();
-    return Math.max((endSecond + 5) * s, 800);
+    return Math.max((endSecond + 5) * s, containerWidth());
   });
 
   const addButtonLeftPx = computed(() => {

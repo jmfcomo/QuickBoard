@@ -1,11 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const validateSavePayload = (payload) => {
+const validateFilePath = (payload) => {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid payload: must be an object');
-  }
-  if (typeof payload.data !== 'string') {
-    throw new Error('Invalid payload: data must be a string');
   }
   const filePath = payload.filePath ?? payload.path;
   if (typeof filePath !== 'string' || !filePath.length) {
@@ -14,6 +11,14 @@ const validateSavePayload = (payload) => {
   // Prevent directory traversal
   if (filePath.includes('..')) {
     throw new Error('Invalid payload: filePath contains invalid characters');
+  }
+  return filePath;
+};
+
+const validateSavePayload = (payload) => {
+  const filePath = validateFilePath(payload);
+  if (typeof payload.data !== 'string') {
+    throw new Error('Invalid payload: data must be a string');
   }
   return filePath;
 };
@@ -34,11 +39,24 @@ contextBridge.exposeInMainWorld('quickboard', {
     try {
       filePath = validateSavePayload(payload);
     } catch (err) {
-      // catch invalid payloads
       console.error('quickboard: rejected invalid save payload', err);
       return;
     }
     ipcRenderer.send('quickboard:save-data', { filePath, data: payload.data });
+  },
+  sendSaveBinary: (payload) => {
+    let filePath;
+    try {
+      filePath = validateFilePath(payload);
+    } catch (err) {
+      console.error('quickboard: rejected invalid binary save payload', err);
+      return;
+    }
+    if (!(payload.data instanceof Uint8Array)) {
+      console.error('quickboard: binary save data must be Uint8Array');
+      return;
+    }
+    ipcRenderer.send('quickboard:save-binary', { filePath, data: payload.data });
   },
   onThemeChanged: (handler) => {
     const listener = (_event, theme) => handler(theme);
