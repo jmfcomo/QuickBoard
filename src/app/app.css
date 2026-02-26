@@ -33,13 +33,12 @@
 }
 
 .editors app-canvas {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 
 .editors app-script {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-width: 100px;
   overflow: hidden;
 }
@@ -70,18 +69,7 @@ app-timeline {
   margin: 2px 0;
 }
 
-.resize-handle-h {
-  height: 100%;
-  cursor: col-resize;
-  margin: 0 2px;
-}
-
 .dragging-v {
   cursor: row-resize;
-  user-select: none;
-}
-
-.dragging-h {
-  cursor: col-resize;
   user-select: none;
 }

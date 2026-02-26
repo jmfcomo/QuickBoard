@@ -1,8 +1,7 @@
-<div class="app" [class.dragging-v]="isDraggingVertical" [class.dragging-h]="isDraggingHorizontal">
+<div class="app" [class.dragging-v]="isDraggingVertical">
   <div class="editors">
     <app-canvas></app-canvas>
-    <div class="resize-handle resize-handle-h" (mousedown)="onHorizontalDragStart($event)"></div>
-    <app-script [style.width.px]="scriptWidth()"></app-script>
+    <app-script></app-script>
   </div>
   <div class="resize-handle resize-handle-v" (mousedown)="onVerticalDragStart($event)"></div>
   <app-timeline [style.height.px]="timelineHeight()"></app-timeline>

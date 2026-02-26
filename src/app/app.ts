@@ -20,23 +20,17 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
 
   protected readonly timelineHeight = signal(200);
-  protected readonly scriptWidth = signal(250);
   protected isDraggingVertical = false;
-  protected isDraggingHorizontal = false;
-  private activeDragState: {
-    type: 'vertical' | 'horizontal';
+  private verticalDragState: {
     startPos: number;
     startSize: number;
   } | null = null;
 
   private static readonly MIN_TIMELINE_HEIGHT = 60;
   private static readonly MAX_TIMELINE_HEIGHT = 800;
-  private static readonly MIN_SCRIPT_WIDTH = 100;
-  private static readonly MAX_SCRIPT_WIDTH = 600;
 
   onVerticalDragStart(event: MouseEvent): void {
-    this.activeDragState = {
-      type: 'vertical',
+    this.verticalDragState = {
       startPos: event.clientY,
       startSize: this.timelineHeight(),
     };
@@ -44,45 +38,23 @@ export class App implements OnInit, OnDestroy {
     event.preventDefault();
   }
 
-  onHorizontalDragStart(event: MouseEvent): void {
-    this.activeDragState = {
-      type: 'horizontal',
-      startPos: event.clientX,
-      startSize: this.scriptWidth(),
-    };
-    this.isDraggingHorizontal = true;
-    event.preventDefault();
-  }
-
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent): void {
-    if (!this.activeDragState) return;
-    if (this.activeDragState.type === 'vertical') {
-      const newHeight = Math.max(
-        App.MIN_TIMELINE_HEIGHT,
-        Math.min(
-          App.MAX_TIMELINE_HEIGHT,
-          this.activeDragState.startSize + (this.activeDragState.startPos - event.clientY),
-        ),
-      );
-      this.timelineHeight.set(newHeight);
-    } else {
-      const newWidth = Math.max(
-        App.MIN_SCRIPT_WIDTH,
-        Math.min(
-          App.MAX_SCRIPT_WIDTH,
-          this.activeDragState.startSize + (this.activeDragState.startPos - event.clientX),
-        ),
-      );
-      this.scriptWidth.set(newWidth);
-    }
+    if (!this.verticalDragState) return;
+    const newHeight = Math.max(
+      App.MIN_TIMELINE_HEIGHT,
+      Math.min(
+        App.MAX_TIMELINE_HEIGHT,
+        this.verticalDragState.startSize + (this.verticalDragState.startPos - event.clientY),
+      ),
+    );
+    this.timelineHeight.set(newHeight);
   }
 
   @HostListener('document:mouseup')
   onMouseUp(): void {
-    this.activeDragState = null;
+    this.verticalDragState = null;
     this.isDraggingVertical = false;
-    this.isDraggingHorizontal = false;
   }
 
   ngOnInit() {
