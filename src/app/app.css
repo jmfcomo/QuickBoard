@@ -7,6 +7,7 @@
   box-sizing: border-box;
   padding: 8px;
   overflow: hidden;
+  --resize-handle-size: 5px;
 }
 
 .app {
@@ -23,11 +24,12 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 8px;
-  padding: 0 0 8px 0;
+  gap: 0;
+  padding: 0 0 0 0;
   box-sizing: border-box;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   overflow: hidden;
+  min-height: 0;
 }
 
 .editors app-canvas {
@@ -37,15 +39,49 @@
 }
 
 .editors app-script {
-  flex: 0 1 clamp(120px, 20%, 300px);
+  flex: 0 0 auto;
   min-width: 100px;
   overflow: hidden;
 }
 
 app-timeline {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   width: 100%;
   box-sizing: border-box;
-  min-height: 120px;
+  min-height: 60px;
   overflow: hidden;
+}
+
+.resize-handle {
+  flex: 0 0 var(--resize-handle-size);
+  background: var(--border-default);
+  transition: background 0.15s;
+  position: relative;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--accent);
+}
+
+.resize-handle-v {
+  width: 100%;
+  cursor: row-resize;
+  margin: 2px 0;
+}
+
+.resize-handle-h {
+  height: 100%;
+  cursor: col-resize;
+  margin: 0 2px;
+}
+
+.dragging-v {
+  cursor: row-resize;
+  user-select: none;
+}
+
+.dragging-h {
+  cursor: col-resize;
+  user-select: none;
 }
