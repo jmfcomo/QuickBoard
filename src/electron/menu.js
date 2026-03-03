@@ -1,5 +1,4 @@
 const { Menu, nativeTheme } = require('electron');
-import { undoStroke } from '../ui/canvas/canvas/canvas.component';
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
@@ -62,26 +61,23 @@ function buildMenu(app, win, hooks = {}) {
 
   const optionsMenu = {
     label: 'QuickBoard',
-    submenu: [
-      { label: 'Version' },
-      { type: 'separator' },
-      { label: 'About',
-        
-      }
-    ],
+    submenu: [{ label: 'Version' }, { type: 'separator' }, { label: 'About' }],
   };
 
   const undoMenu = {
     label: 'Undo',
     accelerator: 'CmdOrCtrl+Z',
     click: () => {
-      undoStroke();
-    }
+      win.webContents.send('quickboard:undo');
+    },
   };
 
   const redoMenu = {
     label: 'Redo',
-    accelerator: 'CmdOrCtrl+Shift+Z'
+    accelerator: 'CmdOrCtrl+Shift+Z',
+    click: () => {
+      win.webContents.send('quickboard:redo');
+    },
   };
 
   const template = [];
