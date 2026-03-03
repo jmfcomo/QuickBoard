@@ -59,6 +59,27 @@ function buildMenu(app, win, hooks = {}) {
     ],
   };
 
+  const optionsMenu = {
+    label: 'QuickBoard',
+    submenu: [
+      { label: 'Version' },
+      { type: 'separator' },
+      { label: 'About',
+        
+      }
+    ],
+  };
+
+  const undoMenu = {
+    label: 'Undo',
+    accelerator: 'CmdOrCtrl+Z'
+  };
+
+  const redoMenu = {
+    label: 'Redo',
+    accelerator: 'CmdOrCtrl+Shift+Z'
+  };
+
   const template = [];
 
   if (process.platform === 'darwin') {
@@ -69,9 +90,15 @@ function buildMenu(app, win, hooks = {}) {
     });
     template.push(fileMenu);
     template.push(viewMenu);
+    template.push(undoMenu);
+    template.push(redoMenu);
+    template.push(optionsMenu);
   } else {
     template.push(fileMenu);
     template.push(viewMenu);
+    template.push(undoMenu);
+    template.push(redoMenu);
+    template.push(optionsMenu);
     template.push({ role: 'quit' });
   }
 
