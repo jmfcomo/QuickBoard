@@ -23,6 +23,7 @@ const validateSavePayload = (payload) => {
   return filePath;
 };
 
+// works with app ts file and renderer ts file to handle menu requests
 contextBridge.exposeInMainWorld('quickboard', {
   onRequestSave: (handler) => {
     const listener = (_event, payload) => handler(payload);

@@ -15,6 +15,7 @@ export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
+  // for listening to the electron data so that it can be processed in angular
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
