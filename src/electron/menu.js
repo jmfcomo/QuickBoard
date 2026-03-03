@@ -1,4 +1,5 @@
 const { Menu, nativeTheme } = require('electron');
+import { undoStroke } from '../ui/canvas/canvas/canvas.component';
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
@@ -72,7 +73,10 @@ function buildMenu(app, win, hooks = {}) {
 
   const undoMenu = {
     label: 'Undo',
-    accelerator: 'CmdOrCtrl+Z'
+    accelerator: 'CmdOrCtrl+Z',
+    click: () => {
+      undoStroke();
+    }
   };
 
   const redoMenu = {

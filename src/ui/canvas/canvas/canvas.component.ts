@@ -398,6 +398,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  public undoStroke(): void {
+    if(!this.lc) return;
+
+    // undoing last action
+    this.lc.undo();
+  }
+
   public hideTooltip(): void {
     this.clearTimer('tooltipDelay');
     this.tooltipVisible.set(false);
