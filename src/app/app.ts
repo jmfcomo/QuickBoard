@@ -1,8 +1,9 @@
-import { Component, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
 import { SbdService } from './app.sbd.service';
+import { HistoryService } from '../services/history.service';
 import { ThemeService } from '../services/theme.service';
 
 @Component({
@@ -13,8 +14,8 @@ import { ThemeService } from '../services/theme.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-  private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
+  private readonly historyService = inject(HistoryService);
   // for listening to the electron data so that it can be processed in angular
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
@@ -56,13 +57,13 @@ export class App implements OnInit, OnDestroy {
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.canvas()?.undoStroke();
+        this.historyService.undo();
       });
     }
 
     if (window.quickboard?.onRedo) {
       this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.canvas()?.redoStroke();
+        this.historyService.redo();
       });
     }
   }

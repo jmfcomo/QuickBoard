@@ -10,6 +10,7 @@ import {
   PLATFORM_ID,
   effect,
 } from '@angular/core';
+import { HistoryService } from '../../../services/history.service';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
@@ -71,6 +72,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly store = inject(AppStore);
+  private readonly historyService = inject(HistoryService);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
@@ -402,16 +404,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public undoStroke(): void {
-    if (!this.lc) return;
-
-    // undoing last action
-    this.lc.undo();
+    this.historyService.undo();
   }
 
   public redoStroke(): void {
-    if (!this.lc) return;
-
-    this.lc.redo();
+    this.historyService.redo();
   }
 
   public hideTooltip(): void {

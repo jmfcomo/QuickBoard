@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 
-interface Board {
+export interface Board {
   id: string;
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
@@ -245,6 +245,16 @@ export const AppStore = signalStore(
         audioLaneCount: Math.max(1, state.audioLaneCount - 1),
         audioLaneMixers: state.audioLaneMixers.filter((_, i) => i !== laneIndex),
       }));
+    },
+
+    restoreSnapshot(snapshot: {
+      boards: Board[];
+      currentBoardId: string | null;
+      audioTracks: AudioTrack[];
+      audioLaneCount: number;
+      audioLaneMixers: AudioLaneMixer[];
+    }) {
+      patchState(store, snapshot);
     },
   })),
   withComputed((store) => ({
