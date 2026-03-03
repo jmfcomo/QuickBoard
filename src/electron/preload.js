@@ -23,6 +23,7 @@ const validateSavePayload = (payload) => {
   return filePath;
 };
 
+// works with app ts file and renderer ts file to handle menu requests
 contextBridge.exposeInMainWorld('quickboard', {
   onRequestSave: (handler) => {
     const listener = (_event, payload) => handler(payload);
@@ -64,4 +65,14 @@ contextBridge.exposeInMainWorld('quickboard', {
     return () => ipcRenderer.removeListener('quickboard:theme-changed', listener);
   },
   getThemeSource: () => ipcRenderer.invoke('quickboard:get-theme-source'),
+  onUndo: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:undo', listener);
+    return () => ipcRenderer.removeListener('quickboard:undo', listener);
+  },
+  onRedo: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:redo', listener);
+    return () => ipcRenderer.removeListener('quickboard:redo', listener);
+  },
 });

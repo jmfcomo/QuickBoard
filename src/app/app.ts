@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -13,10 +13,14 @@ import { ThemeService } from '../services/theme.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
+  private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
+  // for listening to the electron data so that it can be processed in angular
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
+  private removeUndoListener?: () => void;
+  private removeRedoListener?: () => void;
   private readonly themeService = inject(ThemeService);
 
   ngOnInit() {
@@ -49,11 +53,25 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeThemeListener = this.themeService.initTheme();
+
+    if (window.quickboard?.onUndo) {
+      this.removeUndoListener = window.quickboard.onUndo(() => {
+        this.canvas()?.undoStroke();
+      });
+    }
+
+    if (window.quickboard?.onRedo) {
+      this.removeRedoListener = window.quickboard.onRedo(() => {
+        this.canvas()?.redoStroke();
+      });
+    }
   }
 
   ngOnDestroy() {
     this.removeRequestSaveListener?.();
     this.removeLoadDataListener?.();
     this.removeThemeListener?.();
+    this.removeUndoListener?.();
+    this.removeRedoListener?.();
   }
 }

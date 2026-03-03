@@ -13,6 +13,8 @@ export interface LCTool {
 }
 
 export interface LCInstance {
+  undo(): void;
+  redo(): void;
   setTool(tool: LCTool): void;
   backgroundShapes: unknown[];
   shapes: unknown[];
