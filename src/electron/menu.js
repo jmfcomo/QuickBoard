@@ -64,20 +64,24 @@ function buildMenu(app, win, hooks = {}) {
     submenu: [{ label: 'Version' }, { type: 'separator' }, { label: 'About' }],
   };
 
-  const undoMenu = {
-    label: 'Undo',
-    accelerator: 'CmdOrCtrl+Z',
-    click: () => {
-      win.webContents.send('quickboard:undo');
-    },
-  };
-
-  const redoMenu = {
-    label: 'Redo',
-    accelerator: 'CmdOrCtrl+Shift+Z',
-    click: () => {
-      win.webContents.send('quickboard:redo');
-    },
+  const editMenu = {
+    label: 'Edit',
+    submenu: [
+      {
+        label: 'Undo',
+        accelerator: 'CmdOrCtrl+Z',
+        click: () => {
+          win.webContents.send('quickboard:undo');
+        },
+      },
+      {
+        label: 'Redo',
+        accelerator: 'CmdOrCtrl+Shift+Z',
+        click: () => {
+          win.webContents.send('quickboard:redo');
+        },
+      },
+    ],
   };
 
   const template = [];
@@ -89,15 +93,13 @@ function buildMenu(app, win, hooks = {}) {
       submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }],
     });
     template.push(fileMenu);
+    template.push(editMenu);
     template.push(viewMenu);
-    template.push(undoMenu);
-    template.push(redoMenu);
     template.push(optionsMenu);
   } else {
     template.push(fileMenu);
+    template.push(editMenu);
     template.push(viewMenu);
-    template.push(undoMenu);
-    template.push(redoMenu);
     template.push(optionsMenu);
     template.push({ role: 'quit' });
   }
