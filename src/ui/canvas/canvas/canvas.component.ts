@@ -29,7 +29,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
   private readonly toolSizeMap = signal<Record<string, number>>({
-    pencil: 5, brush: 5, rectangle: 5, eraser: 5,
+    pencil: 5,
+    brush: 5,
+    rectangle: 5,
+    eraser: 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
   readonly colorTolerance = signal<number>(16);
@@ -43,7 +46,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
     { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
-    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' }
+    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
   ];
 
   readonly colorPickers = [
@@ -319,7 +322,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   public setStrokeSize(size: number): void {
     if (isNaN(size) || size < 1) return;
     const value = Math.max(1, Math.round(size));
-    this.toolSizeMap.update(m => ({ ...m, [this.activeTool()]: value }));
+    this.toolSizeMap.update((m) => ({ ...m, [this.activeTool()]: value }));
     if (this.lc?.tool) {
       this.lc.tool.strokeWidth = value;
     }
@@ -399,7 +402,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public undoStroke(): void {
-    if(!this.lc) return;
+    if (!this.lc) return;
 
     // undoing last action
     this.lc.undo();
@@ -415,6 +418,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   private clearTimer(key: 'tooltipDelay' | 'tooltipCooldown'): void {
-    if (this[key] !== null) { clearTimeout(this[key]!); this[key] = null; }
+    if (this[key] !== null) {
+      clearTimeout(this[key]!);
+      this[key] = null;
+    }
   }
 }
