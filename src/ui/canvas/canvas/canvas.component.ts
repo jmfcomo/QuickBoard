@@ -82,6 +82,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
+  // LC-native undo/redo depth tracking.
+  // Incremented on real user drawing, decremented on LC undo, and vice versa for redo.
+  private lcUndoDepth = 0;
+  private lcRedoDepth = 0;
+  // Suppresses lcUndoDepth changes while lc.undo() / lc.redo() is running.
+  private isLcOperationInProgress = false;
+  // Suppresses lcUndoDepth changes while a board snapshot is being loaded.
+  private isLoadingBoard = false;
+
   // Tooltip
   readonly tooltipText = signal('');
   readonly tooltipVisible = signal(false);
@@ -92,6 +101,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private tooltipWarm = false;
 
   constructor() {
+    // Register LC undo/redo handlers with the central HistoryService so that
+    // Ctrl+Z delegates to LC first (canvas strokes), then falls through to
+    // app-level snapshot undo (boards, audio, etc.).
+    this.historyService.registerCanvas({
+      undo: () => this.undoStroke(),
+      redo: () => this.redoStroke(),
+      canUndo: () => this.lcUndoDepth > 0,
+      canRedo: () => this.lcRedoDepth > 0,
+    });
+
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
       const boards = this.store.boards();
@@ -203,7 +222,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
-        // Debounce the canvas data update to avoid excessive store updates
+        // Debounce the canvas data update to avoid excessive store updates.
+        // This runs for ALL drawing changes including LC undo/redo, so the
+        // store always reflects the current LC state.
         if (this.updateCanvasTimeout !== null) {
           clearTimeout(this.updateCanvasTimeout);
         }
@@ -218,6 +239,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           }
           this.updateCanvasTimeout = null;
         }, 300);
+
+        // Only count real user drawing actions — not LC undo/redo callbacks
+        // and not programmatic board loads (loadSnapshot).
+        if (!this.isLcOperationInProgress && !this.isLoadingBoard) {
+          this.lcUndoDepth++;
+          this.lcRedoDepth = 0;
+        }
       }
     });
 
@@ -248,6 +276,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.currentBoardId = boardId;
 
+    // Reset LC undo/redo depth — each board has its own independent canvas history.
+    this.isLoadingBoard = true;
+    this.lcUndoDepth = 0;
+    this.lcRedoDepth = 0;
+
     // Clear canvas
     this.lc.shapes = [];
     this.lc.backgroundShapes = [];
@@ -266,6 +299,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
     this.fitCanvasToContainer();
+
+    this.isLoadingBoard = false;
   }
 
   private observeCanvasResize(): void {
@@ -404,11 +439,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public undoStroke(): void {
-    this.historyService.undo();
+    if (!this.lc) return;
+    this.isLcOperationInProgress = true;
+    this.lc.undo();
+    this.isLcOperationInProgress = false;
+    // Adjust depth counters to stay in sync with LC's internal stack.
+    this.lcUndoDepth = Math.max(0, this.lcUndoDepth - 1);
+    this.lcRedoDepth++;
   }
 
   public redoStroke(): void {
-    this.historyService.redo();
+    if (!this.lc) return;
+    this.isLcOperationInProgress = true;
+    this.lc.redo();
+    this.isLcOperationInProgress = false;
+    this.lcRedoDepth = Math.max(0, this.lcRedoDepth - 1);
+    this.lcUndoDepth++;
   }
 
   public hideTooltip(): void {

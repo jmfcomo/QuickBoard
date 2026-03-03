@@ -10,6 +10,27 @@ interface HistorySnapshot {
   audioLaneMixers: AudioLaneMixer[];
 }
 
+/** Fingerprint shape — canvasData is excluded so canvas strokes don't create entries. */
+interface SnapshotFingerprint {
+  boards: Array<{
+    id: string;
+    scriptData: Board['scriptData'];
+    backgroundColor: string;
+    duration: number;
+  }>;
+  currentBoardId: string | null;
+  audioTracks: AudioTrack[];
+  audioLaneCount: number;
+  audioLaneMixers: AudioLaneMixer[];
+}
+
+export interface CanvasUndoHandlers {
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+}
+
 const MAX_HISTORY = 100;
 const DEBOUNCE_MS = 500;
 const RESTORE_LOCK_MS = 900;
@@ -28,8 +49,11 @@ export class HistoryService {
   private lockTimer: ReturnType<typeof setTimeout> | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly canUndo = () => this.undoStack.length > 0;
-  readonly canRedo = () => this.redoStack.length > 0;
+  // Registered by CanvasComponent so undo/redo can delegate to LC first.
+  private canvas: CanvasUndoHandlers | null = null;
+
+  readonly canUndo = () => this.undoStack.length > 0 || (this.canvas?.canUndo() ?? false);
+  readonly canRedo = () => this.redoStack.length > 0 || (this.canvas?.canRedo() ?? false);
 
   constructor() {
     this.lockTimer = setTimeout(() => {
@@ -62,17 +86,37 @@ export class HistoryService {
       this.debounceTimer = setTimeout(() => {
         this.debounceTimer = null;
         const settled = this.captureSnapshot();
-        this.undoStack.push(beforeState);
-        if (this.undoStack.length > MAX_HISTORY) {
-          this.undoStack.shift();
+
+        // Only push to the undo stack when something OTHER than canvasData changed.
+        // LC owns canvas stroke history; we don't duplicate it here.
+        if (this.fingerprint(settled) !== this.fingerprint(beforeState)) {
+          this.undoStack.push(beforeState);
+          if (this.undoStack.length > MAX_HISTORY) {
+            this.undoStack.shift();
+          }
+          this.redoStack.length = 0;
         }
-        this.redoStack.length = 0;
+
         this.lastSnapshot = settled;
       }, DEBOUNCE_MS);
     });
   }
 
+  /**
+   * Register the canvas component's undo/redo handlers.
+   * HistoryService.undo() will delegate to LC first when LC has history.
+   */
+  registerCanvas(handlers: CanvasUndoHandlers): void {
+    this.canvas = handlers;
+  }
+
   undo(): void {
+    // LiterallyCanvas owns canvas-stroke history — delegate to it first.
+    if (this.canvas?.canUndo()) {
+      this.canvas.undo();
+      return;
+    }
+
     if (this.undoStack.length === 0) return;
 
     if (this.debounceTimer !== null) {
@@ -87,6 +131,12 @@ export class HistoryService {
   }
 
   redo(): void {
+    // LiterallyCanvas owns canvas-stroke history — delegate to it first.
+    if (this.canvas?.canRedo()) {
+      this.canvas.redo();
+      return;
+    }
+
     if (this.redoStack.length === 0) return;
 
     if (this.debounceTimer !== null) {
@@ -110,10 +160,44 @@ export class HistoryService {
     };
   }
 
+  /**
+   * Fingerprint that intentionally omits canvasData and previewUrl.
+   * This means canvas strokes (which only update canvasData) won't trigger
+   * new entries in the app-level undo stack.
+   */
+  private fingerprint(snapshot: HistorySnapshot): string {
+    const fp: SnapshotFingerprint = {
+      boards: snapshot.boards.map(({ id, scriptData, backgroundColor, duration }) => ({
+        id,
+        scriptData,
+        backgroundColor,
+        duration,
+      })),
+      currentBoardId: snapshot.currentBoardId,
+      audioTracks: snapshot.audioTracks,
+      audioLaneCount: snapshot.audioLaneCount,
+      audioLaneMixers: snapshot.audioLaneMixers,
+    };
+    return JSON.stringify(fp);
+  }
+
   private restore(snapshot: HistorySnapshot): void {
     this.acquireLock(RESTORE_LOCK_MS);
-    this.store.restoreSnapshot(snapshot);
-    this.lastSnapshot = snapshot;
+
+    // Preserve the live canvasData for boards that still exist so we don't
+    // clobber LC's own undo history. Boards re-added by undo get null canvas.
+    const currentBoards = this.store.boards();
+    const mergedBoards = snapshot.boards.map((b) => {
+      const live = currentBoards.find((cb) => cb.id === b.id);
+      return {
+        ...b,
+        canvasData: live?.canvasData ?? null,
+        previewUrl: live?.previewUrl ?? b.previewUrl,
+      };
+    });
+
+    this.store.restoreSnapshot({ ...snapshot, boards: mergedBoards });
+    this.lastSnapshot = { ...snapshot, boards: mergedBoards };
   }
 
   private acquireLock(durationMs: number): void {
