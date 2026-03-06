@@ -29,6 +29,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 900,
+    minHeight: 750,
     webPreferences: {
       preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
       contextIsolation: true,
