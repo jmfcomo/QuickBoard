@@ -37,8 +37,8 @@
 }
 
 .editors app-script {
-  flex: 0 1 clamp(120px, 20%, 300px);
-  min-width: 100px;
+  flex: 0 1 clamp(150px, 30vw, 700px);
+  min-width: 120px;
   overflow: hidden;
 }
 
