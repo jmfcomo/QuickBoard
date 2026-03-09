@@ -68,6 +68,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly store = inject(AppStore);
+  private readonly el = inject(ElementRef);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
@@ -76,6 +77,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private lastFitHeight = 0;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -285,15 +287,21 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (!this.lc) return;
 
     const container = this.canvasContainer().nativeElement;
-    const width = container.clientWidth;
     const height = container.clientHeight;
-    if (width <= 0 || height <= 0) return;
+    // Guard: skip if height hasn't changed to avoid ResizeObserver feedback loops
+    // when we set host.style.width below (width change also triggers the observer)
+    if (height <= 0 || height === this.lastFitHeight) return;
+    this.lastFitHeight = height;
 
-    const scale = Math.min(
-      width / this.defaultCanvasSize.width,
-      height / this.defaultCanvasSize.height,
-    );
+    // Pin the host to the exact 16:9 width for this height so the LC container
+    // is never wider than the image, eliminating the gray side-strips.
+    const correctWidth = Math.floor(height * this.defaultCanvasSize.width / this.defaultCanvasSize.height);
+    const host = this.el.nativeElement as HTMLElement;
+    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');
+    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + 8 : 52; // 8 px gap
+    host.style.width = (correctWidth + toolsBarWidth) + 'px';
 
+    const scale = height / this.defaultCanvasSize.height;
     if (!Number.isFinite(scale) || scale <= 0) return;
 
     if (this.lc.respondToSizeChange) {

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -14,6 +14,7 @@ import { ThemeService } from '../services/theme.service';
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
   private readonly sbd = inject(SbdService);
+  private readonly el = inject(ElementRef);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -49,6 +50,29 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeThemeListener = this.themeService.initTheme();
+  }
+
+  onResizeMouseDown(e: MouseEvent) {
+    e.preventDefault();
+    const host = this.el.nativeElement as HTMLElement;
+    const editors = host.querySelector('.editors') as HTMLElement;
+    const app = host.querySelector('.app') as HTMLElement;
+    const startY = e.clientY;
+    const startHeight = editors.getBoundingClientRect().height;
+    const totalHeight = app.getBoundingClientRect().height;
+
+    const onMove = (ev: MouseEvent) => {
+      const newHeight = Math.min(Math.max(startHeight + ev.clientY - startY, 100), totalHeight - 100);
+      host.style.setProperty('--editors-height', newHeight + 'px');
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   }
 
   ngOnDestroy() {
