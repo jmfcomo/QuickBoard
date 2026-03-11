@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -20,9 +20,14 @@ export class App implements OnInit, OnDestroy {
   private readonly canvasAspectRatio = 1920 / 1080;
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
+  private readonly canvas = viewChild(CanvasComponent);
+  private readonly sbd = inject(SbdService);
+  
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
+  private removeUndoListener?: () => void;
+  private removeRedoListener?: () => void;
   private readonly themeService = inject(ThemeService);
   private readonly onWindowResize = () => this.clampEditorsHeightToBounds();
 
@@ -111,6 +116,17 @@ export class App implements OnInit, OnDestroy {
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+    if (window.quickboard?.onUndo) {
+      this.removeUndoListener = window.quickboard.onUndo(() => {
+        this.canvas()?.undoStroke();
+      });
+    }
+
+    if (window.quickboard?.onRedo) {
+      this.removeRedoListener = window.quickboard.onRedo(() => {
+        this.canvas()?.redoStroke();
+      });
+    }
   }
 
   ngOnDestroy() {
@@ -185,5 +201,7 @@ export class App implements OnInit, OnDestroy {
       min: Math.floor(minHeight),
       max: Math.max(Math.floor(minHeight), maxHeight),
     };
+    this.removeUndoListener?.();
+    this.removeRedoListener?.();
   }
 }
