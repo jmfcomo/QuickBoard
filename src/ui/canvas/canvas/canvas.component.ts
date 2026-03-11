@@ -317,11 +317,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Pin the host to the exact 16:9 width for this height so the LC container
     // is never wider than the image, eliminating the gray side-strips.
-    const correctWidth = Math.floor(height * this.defaultCanvasSize.width / this.defaultCanvasSize.height);
-    const host = this.el.nativeElement as HTMLElement;
-    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');
-    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + 8 : 52; // 8 px gap
-    host.style.width = (correctWidth + toolsBarWidth) + 'px';
+    const correctWidth = Math.floor(  
+      (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,  
+    );
+    const host = this.el.nativeElement as HTMLElement;  
+    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');  
+
+    // Derive the horizontal gap from computed styles instead of hard-coding it  
+    const containerStyles = window.getComputedStyle(container);  
+    const gapValue =  
+      containerStyles.columnGap && containerStyles.columnGap !== 'normal'  
+        ? containerStyles.columnGap  
+        : containerStyles.gap;  
+    const gap = Number.parseFloat(gapValue || '0') || 0;  
+
+    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;  
+    host.style.width = correctWidth + toolsBarWidth + 'px';
 
     const scale = height / this.defaultCanvasSize.height;
     if (!Number.isFinite(scale) || scale <= 0) return;
