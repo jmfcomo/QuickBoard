@@ -43,12 +43,12 @@ export class ImageExportService {
       try {
         lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
         lc.setImageSize(1920, 1080);
-        lc.setColor('background', backgroundColor ?? '#ffffff');
         if (canvasData) {
           lc.loadSnapshot(canvasData);
         } else {
           lc.repaintLayer('main');
         }
+        lc.setColor('background', backgroundColor ?? '#ffffff');
         const dataUrl = lc.getImage({ scale }).toDataURL('image/png');
         resolve(dataUrl);
       } catch {
