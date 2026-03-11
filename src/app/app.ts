@@ -83,7 +83,10 @@ export class App implements OnInit, OnDestroy {
     window.requestAnimationFrame(() => this.clampEditorsHeightToBounds());
   }
 
-  onResizeMouseDown(e: MouseEvent) {
+  onResizeMouseDown(e: MouseEvent) {  
+    if (e.button !== 0) {  
+      return;  
+    }
     e.preventDefault();
     const host = this.el.nativeElement as HTMLElement;
     const editors = host.querySelector('.editors') as HTMLElement;
