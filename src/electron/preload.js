@@ -75,4 +75,26 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:redo', listener);
     return () => ipcRenderer.removeListener('quickboard:redo', listener);
   },
+  onRequestPngExport: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('quickboard:request-png-export', listener);
+    return () => ipcRenderer.removeListener('quickboard:request-png-export', listener);
+  },
+  sendPngExportData: (payload) => {
+    if (!payload || typeof payload.dirPath !== 'string' || !Array.isArray(payload.frames)) {
+      console.error('quickboard: invalid PNG export payload');
+      return;
+    }
+    ipcRenderer.send('quickboard:png-export-data', payload);
+  },
+  onPngExportProgress: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('quickboard:png-export-progress', listener);
+    return () => ipcRenderer.removeListener('quickboard:png-export-progress', listener);
+  },
+  onPngExportResult: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('quickboard:png-export-result', listener);
+    return () => ipcRenderer.removeListener('quickboard:png-export-result', listener);
+  },
 });

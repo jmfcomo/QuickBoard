@@ -1,0 +1,33 @@
+@if (visible()) {
+  <div class="overlay">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="export-settings-title">
+      <h3 class="title" id="export-settings-title">Export PNG Sequence</h3>
+      <p class="subtitle">
+        {{ boardCount() }} frame{{ boardCount() !== 1 ? 's' : '' }} will be exported.
+      </p>
+
+      <div class="field">
+        <label class="field-label" for="resolution-select">Resolution</label>
+        <select
+          id="resolution-select"
+          class="resolution-select"
+          [value]="selectedIndex()"
+          (change)="onSelectChange($event)"
+        >
+          @for (res of resolutions; track $index) {
+            <option [value]="$index">{{ res.label }}</option>
+          }
+        </select>
+      </div>
+
+      <p class="resolution-hint">
+        Output: {{ selectedResolution().width }} × {{ selectedResolution().height }} px
+      </p>
+
+      <div class="actions">
+        <button class="btn-cancel" (click)="onCancel()">Cancel</button>
+        <button class="btn-export" (click)="onConfirm()">Export</button>
+      </div>
+    </div>
+  </div>
+}

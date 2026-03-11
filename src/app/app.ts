@@ -2,12 +2,21 @@ import { Component, OnDestroy, OnInit, inject, signal, viewChild } from '@angula
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
+import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
+import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
+import { ExportIpcService } from '../services/export-ipc.service';
 
 @Component({
   selector: 'app-root',
-  imports: [CanvasComponent, ScriptComponent, TimelineComponent],
+  imports: [
+    CanvasComponent,
+    ScriptComponent,
+    TimelineComponent,
+    ExportProgressComponent,
+    ExportSettingsComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -15,13 +24,15 @@ export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
-  // for listening to the electron data so that it can be processed in angular
+  private readonly themeService = inject(ThemeService);
+  protected readonly exportIpc = inject(ExportIpcService);
+
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
-  private readonly themeService = inject(ThemeService);
+  private removeExportIpcListeners?: () => void;
 
   ngOnInit() {
     if (window.quickboard?.onRequestSave) {
@@ -53,6 +64,7 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeThemeListener = this.themeService.initTheme();
+    this.removeExportIpcListeners = this.exportIpc.init();
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
@@ -73,5 +85,6 @@ export class App implements OnInit, OnDestroy {
     this.removeThemeListener?.();
     this.removeUndoListener?.();
     this.removeRedoListener?.();
+    this.removeExportIpcListeners?.();
   }
 }

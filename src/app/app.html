@@ -5,3 +5,20 @@
   </div>
   <app-timeline></app-timeline>
 </div>
+
+<app-export-settings
+  [visible]="exportIpc.settingsVisible()"
+  [boardCount]="exportIpc.settingsBoardCount()"
+  (confirmExport)="exportIpc.onSettingsConfirm($event)"
+  (cancelExport)="exportIpc.onSettingsCancel()"
+/>
+
+<app-export-progress
+  [visible]="exportIpc.exportVisible()"
+  [current]="exportIpc.exportCurrent()"
+  [total]="exportIpc.exportTotal()"
+  [fileName]="exportIpc.exportFileName()"
+  [status]="exportIpc.exportStatus()"
+  [message]="exportIpc.exportMessage()"
+  (dismiss)="exportIpc.exportVisible.set(false)"
+/>
