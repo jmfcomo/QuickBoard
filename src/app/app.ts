@@ -93,24 +93,25 @@ export class App implements OnInit, OnDestroy {
     const app = host.querySelector('.app') as HTMLElement;
     const startY = e.clientY;
     const startHeight = editors.getBoundingClientRect().height;
-    let resizeRafId: number | null = null;
+    const bounds = this.getEditorsHeightBounds();  
+    if (!bounds) {  
+      return;  
+    }  
+    const totalHeight = app.getBoundingClientRect().height;  
+    if (totalHeight <= 0) {  
+      return;  
+    }  
+    let resizeRafId: number | null = null;  
 
-    const applyEditorsHeight = (height: number): void => {
-      const totalHeight = app.getBoundingClientRect().height;
-      if (totalHeight <= 0) return;
-      const heightPercent = (height / totalHeight) * 100;
-      host.style.setProperty('--editors-height', `${heightPercent}%`);
-    };
+    const applyEditorsHeight = (height: number): void => {  
+      const clampedHeight = Math.min(Math.max(height, bounds.min), bounds.max);  
+      const heightPercent = (clampedHeight / totalHeight) * 100;  
+      host.style.setProperty('--editors-height', `${heightPercent}%`);  
+    };  
 
-    const onMove = (ev: MouseEvent) => {
-      const bounds = this.getEditorsHeightBounds();
-      if (!bounds) {
-        return;
-      }
-
-      const rawHeight = startHeight + ev.clientY - startY;
-      const proposedHeight = Math.min(Math.max(rawHeight, bounds.min), bounds.max);
-      applyEditorsHeight(proposedHeight);
+    const onMove = (ev: MouseEvent) => {  
+      const rawHeight = startHeight + ev.clientY - startY;  
+      applyEditorsHeight(rawHeight);
 
       // Mirror app/window scaling behavior by emitting a resize signal.
       if (resizeRafId !== null) {
