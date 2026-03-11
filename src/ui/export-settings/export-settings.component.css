@@ -69,6 +69,66 @@
   color: var(--text-light);
 }
 
+.text-input {
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-panel);
+  color: var(--text-default);
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.text-input:focus {
+  border-color: var(--accent-border);
+}
+
+.path-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.path-display {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.btn-browse {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-default);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.btn-browse:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.btn-browse:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

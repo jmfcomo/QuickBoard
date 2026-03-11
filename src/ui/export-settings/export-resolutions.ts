@@ -5,6 +5,12 @@ export interface ExportResolution {
   height: number;
 }
 
+export interface ExportSettings {
+  resolution: ExportResolution;
+  prefix: string;
+  dirPath: string;
+}
+
 export const EXPORT_RESOLUTIONS: ExportResolution[] = [
   { label: '480 × 270  — Draft', scale: 0.25, width: 480, height: 270 },
   { label: '960 × 540  — SD', scale: 0.5, width: 960, height: 540 },

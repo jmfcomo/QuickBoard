@@ -24,9 +24,37 @@
         Output: {{ selectedResolution().width }} × {{ selectedResolution().height }} px
       </p>
 
+      <div class="field">
+        <label class="field-label" for="prefix-input">File Name Prefix</label>
+        <input
+          id="prefix-input"
+          class="text-input"
+          type="text"
+          [value]="prefix()"
+          (input)="onPrefixChange($event)"
+          placeholder="board"
+          spellcheck="false"
+        />
+        <p class="resolution-hint">Files: {{ prefix().trim() || 'board' }}_001.png, …</p>
+      </div>
+
+      <div class="field">
+        <span class="field-label" id="folder-label">Export Folder</span>
+        <div class="path-row" aria-labelledby="folder-label">
+          <span class="path-display" [title]="dirPath()">{{
+            dirPath() || 'No folder selected'
+          }}</span>
+          <button class="btn-browse" type="button" [disabled]="isBrowsing()" (click)="onBrowse()">
+            Browse…
+          </button>
+        </div>
+      </div>
+
       <div class="actions">
         <button class="btn-cancel" (click)="onCancel()">Cancel</button>
-        <button class="btn-export" (click)="onConfirm()">Export</button>
+        <button class="btn-export" [disabled]="!dirPath() || isBrowsing()" (click)="onConfirm()">
+          Export
+        </button>
       </div>
     </div>
   </div>

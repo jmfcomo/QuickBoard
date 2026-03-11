@@ -19,6 +19,7 @@ export class ExportProgressComponent {
   protected percent = computed(() => {
     const t = this.total();
     if (t === 0) return 0;
-    return Math.round((this.current() / t) * 100);
+    const rawPercent = Math.round((this.current() / t) * 100);
+    return Math.max(0, Math.min(100, rawPercent));
   });
 }

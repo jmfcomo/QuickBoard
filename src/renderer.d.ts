@@ -14,17 +14,15 @@ declare global {
       getThemeSource: () => Promise<'system' | 'light' | 'dark'>;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
-      onRequestPngExport: (handler: (payload: { dirPath: string }) => void) => () => void;
-      sendPngExportData: (payload: {
+      onRequestPngExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
+      pickExportDir: () => Promise<string | null>;
+      sendPngExportFrame: (payload: {
         dirPath: string;
-        frames: { name: string; dataUrl: string }[];
-      }) => void;
-      onPngExportProgress: (
-        handler: (payload: { current: number; total: number; fileName: string }) => void,
-      ) => () => void;
-      onPngExportResult: (
-        handler: (payload: { success: boolean; count?: number; message?: string }) => void,
-      ) => () => void;
+        name: string;
+        buffer: Uint8Array;
+        index: number;
+        total: number;
+      }) => Promise<{ success: boolean; message?: string }>;
     };
   }
 }

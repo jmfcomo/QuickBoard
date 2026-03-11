@@ -55,6 +55,13 @@ export class App implements OnInit, OnDestroy {
             // Legacy plain-JSON fallback
             this.sbd.loadLegacyJson(payload.content);
           }
+          // Derive default export prefix from the opened file's name.
+          const stem =
+            payload.filePath
+              .split(/[\\/]/)
+              .pop()
+              ?.replace(/\.[^.]+$/, '') ?? '';
+          if (stem) this.exportIpc.setProjectName(stem);
         } catch (err) {
           console.error('Failed to load data from file:', err);
           const message = err instanceof Error ? err.message : String(err);

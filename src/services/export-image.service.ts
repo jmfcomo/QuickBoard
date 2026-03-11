@@ -6,20 +6,9 @@ import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 export class ImageExportService {
   readonly store = inject(AppStore);
 
-  collectFramesForElectron(): { name: string; dataUrl: string }[] {
-    const boards = this.store.boards();
-    const padLength = Math.max(3, String(boards.length).length);
-    return boards
-      .map((board, index) => {
-        if (!board.previewUrl?.startsWith('data:image/')) return null;
-        const frameNum = String(index + 1).padStart(padLength, '0');
-        return { name: `board_${frameNum}.png`, dataUrl: board.previewUrl };
-      })
-      .filter((f): f is { name: string; dataUrl: string } => f !== null);
-  }
-
   async renderBoardsAtScale(
     scale: number,
+    prefix: string,
     onProgress?: (current: number, total: number, fileName: string) => void,
   ): Promise<{ name: string; dataUrl: string }[]> {
     const boards = this.store.boards();
@@ -29,7 +18,7 @@ export class ImageExportService {
     for (let index = 0; index < boards.length; index++) {
       const board = boards[index];
       const frameNum = String(index + 1).padStart(padLength, '0');
-      const fileName = `board_${frameNum}.png`;
+      const fileName = `${prefix}_${frameNum}.png`;
 
       const dataUrl = await this.renderSingleBoard(board.canvasData, board.backgroundColor, scale);
       frames.push({ name: fileName, dataUrl });
@@ -84,50 +73,23 @@ export class ImageExportService {
     });
   }
 
-  async exportPngSequence(scale = 1): Promise<void> {
+  async renderBoardsAtScaleStreaming(
+    scale: number,
+    prefix: string,
+    onFrame: (
+      frame: { name: string; dataUrl: string },
+      current: number,
+      total: number,
+    ) => Promise<void>,
+  ): Promise<void> {
     const boards = this.store.boards();
-
-    if (boards.length === 0) {
-      console.warn('No boards available to export.');
-      return;
-    }
-
-    if (!('showDirectoryPicker' in window)) {
-      console.error('Directory selection is not supported in this environment.');
-      alert(
-        'Your browser does not support folder selection. Please use a Chromium-based browser or the native app.',
-      );
-      return;
-    }
-
-    try {
-      const dirHandle = await (
-        window as unknown as {
-          showDirectoryPicker: (options: { mode: string }) => Promise<FileSystemDirectoryHandle>;
-        }
-      ).showDirectoryPicker({
-        mode: 'readwrite',
-      });
-
-      const frames = await this.renderBoardsAtScale(scale);
-
-      for (const frame of frames) {
-        const response = await fetch(frame.dataUrl);
-        const blob = await response.blob();
-
-        const fileHandle = await dirHandle.getFileHandle(frame.name, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      }
-
-      console.log('Successfully exported PNG sequence!');
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Export canceled by user.');
-      } else {
-        console.error('Failed to export PNG sequence:', error);
-      }
+    const padLength = Math.max(3, String(boards.length).length);
+    for (let index = 0; index < boards.length; index++) {
+      const board = boards[index];
+      const frameNum = String(index + 1).padStart(padLength, '0');
+      const fileName = `${prefix}_${frameNum}.png`;
+      const dataUrl = await this.renderSingleBoard(board.canvasData, board.backgroundColor, scale);
+      await onFrame({ name: fileName, dataUrl }, index + 1, boards.length);
     }
   }
 }

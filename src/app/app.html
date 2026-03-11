@@ -9,6 +9,8 @@
 <app-export-settings
   [visible]="exportIpc.settingsVisible()"
   [boardCount]="exportIpc.settingsBoardCount()"
+  [defaultPrefix]="exportIpc.defaultPrefix()"
+  [defaultDirPath]="exportIpc.defaultDirPath()"
   (confirmExport)="exportIpc.onSettingsConfirm($event)"
   (cancelExport)="exportIpc.onSettingsCancel()"
 />
@@ -20,5 +22,5 @@
   [fileName]="exportIpc.exportFileName()"
   [status]="exportIpc.exportStatus()"
   [message]="exportIpc.exportMessage()"
-  (dismiss)="exportIpc.exportVisible.set(false)"
+  (dismiss)="exportIpc.onDismiss()"
 />
