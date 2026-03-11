@@ -30,7 +30,6 @@ export class App implements OnInit, OnDestroy {
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
   private readonly canvas = viewChild(CanvasComponent);
-  private readonly sbd = inject(SbdService);
   private readonly themeService = inject(ThemeService);
   protected readonly exportIpc = inject(ExportIpcService);
   private removeRequestSaveListener?: () => void;
@@ -38,7 +37,6 @@ export class App implements OnInit, OnDestroy {
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
-  private readonly themeService = inject(ThemeService);
   private readonly onWindowResize = () => this.clampEditorsHeightToBounds();
   private removeExportIpcListeners?: () => void;
 
