@@ -33,13 +33,15 @@
   flex: 0 0 5px;
   cursor: row-resize;
   background: transparent;
-  border-top: 2px solid var(--border-default);
+  border: none;
+  border-top: 2px solid transparent;
   margin: 2px 0;
+  padding: 0;
   transition: border-color 0.15s;
 }
 
 .resize-handle:hover {
-  border-top-color: var(--accent);
+  border-top-color: var(--border-default);
 }
 
 .editors app-canvas {
