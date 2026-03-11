@@ -41,6 +41,7 @@ function createWindow() {
   const hooks = {
     onSave: fileio.requestSaveFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
+    onExportPngSequence: exportModule.exportPngSequence,
   };
 
   buildMenu(app, win, hooks);
@@ -57,12 +58,15 @@ function createWindow() {
 }
 
 const fileio = require('./src/electron/fileio');
+const exportModule = require('./src/electron/export');
 fileio.registerIpcHandlers();
+exportModule.registerIpcHandlers();
 
 ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
 
 app.whenReady().then(async () => {
   await fileio.init(app);
+  exportModule.init(app);
   createWindow();
 });
 

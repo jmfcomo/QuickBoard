@@ -2,12 +2,21 @@ import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } f
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
+import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
+import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
+import { ExportIpcService } from '../services/export-ipc.service';
 
 @Component({
   selector: 'app-root',
-  imports: [CanvasComponent, ScriptComponent, TimelineComponent],
+  imports: [
+    CanvasComponent,
+    ScriptComponent,
+    TimelineComponent,
+    ExportProgressComponent,
+    ExportSettingsComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -22,7 +31,8 @@ export class App implements OnInit, OnDestroy {
   private readonly el = inject(ElementRef);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
-  
+  private readonly themeService = inject(ThemeService);
+  protected readonly exportIpc = inject(ExportIpcService);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -30,6 +40,7 @@ export class App implements OnInit, OnDestroy {
   private removeRedoListener?: () => void;
   private readonly themeService = inject(ThemeService);
   private readonly onWindowResize = () => this.clampEditorsHeightToBounds();
+  private removeExportIpcListeners?: () => void;
 
   ngOnInit() {
     if (window.quickboard?.onRequestSave) {
@@ -52,6 +63,13 @@ export class App implements OnInit, OnDestroy {
             // Legacy plain-JSON fallback
             this.sbd.loadLegacyJson(payload.content);
           }
+          // Derive default export prefix from the opened file's name.
+          const stem =
+            payload.filePath
+              .split(/[\\/]/)
+              .pop()
+              ?.replace(/\.[^.]+$/, '') ?? '';
+          if (stem) this.exportIpc.setProjectName(stem);
         } catch (err) {
           console.error('Failed to load data from file:', err);
           const message = err instanceof Error ? err.message : String(err);
@@ -61,6 +79,7 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeThemeListener = this.themeService.initTheme();
+    this.removeExportIpcListeners = this.exportIpc.init();
 
     window.addEventListener('resize', this.onWindowResize);
     window.requestAnimationFrame(() => this.clampEditorsHeightToBounds());
@@ -203,5 +222,6 @@ export class App implements OnInit, OnDestroy {
     };
     this.removeUndoListener?.();
     this.removeRedoListener?.();
+    this.removeExportIpcListeners?.();
   }
 }
