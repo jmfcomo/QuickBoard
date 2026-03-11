@@ -1,0 +1,45 @@
+@if (visible()) {
+  <div class="overlay">
+    <div
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="
+        status() === 'exporting'
+          ? 'Exporting frames'
+          : status() === 'success'
+            ? 'Export complete'
+            : 'Export failed'
+      "
+    >
+      @if (status() === 'exporting') {
+        <h3 class="title">Exporting...</h3>
+        <p class="subtitle">Frame {{ current() }} of {{ total() }}</p>
+        @if (fileName()) {
+          <p class="file-name">{{ fileName() }}</p>
+        }
+        <div
+          class="progress-track"
+          role="progressbar"
+          [attr.aria-valuenow]="percent()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div class="progress-fill" [style.width.%]="percent()"></div>
+        </div>
+        <p class="percent-label">{{ percent() }}%</p>
+      } @else if (status() === 'success') {
+        <div class="status-icon success-icon">✓</div>
+        <h3 class="title">Export Complete</h3>
+        <p class="subtitle">
+          {{ total() }} frame{{ total() !== 1 ? 's' : '' }} saved successfully.
+        </p>
+      } @else {
+        <div class="status-icon error-icon">✕</div>
+        <h3 class="title">Export Failed</h3>
+        <p class="error-message">{{ message() }}</p>
+        <button class="close-btn" (click)="dismiss.emit()">Close</button>
+      }
+    </div>
+  </div>
+}
