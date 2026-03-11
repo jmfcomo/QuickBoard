@@ -77,7 +77,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private resizeRafId: number | null = null;
   private lastFitHeight = 0;
+  private readonly onWindowResize = () => this.scheduleCanvasFit();
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -160,6 +162,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver = null;
     }
 
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+      this.resizeRafId = null;
+    }
+
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('resize', this.onWindowResize);
+    }
+
     // Clear tool instances to release references
     this.toolInstances.clear();
 
@@ -197,6 +208,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // Apply the initial zoom now (synchronously, no rAF needed)
     this.fitCanvasToContainer();
     this.observeCanvasResize();
+    window.addEventListener('resize', this.onWindowResize);
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -272,15 +284,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver.disconnect();
     }
 
-    const container = this.canvasContainer().nativeElement;
+    const host = this.el.nativeElement as HTMLElement;
     this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
-    this.resizeObserver.observe(container);
+    this.resizeObserver.observe(host);
   }
 
   private scheduleCanvasFit(): void {
     if (!this.lc) return;
 
-    window.requestAnimationFrame(() => this.fitCanvasToContainer());
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+    }
+
+    this.resizeRafId = window.requestAnimationFrame(() => {
+      this.resizeRafId = null;
+      this.fitCanvasToContainer();
+    });
   }
 
   private fitCanvasToContainer(): void {
