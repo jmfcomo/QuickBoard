@@ -60,8 +60,28 @@ function buildMenu(app, win, hooks = {}) {
   };
 
   const optionsMenu = {
-    label: 'QuickBoard',
-    submenu: [{ label: 'Version' }, { type: 'separator' }, { label: 'About' }],
+    label: 'Help',
+    submenu: [{ label: 'Version',
+      click: () => {
+        const { dialog } = require('electron');
+        const fs = require('fs');
+        const path = require('path');
+        const appVersion = app.getVersion();
+        const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+        let quickboardVersion = 'unknown';
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+          quickboardVersion = packageJson.version || 'unknown';
+        } catch (err) {
+          // ignore error, fallback to unknown
+        }
+        dialog.showMessageBox(win, {
+          type: 'info',
+          title: 'QuickBoard Version',
+          message: `QuickBoard version ${quickboardVersion}`,
+        });
+      }
+     }, { type: 'separator' }, { label: 'About' }],
   };
 
   const undoMenu = {
