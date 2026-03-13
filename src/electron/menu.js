@@ -78,7 +78,7 @@ function buildMenu(app, win, hooks = {}) {
         dialog.showMessageBox(win, {
           type: 'info',
           title: 'QuickBoard Version',
-          message: `QuickBoard version ${quickboardVersion}`,
+          message: `QuickBoard version ${quickboardVersion} \n Electron version ${appVersion} \n Chrome version ${process.versions.chrome} \n Node.js version ${process.versions.node}`,
         });
       }
      }, { type: 'separator' }, { label: 'About' }],
