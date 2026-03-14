@@ -80,7 +80,26 @@ export class App implements OnInit, OnDestroy {
     this.removeExportIpcListeners = this.exportIpc.init();
 
     window.addEventListener('resize', this.onWindowResize);
-    window.requestAnimationFrame(() => this.clampEditorsHeightToBounds());
+    window.requestAnimationFrame(() => {
+      this.clampEditorsHeightToBounds();
+      this.applyLaunchScaleWorkaround();
+    });
+  }
+
+  private applyLaunchScaleWorkaround(): void {
+    const host = this.el.nativeElement as HTMLElement;
+    const app = host.querySelector('.app') as HTMLElement | null;
+    if (!app) {
+      return;
+    }
+
+    const previousZoom = app.style.zoom;
+    app.style.zoom = '101%';
+
+    window.requestAnimationFrame(() => {
+      app.style.zoom = previousZoom || '100%';
+      window.dispatchEvent(new Event('resize'));
+    });
   }
 
   onResizeMouseDown(e: MouseEvent) {  

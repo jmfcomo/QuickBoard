@@ -208,8 +208,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
 
-    // Apply the initial zoom now (synchronously, no rAF needed)
-    this.fitCanvasToContainer();
+    // Set up resize handling first; the ResizeObserver's initial callback
+    // will drive the first fitCanvasToContainer() after layout has settled,
+    // ensuring LC sees post-reflow container dimensions.
     this.observeCanvasResize();
     window.addEventListener('resize', this.onWindowResize);
 
