@@ -1,4 +1,7 @@
 const { Menu, nativeTheme } = require('electron');
+const { dialog } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
@@ -63,9 +66,6 @@ function buildMenu(app, win, hooks = {}) {
     label: 'Help',
     submenu: [{ label: 'Version',
       click: () => {
-        const { dialog } = require('electron');
-        const fs = require('fs');
-        const path = require('path');
         const appVersion = app.getVersion();
         const packageJsonPath = path.join(app.getAppPath(), 'package.json');
         let quickboardVersion = 'unknown';
@@ -81,7 +81,24 @@ function buildMenu(app, win, hooks = {}) {
           message: `QuickBoard version ${quickboardVersion} \n Electron version ${appVersion} \n Chrome version ${process.versions.chrome} \n Node.js version ${process.versions.node}`,
         });
       }
-     }, { type: 'separator' }, { label: 'About' }],
+     }, { type: 'separator' }, 
+     { label: 'About',
+      click: () => {
+        const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+        let quickboardDesc = 'unknown';
+        try {
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+          quickboardDesc = packageJson.description || 'unknown';
+        } catch (err) {
+          // ignore error, fallback to unknown
+        }
+        dialog.showMessageBox(win, {
+          type: 'info',
+          title: `QuickBoard: ${quickboardDesc}`,
+          message: 'QuickBoard is a simple and efficient whiteboard application built with Electron.\n\nIf you have any questions or feedback, please visit our GitHub repository at https://github.com/jmfcomo/QuickBoard',
+        });
+      },
+    }],   
   };
 
   const undoMenu = {
