@@ -11,6 +11,7 @@
   [boardCount]="exportIpc.settingsBoardCount()"
   [defaultPrefix]="exportIpc.defaultPrefix()"
   [defaultDirPath]="exportIpc.defaultDirPath()"
+  [exportType]="exportIpc.settingsMode()"
   (confirmExport)="exportIpc.onSettingsConfirm($event)"
   (cancelExport)="exportIpc.onSettingsCancel()"
 />

@@ -14,7 +14,11 @@
     >
       @if (status() === 'exporting') {
         <h3 class="title">Exporting...</h3>
-        <p class="subtitle">Frame {{ current() }} of {{ total() }}</p>
+        @if (message()) {
+          <p class="subtitle">{{ message() }}</p>
+        } @else {
+          <p class="subtitle">Frame {{ current() }} of {{ total() }}</p>
+        }
         @if (fileName()) {
           <p class="file-name">{{ fileName() }}</p>
         }

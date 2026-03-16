@@ -14,6 +14,7 @@ export class ExportSettingsComponent {
   boardCount = input<number>(0);
   defaultPrefix = input<string>('board');
   defaultDirPath = input<string>('');
+  exportType = input<'png' | 'video'>('png');
   confirmExport = output<ExportSettings>();
   cancelExport = output<void>();
 
