@@ -92,11 +92,15 @@ export class ExportService {
       total: number,
     ) => Promise<void>,
     mimeType = 'image/png',
+    abortSignal?: AbortSignal,
   ): Promise<void> {
     const boards = this.store.boards();
     const padLength = Math.max(3, String(boards.length).length);
     const ext = mimeType === 'image/jpeg' ? '.jpg' : '.png';
     for (let index = 0; index < boards.length; index++) {
+      if (abortSignal?.aborted) {
+        throw new Error('Export canceled by user.');
+      }
       const board = boards[index];
       const frameNum = String(index + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}${ext}`;
@@ -120,9 +124,6 @@ export class ExportService {
       this.exportProgress.set(Math.round(progress * 100));
     });
 
-    // When running in Electron the page loads from app://localhost, so we can
-    // fetch local assets via that scheme. toBlobURL patches the wasmURL into
-    // ffmpeg-core.js so the WASM module can find its companion file.
     const isElectron = window.location.protocol === 'app:';
     const coreBaseURL = isElectron
       ? 'app://localhost/assets/ffmpeg/core'
@@ -144,12 +145,15 @@ export class ExportService {
     settings: ExportSettings,
     onFrameProgress?: (current: number, total: number, fileName: string) => void,
     onPhaseMessage?: (message: string) => void,
+    onEncodingProgress?: (progress: number) => void,
+    abortSignal?: AbortSignal,
   ): Promise<Uint8Array> {
     const boards = this.store.boards();
     const audioTracks = this.store.audioTracks();
 
     onPhaseMessage?.('Loading video engine...');
     const ffmpeg = await this.loadFFmpeg();
+    if (abortSignal?.aborted) throw new Error('Export canceled by user.');
 
     onPhaseMessage?.('Rendering frames...');
     let concatText = '';
@@ -178,7 +182,11 @@ export class ExportService {
 
         onFrameProgress?.(current, total, frame.name);
       },
+      'image/jpeg',
+      abortSignal,
     );
+
+    if (abortSignal?.aborted) throw new Error('Export canceled by user.');
 
     if (lastFileName) {
       concatText += `file '${lastFileName}'\n`;
@@ -210,6 +218,8 @@ export class ExportService {
         amixInputs += `[a${i}]`;
       }
 
+      if (abortSignal?.aborted) throw new Error('Export canceled by user.');
+
       filterStr += `${amixInputs}amix=inputs=${audioTracks.length}:normalize=0[aout]`;
       ffmpegArgs.push('-filter_complex', filterStr);
       ffmpegArgs.push('-map', '0:v');
@@ -230,7 +240,48 @@ export class ExportService {
     );
 
     onPhaseMessage?.('Encoding video...');
-    await ffmpeg.exec(ffmpegArgs);
+
+    let foundFirstTime = false;
+    const totalDuration = boards.reduce((sum, b) => sum + (b.duration ?? 3), 0);
+    const logHandler = ({ message }: { message: string }) => {
+      const timeMatch = message.match(/time=(\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+      if (timeMatch && totalDuration > 0) {
+        foundFirstTime = true;
+        const hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        const seconds = parseFloat(timeMatch[3]);
+        const currentTime = hours * 3600 + minutes * 60 + seconds;
+        let p = (currentTime / totalDuration) * 100;
+        p = Math.max(0, Math.min(100, Math.round(p)));
+        onEncodingProgress?.(p);
+      } else if (!foundFirstTime && !message.includes('time=')) {
+        // Keep it at 0 until we see the first real time readout
+        onEncodingProgress?.(0);
+      }
+    };
+    ffmpeg.on('log', logHandler);
+
+    // Terminate FFmpeg immediately when the user cancels, without waiting for a log message.
+    const abortHandler = () => {
+      ffmpeg.terminate();
+      this.ffmpeg = null;
+    };
+    abortSignal?.addEventListener('abort', abortHandler, { once: true });
+
+    try {
+      await ffmpeg.exec(ffmpegArgs);
+    } catch (e) {
+      if (abortSignal?.aborted) {
+        throw new Error('Export canceled by user.');
+      }
+      throw e;
+    } finally {
+      ffmpeg.off('log', logHandler);
+      abortSignal?.removeEventListener('abort', abortHandler);
+    }
+
+    if (abortSignal?.aborted) throw new Error('Export canceled by user.');
+    onEncodingProgress?.(100);
 
     onPhaseMessage?.('Saving file...');
     const fileData = await ffmpeg.readFile('output.mp4');

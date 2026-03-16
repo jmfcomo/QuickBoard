@@ -32,6 +32,9 @@
           <div class="progress-fill" [style.width.%]="percent()"></div>
         </div>
         <p class="percent-label">{{ percent() }}%</p>
+        <button class="cancel-btn close-btn" style="margin-top: 1rem" (click)="cancelExport.emit()">
+          Cancel
+        </button>
       } @else if (status() === 'success') {
         <div class="status-icon success-icon">✓</div>
         <h3 class="title">Export Complete</h3>

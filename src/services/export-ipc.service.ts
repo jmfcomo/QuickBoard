@@ -42,6 +42,7 @@ export class ExportIpcService {
   );
   readonly defaultDirPath = computed(() => this._lastExportPath() || this.systemDocumentsPath());
   private successTimeout: ReturnType<typeof setTimeout> | null = null;
+  private abortController: AbortController | null = null;
 
   setProjectName(name: string): void {
     this.projectName.set(name);
@@ -68,15 +69,6 @@ export class ExportIpcService {
           this.settingsBoardCount.set(this.exportService.store.boards().length);
           this.settingsMode.set('video');
           this.settingsVisible.set(true);
-
-          // Debug trigger
-          setTimeout(() => {
-            this.onSettingsConfirm({
-              resolution: { width: 3840, height: 2160, scale: 2, label: '4K' },
-              prefix: 'test4k',
-              dirPath: payload.defaultDirPath ?? '',
-            });
-          }, 1000);
         }),
       );
     }
@@ -113,7 +105,7 @@ export class ExportIpcService {
     this.exportFileName.set('');
     this.exportStatus.set('exporting');
     this.exportVisible.set(true);
-
+    this.abortController = new AbortController();
     try {
       await this.exportService.renderBoardsAtScaleStreaming(
         resolution.scale,
@@ -133,6 +125,8 @@ export class ExportIpcService {
           this.exportCurrent.set(current);
           this.exportFileName.set(frame.name);
         },
+        'image/png',
+        this.abortController.signal,
       );
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
@@ -140,8 +134,14 @@ export class ExportIpcService {
         this.exportVisible.set(false);
       }, 2500);
     } catch (err) {
-      this.exportStatus.set('error');
-      this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      if (this.abortController?.signal.aborted) {
+        this.exportVisible.set(false);
+      } else {
+        this.exportStatus.set('error');
+        this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      this.abortController = null;
     }
   }
 
@@ -165,31 +165,45 @@ export class ExportIpcService {
     }
     this._lastExportPath.set(dirPath);
 
-    const totalFrames = this.exportService.store.boards().length;
-    this.exportTotal.set(totalFrames);
+    this.exportTotal.set(100);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportMessage.set('');
     this.exportStatus.set('exporting');
     this.exportVisible.set(true);
 
+    this.abortController = new AbortController();
+
     try {
       const mp4Bytes = await this.exportService.exportVideoWithSettings(
         settings,
         (current, total, fileName) => {
-          this.exportCurrent.set(current);
-          this.exportTotal.set(total);
+          // Frame rendering: 0–20%
+          this.exportCurrent.set(Math.round((current / total) * 20));
           this.exportFileName.set(fileName);
-          this.exportMessage.set('');
+          this.exportMessage.set('Rendering frames...');
         },
         (message) => {
-          this.exportCurrent.set(totalFrames);
           this.exportMessage.set(message);
           this.exportFileName.set('');
+          if (message === 'Encoding video...') {
+            this.exportCurrent.set(20);
+          } else if (message === 'Processing audio...') {
+            this.exportCurrent.set(20);
+          } else if (message === 'Saving file...') {
+            this.exportCurrent.set(96);
+          }
         },
+        (progress) => {
+          // Encoding: 20–95%
+          this.exportCurrent.set(20 + Math.round(progress * 0.75));
+          this.exportMessage.set('Encoding video...');
+        },
+        this.abortController.signal,
       );
 
       const outputName = `${prefix}.mp4`;
+      this.exportCurrent.set(98);
       const result = await window.quickboard?.sendVideoFile({
         dirPath,
         name: outputName,
@@ -200,15 +214,28 @@ export class ExportIpcService {
         throw new Error(result?.message ?? 'Failed to save video file.');
       }
 
+      this.exportCurrent.set(100);
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
         this.successTimeout = null;
         this.exportVisible.set(false);
       }, 2500);
     } catch (err) {
-      console.error('Video export failed:', err);
-      this.exportStatus.set('error');
-      this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      if (this.abortController?.signal.aborted) {
+        this.exportVisible.set(false);
+      } else {
+        console.error('Video export failed:', err);
+        this.exportStatus.set('error');
+        this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      this.abortController = null;
+    }
+  }
+
+  onCancelExport(): void {
+    if (this.abortController) {
+      this.abortController.abort();
     }
   }
 

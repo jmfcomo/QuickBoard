@@ -15,6 +15,7 @@ export class ExportProgressComponent {
   status = input<'exporting' | 'success' | 'error'>('exporting');
   message = input<string>('');
   dismiss = output<void>();
+  cancelExport = output<void>();
 
   protected percent = computed(() => {
     const t = this.total();
