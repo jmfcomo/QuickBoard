@@ -43,6 +43,7 @@
               }
             ],
             "index": "src/index.html",
+            "allowedCommonJsDependencies": ["jszip", "automation-events"],
             "styles": [
               "src/styles.css",
               "node_modules/literallycanvas/lib/css/literallycanvas.css",
