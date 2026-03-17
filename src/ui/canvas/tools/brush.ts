@@ -42,19 +42,18 @@ function drawSquareLinePath(ctx: CanvasRenderingContext2D, shape: LinePathLikeSh
     return;
   }
 
-  const size = Math.max(1, points[0].size);
-  const half = size / 2;
   const spacingRatio = Math.max(0.1, (shape.spacing ?? 45) / 100);
-  const stepDistance = Math.max(1, size * spacingRatio);
-  ctx.fillStyle = points[0].color;
 
-  const stampSquare = (x: number, y: number): void => {
+  const stampSquare = (x: number, y: number, size: number, color: string): void => {
+    const squareSize = Math.max(1, size);
+    const half = squareSize / 2;
     const px = Math.round(x - half);
     const py = Math.round(y - half);
-    ctx.fillRect(px, py, size, size);
+    ctx.fillStyle = color;
+    ctx.fillRect(px, py, squareSize, squareSize);
   };
 
-  stampSquare(points[0].x, points[0].y);
+  stampSquare(points[0].x, points[0].y, points[0].size, points[0].color);
 
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1];
@@ -62,16 +61,20 @@ function drawSquareLinePath(ctx: CanvasRenderingContext2D, shape: LinePathLikeSh
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
+    const avgSize = (Math.max(1, a.size) + Math.max(1, b.size)) / 2;
+    const stepDistance = Math.max(1, avgSize * spacingRatio);
     const steps = Math.max(1, Math.ceil(distance / stepDistance));
 
     for (let step = 1; step <= steps; step++) {
       const t = step / steps;
-      stampSquare(a.x + dx * t, a.y + dy * t);
+      const size = a.size + (b.size - a.size) * t;
+      const color = t < 0.5 ? a.color : b.color;
+      stampSquare(a.x + dx * t, a.y + dy * t, size, color);
     }
   }
 }
 
-function registerSquareBrushShapeIfNeeded(): void {
+export function ensureSquareBrushShapeRegistered(): void {
   if (squareBrushShapeRegistered) {
     return;
   }
@@ -175,10 +178,29 @@ function registerSquareBrushShapeIfNeeded(): void {
       return '<g />';
     }
 
-    const size = Math.max(1, points[0].size);
-    const color = points[0].color;
-    const pointList = points.map((point) => `${point.x},${point.y}`).join(' ');
-    return `<polyline points='${pointList}' fill='none' stroke='${color}' stroke-width='${size}' stroke-linecap='square' stroke-linejoin='miter' />`;
+    if (points.length === 1) {
+      const size = Math.max(1, points[0].size);
+      const half = size / 2;
+      return `<rect x='${points[0].x - half}' y='${points[0].y - half}' width='${size}' height='${size}' fill='${points[0].color}' />`;
+    }
+
+    const segments = [] as string[];
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i - 1];
+      const b = points[i];
+      segments.push(
+        `<line x1='${a.x}' y1='${a.y}' x2='${b.x}' y2='${b.y}' stroke='${a.color}' stroke-width='${Math.max(1, a.size)}' stroke-linecap='square' stroke-linejoin='miter' />`
+      );
+    }
+
+    const last = points[points.length - 1];
+    const lastSize = Math.max(1, last.size);
+    const lastHalf = lastSize / 2;
+    segments.push(
+      `<rect x='${last.x - lastHalf}' y='${last.y - lastHalf}' width='${lastSize}' height='${lastSize}' fill='${last.color}' />`
+    );
+
+    return `<g>${segments.join('')}</g>`;
   });
 
   squareBrushShapeRegistered = true;
@@ -200,7 +222,7 @@ export class Brush {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_lc: LCInstance) {
-    registerSquareBrushShapeIfNeeded();
+    ensureSquareBrushShapeRegistered();
   }
 
   willBecomeActive(): void {
@@ -222,7 +244,7 @@ export class Brush {
   begin(x: number, y: number, lc: LCInstance): void {
     this.strokeWidth = lc.tool.strokeWidth || 10;
     this.color = lc.getColor('primary');
-    registerSquareBrushShapeIfNeeded();
+    ensureSquareBrushShapeRegistered();
 
     this.currentShape = this.makeShape();
     this.currentShape.addPoint(this.makePoint(x, y));

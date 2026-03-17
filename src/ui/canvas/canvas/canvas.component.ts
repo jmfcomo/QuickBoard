@@ -13,7 +13,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
-import { Brush } from '../../canvas/tools/brush';
+import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
@@ -200,6 +200,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    ensureSquareBrushShapeRegistered();
+
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
     if (currentBoard?.canvasData) {
@@ -261,6 +263,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   private loadBoardData(boardId: string) {
     if (!this.lc) return;
+
+    ensureSquareBrushShapeRegistered();
 
     const boards = this.store.boards();
     const board = boards.find((b) => b.id === boardId);
