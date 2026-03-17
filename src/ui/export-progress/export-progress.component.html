@@ -14,7 +14,11 @@
     >
       @if (status() === 'exporting') {
         <h3 class="title">Exporting...</h3>
-        <p class="subtitle">Frame {{ current() }} of {{ total() }}</p>
+        @if (message()) {
+          <p class="subtitle">{{ message() }}</p>
+        } @else {
+          <p class="subtitle">Frame {{ current() }} of {{ total() }}</p>
+        }
         @if (fileName()) {
           <p class="file-name">{{ fileName() }}</p>
         }
@@ -28,11 +32,14 @@
           <div class="progress-fill" [style.width.%]="percent()"></div>
         </div>
         <p class="percent-label">{{ percent() }}%</p>
+        <button class="cancel-btn close-btn" style="margin-top: 1rem" (click)="cancelExport.emit()">
+          Cancel
+        </button>
       } @else if (status() === 'success') {
         <div class="status-icon success-icon">✓</div>
         <h3 class="title">Export Complete</h3>
         <p class="subtitle">
-          {{ total() }} frame{{ total() !== 1 ? 's' : '' }} saved successfully.
+          {{ frameCount() }} frame{{ frameCount() !== 1 ? 's' : '' }} saved successfully.
         </p>
       } @else {
         <div class="status-icon error-icon">✕</div>

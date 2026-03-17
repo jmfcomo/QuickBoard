@@ -28,6 +28,12 @@ function buildMenu(app, win, hooks = {}) {
               if (typeof hooks.onExportPngSequence === 'function') hooks.onExportPngSequence(win);
             },
           },
+          {
+            label: 'MP4 Video',
+            click: () => {
+              if (typeof hooks.onExportVideo === 'function') hooks.onExportVideo(win);
+            },
+          },
         ],
       },
     ],

@@ -106,4 +106,29 @@ contextBridge.exposeInMainWorld('quickboard', {
     });
   },
   pickExportDir: () => ipcRenderer.invoke('quickboard:pick-export-dir'),
+  onRequestVideoExport: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('quickboard:request-video-export', listener);
+    return () => ipcRenderer.removeListener('quickboard:request-video-export', listener);
+  },
+  sendVideoFile: async (payload) => {
+    if (
+      !payload ||
+      typeof payload.dirPath !== 'string' ||
+      typeof payload.name !== 'string' ||
+      !(payload.buffer instanceof Uint8Array)
+    ) {
+      console.error('quickboard: invalid video file payload');
+      return { success: false, message: 'Invalid payload' };
+    }
+    if (payload.name.includes('..') || payload.name.includes('/') || payload.name.includes('\\')) {
+      console.error('quickboard: rejected video payload with invalid name');
+      return { success: false, message: 'Invalid file name' };
+    }
+    return ipcRenderer.invoke('quickboard:save-video-file', {
+      dirPath: payload.dirPath,
+      name: payload.name,
+      buffer: payload.buffer,
+    });
+  },
 });

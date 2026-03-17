@@ -11,10 +11,12 @@ export class ExportProgressComponent {
   visible = input<boolean>(false);
   current = input<number>(0);
   total = input<number>(0);
+  frameCount = input<number>(0);
   fileName = input<string>('');
   status = input<'exporting' | 'success' | 'error'>('exporting');
   message = input<string>('');
   dismiss = output<void>();
+  cancelExport = output<void>();
 
   protected percent = computed(() => {
     const t = this.total();
