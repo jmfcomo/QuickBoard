@@ -367,6 +367,8 @@ export class ExportService {
     }
 
     return result;
+  }
+
   private sanitizePrefix(prefix: string): string {
     if (!prefix) {
       return 'frame';
