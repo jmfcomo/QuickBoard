@@ -68,7 +68,6 @@
 .app-logo {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #7c23c8-0%, var(--accent));
   background: var(--bg-body);
   border: 2px solid var(--accent-border);
   border-radius: 14px;

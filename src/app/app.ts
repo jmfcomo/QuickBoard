@@ -2,40 +2,40 @@ import { Component, OnDestroy, OnInit, inject, signal, viewChild } from '@angula
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
-import { VersionDialogComponent, AboutDialogComponent } from '../ui/dialogs';
-import type { VersionInfo, AboutInfo } from '../ui/dialogs';
+import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 
 @Component({
   selector: 'app-root',
-  imports: [
-    CanvasComponent,
-    ScriptComponent,
-    TimelineComponent,
-    VersionDialogComponent,
-    AboutDialogComponent,
-  ],
+  host: { '[class.dialog-mode]': 'dialogMode() !== null' },
+  imports: [CanvasComponent, ScriptComponent, TimelineComponent, AboutWindowComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-  protected readonly versionInfo = signal<VersionInfo | null>(null);
-  protected readonly aboutInfo = signal<AboutInfo | null>(null);
+  protected readonly dialogMode = signal<'about' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
-  // for listening to the electron data so that it can be processed in angular
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
-  private removeShowVersionListener?: () => void;
-  private removeShowAboutListener?: () => void;
   private readonly themeService = inject(ThemeService);
 
   ngOnInit() {
+    this.removeThemeListener = this.themeService.initTheme();
+
+    // Check if this window was opened as a dialog by the main process
+    const params = new URLSearchParams(window.location.search);
+    const dialog = params.get('dialog');
+    if (dialog === 'about') {
+      this.dialogMode.set(dialog);
+      return;
+    }
+
     if (window.quickboard?.onRequestSave) {
       this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
         try {
@@ -77,18 +77,6 @@ export class App implements OnInit, OnDestroy {
         this.canvas()?.redoStroke();
       });
     }
-
-    if (window.quickboard?.onShowVersion) {
-      this.removeShowVersionListener = window.quickboard.onShowVersion((data) => {
-        this.versionInfo.set(data);
-      });
-    }
-
-    if (window.quickboard?.onShowAbout) {
-      this.removeShowAboutListener = window.quickboard.onShowAbout((data) => {
-        this.aboutInfo.set(data);
-      });
-    }
   }
 
   ngOnDestroy() {
@@ -97,7 +85,5 @@ export class App implements OnInit, OnDestroy {
     this.removeThemeListener?.();
     this.removeUndoListener?.();
     this.removeRedoListener?.();
-    this.removeShowVersionListener?.();
-    this.removeShowAboutListener?.();
   }
 }

@@ -1,15 +1,11 @@
-<div class="app">
-  <div class="editors">
-    <app-canvas></app-canvas>
-    <app-script></app-script>
+@if (!dialogMode()) {
+  <div class="app">
+    <div class="editors">
+      <app-canvas></app-canvas>
+      <app-script></app-script>
+    </div>
+    <app-timeline></app-timeline>
   </div>
-  <app-timeline></app-timeline>
-</div>
-
-@if (versionInfo()) {
-  <app-version-dialog [info]="versionInfo()!" (close)="versionInfo.set(null)" />
-}
-
-@if (aboutInfo()) {
-  <app-about-dialog [info]="aboutInfo()!" (close)="aboutInfo.set(null)" />
+} @else if (dialogMode() === 'about') {
+  <app-about-window />
 }

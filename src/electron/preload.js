@@ -75,14 +75,4 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:redo', listener);
     return () => ipcRenderer.removeListener('quickboard:redo', listener);
   },
-  onShowVersion: (handler) => {
-    const listener = (_event, data) => handler(data);
-    ipcRenderer.on('quickboard:show-version', listener);
-    return () => ipcRenderer.removeListener('quickboard:show-version', listener);
-  },
-  onShowAbout: (handler) => {
-    const listener = (_event, data) => handler(data);
-    ipcRenderer.on('quickboard:show-about', listener);
-    return () => ipcRenderer.removeListener('quickboard:show-about', listener);
-  },
 });
