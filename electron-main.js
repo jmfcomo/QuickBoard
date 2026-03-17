@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
+const appSettings = require('./src/electron/config/appsettings.json');
 
 let pendingFilePath = null;
 
@@ -27,10 +28,7 @@ function getArgvFilePath() {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 900,
-    minHeight: 750,
+    ...appSettings.window,
     webPreferences: {
       preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
       contextIsolation: true,
