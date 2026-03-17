@@ -166,10 +166,11 @@ export class ExportService {
     let concatText = '';
     let lastFileName = '';
     const writtenFrames: string[] = [];
+    const safePrefix = this.sanitizePrefix(settings.prefix);
 
     await this.renderBoardsAtScaleStreaming(
       settings.resolution.scale,
-      settings.prefix,
+      safePrefix,
       async (frame, current, total) => {
         // Convert data URL to raw bytes for the FFmpeg virtual FS
         const base64 = frame.dataUrl.slice(frame.dataUrl.indexOf(',') + 1);
@@ -306,5 +307,12 @@ export class ExportService {
     }
 
     return result;
+  private sanitizePrefix(prefix: string): string {
+    if (!prefix) {
+      return 'frame';
+    }
+
+    // Disallow quotes, newlines, and path separators which can break concat.txt
+    return prefix.replace(/['"\r\n/\\]/g, '_');
   }
 }
