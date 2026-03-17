@@ -127,13 +127,13 @@ export class ExportService {
     const isElectron = window.location.protocol === 'app:';
     const coreBaseURL = isElectron
       ? 'app://localhost/assets/ffmpeg/core'
-      : 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+      : '/assets/ffmpeg/core';
 
     const coreURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'application/javascript');
     const wasmURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm');
     const classWorkerURL = isElectron
       ? 'app://localhost/assets/ffmpeg/worker/worker.js'
-      : undefined;
+      : '/assets/ffmpeg/worker/worker.js';
 
     await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
 
@@ -212,17 +212,77 @@ export class ExportService {
 
       for (let i = 0; i < audioTracks.length; i++) {
         const track = audioTracks[i];
-        const audioFileName = `audio_${i}.mp3`;
 
         const response = await fetch(track.url);
         const blob = await response.blob();
+
+        let audioExtension = 'mp3';
+        if (typeof track.url === 'string') {
+          const urlExtMatch = track.url.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+          if (urlExtMatch && urlExtMatch[1]) {
+            audioExtension = urlExtMatch[1].toLowerCase();
+          }
+        }
+
+        if ((!audioExtension || audioExtension === 'mp3') && blob.type && blob.type.startsWith('audio/')) {
+          const mimeSubtype = blob.type.split('/')[1]?.split(';')[0]?.toLowerCase();
+          if (mimeSubtype) {
+            switch (mimeSubtype) {
+              case 'mpeg':
+                audioExtension = 'mp3';
+                break;
+              case 'x-wav':
+              case 'wav':
+                audioExtension = 'wav';
+                break;
+              case 'ogg':
+                audioExtension = 'ogg';
+                break;
+              case 'webm':
+                audioExtension = 'webm';
+                break;
+              case 'aac':
+                audioExtension = 'aac';
+                break;
+              default:
+                audioExtension = mimeSubtype;
+                break;
+            }
+          }
+        }
+
+        const audioFileName = `audio_${i}.${audioExtension}`;
         await ffmpeg.writeFile(audioFileName, await fetchFile(blob));
         writtenAudio.push(audioFileName);
 
         ffmpegArgs.push('-i', audioFileName);
 
         const delayMs = Math.floor(track.startTime * 1000);
-        filterStr += `[${i + 1}:a]adelay=${delayMs}|${delayMs}[a${i}];`;
+
+        const trimStart =
+          typeof (track as any).trimStart === 'number' ? Math.max(0, (track as any).trimStart) : 0;
+        const hasTrimStart = typeof (track as any).trimStart === 'number' && trimStart > 0;
+        const hasDuration = typeof (track as any).duration === 'number' && (track as any).duration > 0;
+
+        if (hasTrimStart || hasDuration) {
+          let filterChain = `[${i + 1}:a]atrim=`;
+
+          if (hasTrimStart) {
+            filterChain += `start=${trimStart}`;
+          } else {
+            filterChain += 'start=0';
+          }
+
+          if (hasDuration) {
+            filterChain += `:duration=${(track as any).duration}`;
+          }
+
+          filterChain += `,asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a${i}];`;
+          filterStr += filterChain;
+        } else {
+          filterStr += `[${i + 1}:a]adelay=${delayMs}|${delayMs}[a${i}];`;
+        }
+
         amixInputs += `[a${i}]`;
       }
 

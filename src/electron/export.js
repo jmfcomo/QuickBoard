@@ -8,6 +8,27 @@ function init(appInstance) {
   _app = appInstance;
 }
 
+function isValidIpcBuffer(value) {
+  return (
+    Buffer.isBuffer(value) ||
+    value instanceof Uint8Array ||
+    value instanceof ArrayBuffer
+  );
+}
+
+function toBufferFromIpc(value) {
+  if (Buffer.isBuffer(value)) {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value);
+  }
+  if (value instanceof ArrayBuffer) {
+    return Buffer.from(value);
+  }
+  throw new TypeError('Invalid buffer type');
+}
+
 async function exportPngSequence(win) {
   const defaultDirPath = _app.getPath('documents');
   win.webContents.send('quickboard:request-png-export', { defaultDirPath });
@@ -27,10 +48,13 @@ function registerIpcHandlers() {
     if (!safeName || safeName !== payload.name) {
       return { success: false, message: 'Invalid file name' };
     }
+    if (!isValidIpcBuffer(payload.buffer)) {
+      return { success: false, message: 'Invalid buffer' };
+    }
     try {
       await fs.mkdir(payload.dirPath, { recursive: true });
       const filePath = path.join(payload.dirPath, safeName);
-      const buffer = Buffer.isBuffer(payload.buffer) ? payload.buffer : Buffer.from(payload.buffer);
+      const buffer = toBufferFromIpc(payload.buffer);
       await fs.writeFile(filePath, buffer);
       return { success: true };
     } catch (err) {
@@ -62,6 +86,9 @@ function registerIpcHandlers() {
     ) {
       return { success: false, message: 'Invalid payload' };
     }
+    if (!isValidIpcBuffer(payload.buffer)) {
+      return { success: false, message: 'Invalid buffer' };
+    }
     // Prevent path traversal: accept only the basename
     const safeName = path.basename(payload.name);
     if (!safeName || safeName !== payload.name) {
@@ -70,7 +97,7 @@ function registerIpcHandlers() {
     try {
       await fs.mkdir(payload.dirPath, { recursive: true });
       const filePath = path.join(payload.dirPath, safeName);
-      const buffer = Buffer.isBuffer(payload.buffer) ? payload.buffer : Buffer.from(payload.buffer);
+      const buffer = toBufferFromIpc(payload.buffer);
       await fs.writeFile(filePath, buffer);
       return { success: true };
     } catch (err) {
