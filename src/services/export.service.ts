@@ -4,6 +4,7 @@ import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
+import type { AudioTrack } from '../data';
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
@@ -125,9 +126,7 @@ export class ExportService {
     });
 
     const isElectron = window.location.protocol === 'app:';
-    const coreBaseURL = isElectron
-      ? 'app://localhost/assets/ffmpeg/core'
-      : '/assets/ffmpeg/core';
+    const coreBaseURL = isElectron ? 'app://localhost/assets/ffmpeg/core' : '/assets/ffmpeg/core';
 
     const coreURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'application/javascript');
     const wasmURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm');
@@ -211,20 +210,22 @@ export class ExportService {
       let amixInputs = '';
 
       for (let i = 0; i < audioTracks.length; i++) {
-        const track = audioTracks[i];
+        const track: AudioTrack = audioTracks[i];
 
         const response = await fetch(track.url);
         const blob = await response.blob();
 
         let audioExtension = 'mp3';
-        if (typeof track.url === 'string') {
-          const urlExtMatch = track.url.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
-          if (urlExtMatch && urlExtMatch[1]) {
-            audioExtension = urlExtMatch[1].toLowerCase();
-          }
+        const urlExtMatch = track.url.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+        if (urlExtMatch && urlExtMatch[1]) {
+          audioExtension = urlExtMatch[1].toLowerCase();
         }
 
-        if ((!audioExtension || audioExtension === 'mp3') && blob.type && blob.type.startsWith('audio/')) {
+        if (
+          (!audioExtension || audioExtension === 'mp3') &&
+          blob.type &&
+          blob.type.startsWith('audio/')
+        ) {
           const mimeSubtype = blob.type.split('/')[1]?.split(';')[0]?.toLowerCase();
           if (mimeSubtype) {
             switch (mimeSubtype) {
@@ -258,11 +259,9 @@ export class ExportService {
         ffmpegArgs.push('-i', audioFileName);
 
         const delayMs = Math.floor(track.startTime * 1000);
-
-        const trimStart =
-          typeof (track as any).trimStart === 'number' ? Math.max(0, (track as any).trimStart) : 0;
-        const hasTrimStart = typeof (track as any).trimStart === 'number' && trimStart > 0;
-        const hasDuration = typeof (track as any).duration === 'number' && (track as any).duration > 0;
+        const trimStart = Math.max(0, track.trimStart);
+        const hasTrimStart = trimStart > 0;
+        const hasDuration = track.duration > 0;
 
         if (hasTrimStart || hasDuration) {
           let filterChain = `[${i + 1}:a]atrim=`;
@@ -274,7 +273,7 @@ export class ExportService {
           }
 
           if (hasDuration) {
-            filterChain += `:duration=${(track as any).duration}`;
+            filterChain += `:duration=${track.duration}`;
           }
 
           filterChain += `,asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a${i}];`;
@@ -323,13 +322,11 @@ export class ExportService {
         p = Math.max(0, Math.min(100, Math.round(p)));
         onEncodingProgress?.(p);
       } else if (!foundFirstTime && !message.includes('time=')) {
-        // Keep it at 0 until we see the first real time readout
         onEncodingProgress?.(0);
       }
     };
     ffmpeg.on('log', logHandler);
 
-    // Terminate FFmpeg immediately when the user cancels, without waiting for a log message.
     const abortHandler = () => {
       ffmpeg.terminate();
       this.ffmpeg = null;
@@ -373,8 +370,6 @@ export class ExportService {
     if (!prefix) {
       return 'frame';
     }
-
-    // Disallow quotes, newlines, and path separators which can break concat.txt
     return prefix.replace(/['"\r\n/\\]/g, '_');
   }
 }

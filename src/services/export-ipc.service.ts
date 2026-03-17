@@ -24,6 +24,7 @@ export class ExportIpcService {
   readonly exportStatus = signal<'exporting' | 'success' | 'error'>('exporting');
   readonly exportCurrent = signal(0);
   readonly exportTotal = signal(0);
+  readonly exportFrameCount = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -101,6 +102,7 @@ export class ExportIpcService {
     this._lastExportPath.set(dirPath);
 
     this.exportTotal.set(this.exportService.store.boards().length);
+    this.exportFrameCount.set(this.exportService.store.boards().length);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportStatus.set('exporting');
@@ -166,6 +168,7 @@ export class ExportIpcService {
     this._lastExportPath.set(dirPath);
 
     this.exportTotal.set(100);
+    this.exportFrameCount.set(this.exportService.store.boards().length);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportMessage.set('');
