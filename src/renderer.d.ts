@@ -14,6 +14,15 @@ declare global {
       getThemeSource: () => Promise<'system' | 'light' | 'dark'>;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
+      onShowVersion: (
+        handler: (data: {
+          quickboardVersion: string;
+          appVersion: string;
+          chromeVersion: string;
+          nodeVersion: string;
+        }) => void,
+      ) => () => void;
+      onShowAbout: (handler: (data: { description: string }) => void) => () => void;
     };
   }
 }
