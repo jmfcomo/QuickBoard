@@ -13,7 +13,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
-import { Brush } from '../../canvas/tools/brush';
+import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
@@ -35,6 +35,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     eraser: 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
+  readonly brushSpacing = signal<number>(45);
   readonly colorTolerance = signal<number>(16);
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
@@ -199,6 +200,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    ensureSquareBrushShapeRegistered();
+
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
     if (currentBoard?.canvasData) {
@@ -242,6 +245,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
+    const brushTool = this.toolInstances.get('brush') as Brush | undefined;
+    if (brushTool) {
+      brushTool.spacing = this.brushSpacing();
+    }
+
     // Apply default stroke size to all tools that support it; object-eraser is fixed at 1
     this.toolInstances.forEach((tool, id) => {
       if (tool.strokeWidth !== undefined) {
@@ -255,6 +263,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   private loadBoardData(boardId: string) {
     if (!this.lc) return;
+
+    ensureSquareBrushShapeRegistered();
 
     const boards = this.store.boards();
     const board = boards.find((b) => b.id === boardId);
@@ -353,8 +363,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
         tool.strokeWidth = this.toolSizeMap()[toolId] ?? 5;
       }
+      if (toolId === 'brush') {
+        (tool as Brush).spacing = this.brushSpacing();
+      }
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
+    }
+  }
+
+  public setBrushSpacing(spacing: number): void {
+    if (isNaN(spacing)) return;
+    const clamped = Math.max(10, Math.min(200, Math.round(spacing)));
+    this.brushSpacing.set(clamped);
+
+    const brushTool = this.toolInstances.get('brush') as Brush | undefined;
+    if (brushTool) {
+      brushTool.spacing = clamped;
     }
   }
 
