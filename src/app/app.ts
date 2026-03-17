@@ -19,7 +19,7 @@ import { WindowScalingService } from '../services/window-scaling.service';
     TimelineComponent,
     ExportProgressComponent,
     ExportSettingsComponent,
-    AboutWindowComponent
+    AboutWindowComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -29,9 +29,7 @@ export class App implements OnInit, OnDestroy {
   protected readonly dialogMode = signal<'about' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
-  private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
-  private readonly canvas = viewChild(CanvasComponent);
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
@@ -43,7 +41,7 @@ export class App implements OnInit, OnDestroy {
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();
 
     // Check if this window was opened as a dialog by the main process
@@ -54,7 +52,6 @@ export class App implements OnInit, OnDestroy {
       return;
     }
 
-  ngOnInit(): void {
     if (window.quickboard?.onRequestSave) {
       this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
         try {
@@ -90,7 +87,6 @@ export class App implements OnInit, OnDestroy {
       });
     }
 
-    this.removeThemeListener = this.themeService.initTheme();
     this.removeExportIpcListeners = this.exportIpc.init();
 
     if (window.quickboard?.onUndo) {
