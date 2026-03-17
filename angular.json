@@ -30,9 +30,20 @@
                 "glob": "**/*",
                 "input": "node_modules/@fortawesome/fontawesome-free/webfonts",
                 "output": "assets/webfonts"
+              },
+              {
+                "glob": "*.{js,wasm}",
+                "input": "node_modules/@ffmpeg/core/dist/esm",
+                "output": "assets/ffmpeg/core"
+              },
+              {
+                "glob": "*.js",
+                "input": "node_modules/@ffmpeg/ffmpeg/dist/esm",
+                "output": "assets/ffmpeg/worker"
               }
             ],
             "index": "src/index.html",
+            "allowedCommonJsDependencies": ["jszip", "automation-events"],
             "styles": [
               "src/styles.css",
               "node_modules/literallycanvas/lib/css/literallycanvas.css",

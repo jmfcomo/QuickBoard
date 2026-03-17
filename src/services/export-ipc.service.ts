@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { ImageExportService } from './export-image.service';
+import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
@@ -14,8 +14,9 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 
 @Injectable({ providedIn: 'root' })
 export class ExportIpcService {
-  private readonly imageExport = inject(ImageExportService);
+  private readonly exportService = inject(ExportService);
 
+  readonly settingsMode = signal<'png' | 'video'>('png');
   readonly settingsVisible = signal(false);
   readonly settingsBoardCount = signal(0);
 
@@ -23,6 +24,7 @@ export class ExportIpcService {
   readonly exportStatus = signal<'exporting' | 'success' | 'error'>('exporting');
   readonly exportCurrent = signal(0);
   readonly exportTotal = signal(0);
+  readonly exportFrameCount = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -40,8 +42,8 @@ export class ExportIpcService {
     })(),
   );
   readonly defaultDirPath = computed(() => this._lastExportPath() || this.systemDocumentsPath());
-
   private successTimeout: ReturnType<typeof setTimeout> | null = null;
+  private abortController: AbortController | null = null;
 
   setProjectName(name: string): void {
     this.projectName.set(name);
@@ -54,7 +56,19 @@ export class ExportIpcService {
       cleanups.push(
         window.quickboard.onRequestPngExport((payload) => {
           this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
-          this.settingsBoardCount.set(this.imageExport.store.boards().length);
+          this.settingsBoardCount.set(this.exportService.store.boards().length);
+          this.settingsMode.set('png');
+          this.settingsVisible.set(true);
+        }),
+      );
+    }
+
+    if (window.quickboard?.onRequestVideoExport) {
+      cleanups.push(
+        window.quickboard.onRequestVideoExport((payload) => {
+          this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
+          this.settingsBoardCount.set(this.exportService.store.boards().length);
+          this.settingsMode.set('video');
           this.settingsVisible.set(true);
         }),
       );
@@ -64,6 +78,14 @@ export class ExportIpcService {
   }
 
   async onSettingsConfirm(settings: ExportSettings): Promise<void> {
+    if (this.settingsMode() === 'video') {
+      await this.runVideoExport(settings);
+    } else {
+      await this.runPngExport(settings);
+    }
+  }
+
+  private async runPngExport(settings: ExportSettings): Promise<void> {
     this.settingsVisible.set(false);
     const { resolution, prefix, dirPath } = settings;
 
@@ -72,22 +94,22 @@ export class ExportIpcService {
       this.successTimeout = null;
     }
 
-    // Persist the chosen path for next export
     try {
       localStorage.setItem('quickboard:lastExportPath', dirPath);
     } catch {
-      // localStorage may be unavailable (e.g. private browsing); silently ignore
+      /* empty */
     }
     this._lastExportPath.set(dirPath);
 
-    this.exportTotal.set(this.imageExport.store.boards().length);
+    this.exportTotal.set(this.exportService.store.boards().length);
+    this.exportFrameCount.set(this.exportService.store.boards().length);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportStatus.set('exporting');
     this.exportVisible.set(true);
-
+    this.abortController = new AbortController();
     try {
-      await this.imageExport.renderBoardsAtScaleStreaming(
+      await this.exportService.renderBoardsAtScaleStreaming(
         resolution.scale,
         prefix,
         async (frame, current, total) => {
@@ -105,6 +127,8 @@ export class ExportIpcService {
           this.exportCurrent.set(current);
           this.exportFileName.set(frame.name);
         },
+        'image/png',
+        this.abortController.signal,
       );
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
@@ -112,13 +136,110 @@ export class ExportIpcService {
         this.exportVisible.set(false);
       }, 2500);
     } catch (err) {
-      this.exportStatus.set('error');
-      this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      if (this.abortController?.signal.aborted) {
+        this.exportVisible.set(false);
+      } else {
+        this.exportStatus.set('error');
+        this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      this.abortController = null;
     }
   }
 
   onSettingsCancel(): void {
     this.settingsVisible.set(false);
+  }
+
+  private async runVideoExport(settings: ExportSettings): Promise<void> {
+    this.settingsVisible.set(false);
+    const { prefix, dirPath } = settings;
+
+    if (this.successTimeout !== null) {
+      clearTimeout(this.successTimeout);
+      this.successTimeout = null;
+    }
+
+    try {
+      localStorage.setItem('quickboard:lastExportPath', dirPath);
+    } catch {
+      /* empty */
+    }
+    this._lastExportPath.set(dirPath);
+
+    this.exportTotal.set(100);
+    this.exportFrameCount.set(this.exportService.store.boards().length);
+    this.exportCurrent.set(0);
+    this.exportFileName.set('');
+    this.exportMessage.set('');
+    this.exportStatus.set('exporting');
+    this.exportVisible.set(true);
+
+    this.abortController = new AbortController();
+
+    try {
+      const mp4Bytes = await this.exportService.exportVideoWithSettings(
+        settings,
+        (current, total, fileName) => {
+          // Frame rendering: 0–20%
+          this.exportCurrent.set(Math.round((current / total) * 20));
+          this.exportFileName.set(fileName);
+          this.exportMessage.set('Rendering frames...');
+        },
+        (message) => {
+          this.exportMessage.set(message);
+          this.exportFileName.set('');
+          if (message === 'Encoding video...') {
+            this.exportCurrent.set(20);
+          } else if (message === 'Processing audio...') {
+            this.exportCurrent.set(20);
+          } else if (message === 'Saving file...') {
+            this.exportCurrent.set(96);
+          }
+        },
+        (progress) => {
+          // Encoding: 20–95%
+          this.exportCurrent.set(20 + Math.round(progress * 0.75));
+          this.exportMessage.set('Encoding video...');
+        },
+        this.abortController.signal,
+      );
+
+      const outputName = `${prefix}.mp4`;
+      this.exportCurrent.set(98);
+      const result = await window.quickboard?.sendVideoFile({
+        dirPath,
+        name: outputName,
+        buffer: mp4Bytes,
+      });
+
+      if (!result?.success) {
+        throw new Error(result?.message ?? 'Failed to save video file.');
+      }
+
+      this.exportCurrent.set(100);
+      this.exportStatus.set('success');
+      this.successTimeout = setTimeout(() => {
+        this.successTimeout = null;
+        this.exportVisible.set(false);
+      }, 2500);
+    } catch (err) {
+      if (this.abortController?.signal.aborted) {
+        this.exportVisible.set(false);
+      } else {
+        console.error('Video export failed:', err);
+        this.exportStatus.set('error');
+        this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      this.abortController = null;
+    }
+  }
+
+  onCancelExport(): void {
+    if (this.abortController) {
+      this.abortController.abort();
+    }
   }
 
   onDismiss(): void {

@@ -19,6 +19,7 @@
   [boardCount]="exportIpc.settingsBoardCount()"
   [defaultPrefix]="exportIpc.defaultPrefix()"
   [defaultDirPath]="exportIpc.defaultDirPath()"
+  [exportType]="exportIpc.settingsMode()"
   (confirmExport)="exportIpc.onSettingsConfirm($event)"
   (cancelExport)="exportIpc.onSettingsCancel()"
 />
@@ -27,8 +28,10 @@
   [visible]="exportIpc.exportVisible()"
   [current]="exportIpc.exportCurrent()"
   [total]="exportIpc.exportTotal()"
+  [frameCount]="exportIpc.exportFrameCount()"
   [fileName]="exportIpc.exportFileName()"
   [status]="exportIpc.exportStatus()"
   [message]="exportIpc.exportMessage()"
   (dismiss)="exportIpc.onDismiss()"
+  (cancelExport)="exportIpc.onCancelExport()"
 />
