@@ -24,21 +24,36 @@
   flex-direction: row;
   align-items: stretch;
   gap: 8px;
-  padding: 0 0 8px 0;
   box-sizing: border-box;
-  flex: 0 0 auto;
+  flex: 0 0 var(--editors-height, 60%);
   overflow: hidden;
 }
 
+.resize-handle {
+  flex: 0 0 5px;
+  cursor: row-resize;
+  background: transparent;
+  border: none;
+  border-top: 2px solid transparent;
+  margin: 2px 0;
+  padding: 0;
+  transition: border-color 0.15s;
+}
+
+.resize-handle:hover {
+  border-top-color: var(--border-default);
+}
+
 .editors app-canvas {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
 }
 
 .editors app-script {
-  flex: 0 1 clamp(120px, 20%, 300px);
-  min-width: 100px;
+  flex: 1 1 0;
+  min-width: 120px;
   overflow: hidden;
 }
 

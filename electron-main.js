@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, nativeTheme, protocol } = require('electron');
 const path = require('path');
+const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
 
 // Must be called before app is ready
@@ -36,8 +37,7 @@ function getArgvFilePath() {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    ...appSettings.window,
     webPreferences: {
       preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
       contextIsolation: true,

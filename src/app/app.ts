@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -7,6 +7,7 @@ import { ExportSettingsComponent } from '../ui/export-settings/export-settings.c
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { ExportIpcService } from '../services/export-ipc.service';
+import { WindowScalingService } from '../services/window-scaling.service';
 
 @Component({
   selector: 'app-root',
@@ -22,19 +23,21 @@ import { ExportIpcService } from '../services/export-ipc.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-  private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
+  private readonly el = inject(ElementRef);
+  private readonly canvas = viewChild(CanvasComponent);
   private readonly themeService = inject(ThemeService);
+  private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
-
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
+  private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
-  ngOnInit() {
+  ngOnInit(): void {
     if (window.quickboard?.onRequestSave) {
       this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
         try {
@@ -84,14 +87,23 @@ export class App implements OnInit, OnDestroy {
         this.canvas()?.redoStroke();
       });
     }
+
+    this.removeWindowScalingListener = this.windowScalingService.init(
+      this.el.nativeElement as HTMLElement,
+    );
   }
 
-  ngOnDestroy() {
+  onResizeMouseDown(event: MouseEvent): void {
+    this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  ngOnDestroy(): void {
     this.removeRequestSaveListener?.();
     this.removeLoadDataListener?.();
     this.removeThemeListener?.();
     this.removeUndoListener?.();
     this.removeRedoListener?.();
+    this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
   }
 }
