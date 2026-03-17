@@ -127,12 +127,26 @@ export class ExportService {
 
     const isElectron = window.location.protocol === 'app:';
     const coreBaseURL = isElectron ? 'app://localhost/assets/ffmpeg/core' : '/assets/ffmpeg/core';
+    const workerBaseURL = isElectron
+      ? 'app://localhost/assets/ffmpeg/worker'
+      : '/assets/ffmpeg/worker';
 
     const coreURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.js`, 'application/javascript');
     const wasmURL = await toBlobURL(`${coreBaseURL}/ffmpeg-core.wasm`, 'application/wasm');
-    const classWorkerURL = isElectron
-      ? 'app://localhost/assets/ffmpeg/worker/worker.js'
-      : '/assets/ffmpeg/worker/worker.js';
+
+    const [constJs, errorsJs, workerJs] = await Promise.all([
+      fetch(`${workerBaseURL}/const.js`).then((r) => r.text()),
+      fetch(`${workerBaseURL}/errors.js`).then((r) => r.text()),
+      fetch(`${workerBaseURL}/worker.js`).then((r) => r.text()),
+    ]);
+    const workerBundle = [
+      constJs,
+      errorsJs,
+      workerJs.replace(/^import\s+.*?from\s+['"]\.\/.*?['"];?\s*$/gm, ''),
+    ].join('\n');
+    const classWorkerURL = URL.createObjectURL(
+      new Blob([workerBundle], { type: 'application/javascript' }),
+    );
 
     await ffmpeg.load({ coreURL, wasmURL, classWorkerURL });
 
