@@ -24,7 +24,3 @@ export {
 
 // Script
 export { ScriptComponent } from './script';
-
-// Dialogs
-export { VersionDialogComponent, AboutDialogComponent } from './dialogs';
-export type { VersionInfo, AboutInfo } from './dialogs';
