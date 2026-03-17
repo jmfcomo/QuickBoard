@@ -69,6 +69,24 @@ function buildMenu(app, win, hooks = {}) {
           if (typeof hooks.onLoad === 'function') hooks.onLoad(win);
         },
       },
+      { type: 'separator' },
+      {
+        label: 'Export',
+        submenu: [
+          {
+            label: 'PNG Sequence',
+            click: () => {
+              if (typeof hooks.onExportPngSequence === 'function') hooks.onExportPngSequence(win);
+            },
+          },
+          {
+            label: 'MP4 Video',
+            click: () => {
+              if (typeof hooks.onExportVideo === 'function') hooks.onExportVideo(win);
+            },
+          },
+        ],
+      },
     ],
   };
 

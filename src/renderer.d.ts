@@ -15,6 +15,21 @@ declare global {
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       openExternal: (url: string) => void;
+      onRequestPngExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
+      onRequestVideoExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
+      pickExportDir: () => Promise<string | null>;
+      sendPngExportFrame: (payload: {
+        dirPath: string;
+        name: string;
+        buffer: Uint8Array;
+        index: number;
+        total: number;
+      }) => Promise<{ success: boolean; message?: string }>;
+      sendVideoFile: (payload: {
+        dirPath: string;
+        name: string;
+        buffer: Uint8Array;
+      }) => Promise<{ success: boolean; message?: string }>;
     };
   }
 }

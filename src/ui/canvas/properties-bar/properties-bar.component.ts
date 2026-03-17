@@ -16,17 +16,20 @@ export interface ColorPicker {
 export class PropertiesBarComponent {
   readonly activeTool = input.required<string>();
   readonly strokeSize = input.required<number>();
+  readonly brushSpacing = input.required<number>();
   readonly colorTolerance = input.required<number>();
   readonly colorPickers = input.required<ColorPicker[]>();
 
   readonly strokeSizeChange = output<number>();
   readonly strokeSizeFromSliderChange = output<number>();
+  readonly brushSpacingChange = output<number>();
   readonly colorToleranceChange = output<number>();
 
   readonly showStrokeSize = computed(() =>
     ['pencil', 'brush', 'rectangle', 'eraser'].includes(this.activeTool())
   );
   readonly showColorTolerance = computed(() => this.activeTool() === 'bucket-fill');
+  readonly showBrushSpacing = computed(() => this.activeTool() === 'brush');
 
   readonly propertyLabel = computed(() =>
     this.activeTool() === 'rectangle' ? 'Stroke' : 'Size'

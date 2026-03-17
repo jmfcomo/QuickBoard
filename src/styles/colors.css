@@ -47,6 +47,7 @@
 
   /* Status */
   --danger: #dc2626;
+  --success: #16a34a;
   --playhead: #ef4444;
 
   /* Shadows & Overlays */
@@ -84,6 +85,7 @@
     --canvas-fill: #1a1a1a;
 
     --danger: #ff8a8a;
+    --success: #4ade80;
     --playhead: #ff8a8a;
 
     --shadow-sm: rgba(0, 0, 0, 0.4);

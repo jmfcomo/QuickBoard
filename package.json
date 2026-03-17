@@ -146,6 +146,7 @@
     "@editorjs/header": "^2.8.8",
     "@editorjs/list": "^2.0.9",
     "@editorjs/paragraph": "^2.11.7",
+    "@ffmpeg/core": "^0.12.6",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@fortawesome/fontawesome-free": "^7.2.0",

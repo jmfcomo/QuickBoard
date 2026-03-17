@@ -13,7 +13,7 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
-import { Brush } from '../../canvas/tools/brush';
+import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
@@ -35,6 +35,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     eraser: 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
+  readonly brushSpacing = signal<number>(45);
   readonly colorTolerance = signal<number>(16);
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
@@ -71,6 +72,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly store = inject(AppStore);
+  private readonly el = inject(ElementRef);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
@@ -79,6 +81,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private resizeRafId: number | null = null;
+  private lastFitHeight = 0;
+  private readonly onWindowResize = () => this.scheduleCanvasFit();
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -161,6 +166,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver = null;
     }
 
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+      this.resizeRafId = null;
+    }
+
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('resize', this.onWindowResize);
+    }
+
     // Clear tool instances to release references
     this.toolInstances.clear();
 
@@ -186,6 +200,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    ensureSquareBrushShapeRegistered();
+
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
     if (currentBoard?.canvasData) {
@@ -195,9 +211,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
 
-    // Apply the initial zoom now (synchronously, no rAF needed)
-    this.fitCanvasToContainer();
+    // Set up resize handling first; the ResizeObserver's initial callback
+    // will drive the first fitCanvasToContainer() after layout has settled,
+    // ensuring LC sees post-reflow container dimensions.
     this.observeCanvasResize();
+    window.addEventListener('resize', this.onWindowResize);
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -227,6 +245,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
+    const brushTool = this.toolInstances.get('brush') as Brush | undefined;
+    if (brushTool) {
+      brushTool.spacing = this.brushSpacing();
+    }
+
     // Apply default stroke size to all tools that support it; object-eraser is fixed at 1
     this.toolInstances.forEach((tool, id) => {
       if (tool.strokeWidth !== undefined) {
@@ -240,6 +263,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   private loadBoardData(boardId: string) {
     if (!this.lc) return;
+
+    ensureSquareBrushShapeRegistered();
 
     const boards = this.store.boards();
     const board = boards.find((b) => b.id === boardId);
@@ -273,30 +298,54 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObserver.disconnect();
     }
 
-    const container = this.canvasContainer().nativeElement;
+    const host = this.el.nativeElement as HTMLElement;
     this.resizeObserver = new ResizeObserver(() => this.scheduleCanvasFit());
-    this.resizeObserver.observe(container);
+    this.resizeObserver.observe(host);
   }
 
   private scheduleCanvasFit(): void {
     if (!this.lc) return;
 
-    window.requestAnimationFrame(() => this.fitCanvasToContainer());
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+    }
+
+    this.resizeRafId = window.requestAnimationFrame(() => {
+      this.resizeRafId = null;
+      this.fitCanvasToContainer();
+    });
   }
 
   private fitCanvasToContainer(): void {
     if (!this.lc) return;
 
     const container = this.canvasContainer().nativeElement;
-    const width = container.clientWidth;
     const height = container.clientHeight;
-    if (width <= 0 || height <= 0) return;
+    // Guard: skip if height hasn't changed to avoid ResizeObserver feedback loops
+    // when we set host.style.width below (width change also triggers the observer)
+    if (height <= 0 || height === this.lastFitHeight) return;
+    this.lastFitHeight = height;
 
-    const scale = Math.min(
-      width / this.defaultCanvasSize.width,
-      height / this.defaultCanvasSize.height,
+    // Pin the host to the exact 16:9 width for this height so the LC container
+    // is never wider than the image, eliminating the gray side-strips.
+    const correctWidth = Math.floor(  
+      (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,  
     );
+    const host = this.el.nativeElement as HTMLElement;  
+    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');  
 
+    // Derive the horizontal gap from computed styles instead of hard-coding it  
+    const containerStyles = window.getComputedStyle(container);  
+    const gapValue =  
+      containerStyles.columnGap && containerStyles.columnGap !== 'normal'  
+        ? containerStyles.columnGap  
+        : containerStyles.gap;  
+    const gap = Number.parseFloat(gapValue || '0') || 0;  
+
+    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;  
+    host.style.width = correctWidth + toolsBarWidth + 'px';
+
+    const scale = height / this.defaultCanvasSize.height;
     if (!Number.isFinite(scale) || scale <= 0) return;
 
     if (this.lc.respondToSizeChange) {
@@ -314,8 +363,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
         tool.strokeWidth = this.toolSizeMap()[toolId] ?? 5;
       }
+      if (toolId === 'brush') {
+        (tool as Brush).spacing = this.brushSpacing();
+      }
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
+    }
+  }
+
+  public setBrushSpacing(spacing: number): void {
+    if (isNaN(spacing)) return;
+    const clamped = Math.max(10, Math.min(200, Math.round(spacing)));
+    this.brushSpacing.set(clamped);
+
+    const brushTool = this.toolInstances.get('brush') as Brush | undefined;
+    if (brushTool) {
+      brushTool.spacing = clamped;
     }
   }
 
