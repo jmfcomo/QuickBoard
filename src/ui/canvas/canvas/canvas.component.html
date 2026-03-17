@@ -1,10 +1,12 @@
 <app-properties-bar
   [activeTool]="activeTool()"
   [strokeSize]="strokeSize()"
+  [brushSpacing]="brushSpacing()"
   [colorTolerance]="colorTolerance()"
   [colorPickers]="colorPickers"
   (strokeSizeChange)="setStrokeSize($event)"
   (strokeSizeFromSliderChange)="setStrokeSizeFromSlider($event)"
+  (brushSpacingChange)="setBrushSpacing($event)"
   (colorToleranceChange)="setColorTolerance($event)"
 ></app-properties-bar>
 <div class="canvas-container">

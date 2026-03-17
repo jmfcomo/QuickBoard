@@ -46,6 +46,29 @@
         </div>
       </div>
     }
+    @if (showBrushSpacing()) {
+      <div class="property-group">
+        <span class="property-label">Spacing</span>
+        <input
+          type="range" min="10" max="200" step="1"
+          [value]="brushSpacing()"
+          (input)="brushSpacingChange.emit(+$any($event.target).value)"
+          class="property-slider"
+        >
+        <div class="number-input-wrapper">
+          <input
+            type="number" min="10" max="200"
+            [value]="brushSpacing()"
+            (change)="brushSpacingChange.emit(+$any($event.target).value)"
+            class="property-number"
+          >
+          <div class="number-steppers">
+            <button class="stepper-btn up" (click)="brushSpacingChange.emit(brushSpacing() + 1)" tabindex="-1" aria-label="Increase"></button>
+            <button class="stepper-btn down" (click)="brushSpacingChange.emit(brushSpacing() - 1)" tabindex="-1" aria-label="Decrease"></button>
+          </div>
+        </div>
+      </div>
+    }
   </div>
   <div class="properties-colors">
     @for (picker of colorPickers(); track picker.label) {

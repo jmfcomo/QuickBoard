@@ -79,7 +79,7 @@ export class ObjectEraser {
         continue;
       }
 
-      if (className === 'LinePath') {
+      if (className === 'LinePath' || className === 'SquareLinePath') {
         if (this.isLinePathHit(shape, x, y, radius)) {
           didErase = true;
           continue;
