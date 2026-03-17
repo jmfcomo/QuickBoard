@@ -1,0 +1,12 @@
+<div class="page">
+  <h2 class="title">QuickBoard</h2>
+  <p class="version">Version {{ version() }}</p>
+  @if (description()) {
+    <p class="description">{{ description() }}</p>
+  }
+  <div class="divider"></div>
+  <p class="link-label">GitHub</p>
+  <button class="link-btn" (click)="openGitHub()" (keydown.enter)="openGitHub()">
+    {{ githubUrl }}
+  </button>
+</div>

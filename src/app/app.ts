@@ -2,6 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } f
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
+import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { SbdService } from './app.sbd.service';
@@ -11,21 +12,24 @@ import { WindowScalingService } from '../services/window-scaling.service';
 
 @Component({
   selector: 'app-root',
+  host: { '[class.dialog-mode]': 'dialogMode() !== null' },
   imports: [
     CanvasComponent,
     ScriptComponent,
     TimelineComponent,
     ExportProgressComponent,
     ExportSettingsComponent,
+    AboutWindowComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
+  protected readonly dialogMode = signal<'about' | null>(null);
+  private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
-  private readonly canvas = viewChild(CanvasComponent);
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
@@ -38,6 +42,16 @@ export class App implements OnInit, OnDestroy {
   private removeExportIpcListeners?: () => void;
 
   ngOnInit(): void {
+    this.removeThemeListener = this.themeService.initTheme();
+
+    // Check if this window was opened as a dialog by the main process
+    const params = new URLSearchParams(window.location.search);
+    const dialog = params.get('dialog');
+    if (dialog === 'about') {
+      this.dialogMode.set(dialog);
+      return;
+    }
+
     if (window.quickboard?.onRequestSave) {
       this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
         try {
@@ -73,7 +87,6 @@ export class App implements OnInit, OnDestroy {
       });
     }
 
-    this.removeThemeListener = this.themeService.initTheme();
     this.removeExportIpcListeners = this.exportIpc.init();
 
     if (window.quickboard?.onUndo) {

@@ -1,4 +1,55 @@
-const { Menu, nativeTheme } = require('electron');
+const { Menu, nativeTheme, BrowserWindow } = require('electron');
+const fs = require('fs');
+const path = require('path');
+
+let aboutWin = null;
+
+function openAboutWindow(app) {
+  if (aboutWin && !aboutWin.isDestroyed()) {
+    aboutWin.focus();
+    return;
+  }
+  const packageJsonPath = path.join(app.getAppPath(), 'package.json');
+  let quickboardDesc = '';
+  let quickboardVersion = 'unknown';
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    quickboardDesc = packageJson.description || '';
+    quickboardVersion = packageJson.version || 'unknown';
+  } catch (err) {
+    // ignore error, fallback to defaults
+  }
+  aboutWin = openDialogWindow(app, {
+    title: 'About QuickBoard',
+    width: 320,
+    height: 260,
+    query: { dialog: 'about', description: quickboardDesc, version: quickboardVersion },
+  });
+  aboutWin.on('closed', () => {
+    aboutWin = null;
+  });
+}
+
+function openDialogWindow(app, { title, width, height, query }) {
+  const indexPath = path.join(app.getAppPath(), 'dist', 'browser', 'index.html');
+  const preloadPath = path.join(app.getAppPath(), 'src', 'electron', 'preload.js');
+  const win = new BrowserWindow({
+    width,
+    height,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title,
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.setMenuBarVisibility(false);
+  win.loadFile(indexPath, { query });
+  return win;
+}
 
 function buildMenu(app, win, hooks = {}) {
   const fileMenu = {
@@ -78,8 +129,13 @@ function buildMenu(app, win, hooks = {}) {
   };
 
   const optionsMenu = {
-    label: 'QuickBoard',
-    submenu: [{ label: 'Version' }, { type: 'separator' }, { label: 'About' }],
+    label: 'Help',
+    submenu: [
+      {
+        label: 'About QuickBoard',
+        click: () => openAboutWindow(app),
+      },
+    ],
   };
 
   const undoMenu = {
@@ -101,16 +157,22 @@ function buildMenu(app, win, hooks = {}) {
   const template = [];
 
   if (process.platform === 'darwin') {
-    // macOS
+    // macOS — custom About under the app name menu (standard Mac placement)
     template.push({
       label: app.name,
-      submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }],
+      submenu: [
+        {
+          label: 'About QuickBoard',
+          click: () => openAboutWindow(app),
+        },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
     });
     template.push(fileMenu);
     template.push(viewMenu);
     template.push(undoMenu);
     template.push(redoMenu);
-    template.push(optionsMenu);
   } else {
     template.push(fileMenu);
     template.push(viewMenu);

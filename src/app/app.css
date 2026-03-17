@@ -9,14 +9,30 @@
   overflow: hidden;
 }
 
+:host.dialog-mode {
+  min-width: unset;
+  min-height: unset;
+  padding: 0;
+  overflow: visible;
+}
+
 .app {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
 }
 
 .editors {
