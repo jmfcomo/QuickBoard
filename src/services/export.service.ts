@@ -151,6 +151,13 @@ export class ExportService {
     const boards = this.store.boards();
     const audioTracks = this.store.audioTracks();
 
+    if (!boards.length) {
+      const message =
+        'There are no boards to export. Please add at least one board before exporting a video.';
+      this.exportMessage.set(message);
+      throw new Error(message);
+    }
+
     onPhaseMessage?.('Loading video engine...');
     const ffmpeg = await this.loadFFmpeg();
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');
