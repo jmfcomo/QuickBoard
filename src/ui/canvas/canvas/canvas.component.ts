@@ -314,16 +314,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         ) {
           const lcRef = lc;
           // Capture the board ID at the time this undo/redo entry is recorded.
-          const appStoreAny = this.appStore as any;
           const snapshotBoardId =
-            typeof appStoreAny.currentBoardId === 'function'
-              ? appStoreAny.currentBoardId()
-              : null;
+            typeof this.store.currentBoardId === 'function' ? this.store.currentBoardId() : null;
           this.undoRedo.record({
             undo: () => {
               const currentBoardId =
-                typeof appStoreAny.currentBoardId === 'function'
-                  ? appStoreAny.currentBoardId()
+                typeof this.store.currentBoardId === 'function'
+                  ? this.store.currentBoardId()
                   : null;
               // If the active board has changed since this was recorded, do not
               // apply the snapshot to the wrong board's canvas.
@@ -337,8 +334,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             },
             redo: () => {
               const currentBoardId =
-                typeof appStoreAny.currentBoardId === 'function'
-                  ? appStoreAny.currentBoardId()
+                typeof this.store.currentBoardId === 'function'
+                  ? this.store.currentBoardId()
                   : null;
               if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
                 return;
