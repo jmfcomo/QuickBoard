@@ -34,6 +34,12 @@ export class ScriptComponent implements OnInit, OnDestroy {
   } | null = null;
   /** Bound focusout listener so we can remove it on destroy. */
   private _focusoutHandler: ((e: FocusEvent) => void) | null = null;
+  /** Bound input listener that fires synchronously on every keystroke. */
+  private _inputHandler: (() => void) | null = null;
+  /** Unregister callback for the UndoRedoService pre-undo flush. */
+  private _removeFlush: (() => void) | null = null;
+  /** Active save promise to prevent concurrent saves. */
+  private _savePromise: Promise<void> | null = null;
 
   constructor() {
     // Watch for board changes and reload editor data
@@ -50,10 +56,15 @@ export class ScriptComponent implements OnInit, OnDestroy {
     // Ensure we are in the browser and not in SSR or test environment
     if (isPlatformBrowser(this.platformId)) {
       this.initializeEditor();
+      this._removeFlush = this.undoRedo.registerPreUndoFlush(async () => {
+        await this.finalizeEditingSession();
+      });
     }
   }
 
   ngOnDestroy() {
+    this._removeFlush?.();
+
     if (this.saveInterval) {
       clearInterval(this.saveInterval);
       this.saveInterval = null;
@@ -64,9 +75,14 @@ export class ScriptComponent implements OnInit, OnDestroy {
       this._changeDebounceTimer = null;
     }
 
-    // Remove focusout listener
+    // Remove editor DOM listeners
+    const editorEl = document.getElementById('editorjs');
+    if (this._inputHandler) {
+      editorEl?.removeEventListener('input', this._inputHandler, true);
+      this._inputHandler = null;
+    }
     if (this._focusoutHandler) {
-      document.getElementById('editorjs')?.removeEventListener('focusout', this._focusoutHandler);
+      editorEl?.removeEventListener('focusout', this._focusoutHandler);
       this._focusoutHandler = null;
     }
 
@@ -117,14 +133,21 @@ export class ScriptComponent implements OnInit, OnDestroy {
       },
       onReady: () => {
         this.startAutoSave();
-        this.installFocusOutListener();
+        this.installEditorListeners();
       },
     });
   }
 
-  private installFocusOutListener() {
+  private installEditorListeners() {
     const editorEl = document.getElementById('editorjs');
     if (!editorEl) return;
+
+    this._inputHandler = () => {
+      this.ensureEditingSession();
+    };
+    // Use capture so we see the event from contenteditable children.
+    editorEl.addEventListener('input', this._inputHandler, true);
+
     this._focusoutHandler = (e: FocusEvent) => {
       // Only finalize when focus moves OUTSIDE the editor's DOM tree.
       if (e.relatedTarget && editorEl.contains(e.relatedTarget as Node)) return;
@@ -133,20 +156,22 @@ export class ScriptComponent implements OnInit, OnDestroy {
     editorEl.addEventListener('focusout', this._focusoutHandler);
   }
 
+  private ensureEditingSession() {
+    if (this._suppressScriptHistory || !this.currentBoardId) return;
+    if (this._editingSession) return;
+
+    const reservation = this.undoRedo.reserve();
+    this._editingSession = {
+      reservation,
+      afterData: JSON.parse(JSON.stringify(this._scriptBaseline)),
+      boardId: this.currentBoardId,
+    };
+  }
+
   private handleEditorChange() {
     if (this._suppressScriptHistory || !this.currentBoardId) return;
 
-    // Start a new editing session if none is active.
-    if (!this._editingSession) {
-      const boardId = this.currentBoardId;
-      const oldData: OutputData = JSON.parse(JSON.stringify(this._scriptBaseline));
-      const reservation = this.undoRedo.reserve();
-      this._editingSession = {
-        reservation,
-        afterData: JSON.parse(JSON.stringify(oldData)),
-        boardId,
-      };
-    }
+    this.ensureEditingSession();
 
     // Debounce the async save so we capture the latest content without
     // hammering editor.save() on every keystroke.
@@ -249,41 +274,51 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private startAutoSave() {
     // Auto-save every 5 seconds
     this.saveInterval = setInterval(() => {
-      this.saveEditorData();
+      // Don't leak unhandled promise rejections
+      this.saveEditorData().catch((e) => {
+        console.error('Auto-save failed:', e);
+      });
     }, 5000);
   }
 
-  private async saveEditorData() {
-    if (this.isSaving || !this.editor || !this.currentBoardId) return;
+  private saveEditorData(): Promise<void> {
+    if (this._savePromise) return this._savePromise;
+    if (!this.editor || !this.currentBoardId) return Promise.resolve();
 
     this.isSaving = true;
     const boardIdAtSaveStart = this.currentBoardId;
 
-    try {
-      const data = await this.editor.save();
+    const doSave = async () => {
+      try {
+        const data = await this.editor!.save();
 
-      if (boardIdAtSaveStart !== this.currentBoardId) return;
+        if (boardIdAtSaveStart !== this.currentBoardId) return;
 
-      const dataToSave =
-        !data.blocks || data.blocks.length === 0
-          ? { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' }
-          : data;
+        const dataToSave =
+          !data.blocks || data.blocks.length === 0
+            ? { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' }
+            : data;
 
-      const boards = this.store.boards();
-      const currentBoard = boards.find((b) => b.id === this.currentBoardId);
-      if (this.blocksKey(dataToSave) !== this.blocksKey(currentBoard?.scriptData ?? null)) {
-        this.store.updateScriptData(this.currentBoardId, dataToSave);
+        const boards = this.store.boards();
+        const currentBoard = boards.find((b) => b.id === this.currentBoardId);
+        if (this.blocksKey(dataToSave) !== this.blocksKey(currentBoard?.scriptData ?? null)) {
+          this.store.updateScriptData(this.currentBoardId!, dataToSave);
+        }
+
+        // Keep the editing session's afterData up to date.
+        if (this._editingSession && this._editingSession.boardId === this.currentBoardId) {
+          this._editingSession.afterData = JSON.parse(JSON.stringify(dataToSave));
+        }
+      } catch (error) {
+        console.error('Failed to save editor data:', error);
+      } finally {
+        this.isSaving = false;
+        this._savePromise = null;
       }
+    };
 
-      // Keep the editing session's afterData up to date.
-      if (this._editingSession && this._editingSession.boardId === this.currentBoardId) {
-        this._editingSession.afterData = JSON.parse(JSON.stringify(dataToSave));
-      }
-    } catch (error) {
-      console.error('Failed to save editor data:', error);
-    } finally {
-      this.isSaving = false;
-    }
+    this._savePromise = doSave();
+    return this._savePromise;
   }
 
   /**

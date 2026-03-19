@@ -16,9 +16,28 @@ const MAX_HISTORY = 200;
 export class UndoRedoService {
   private readonly _undoStack: UndoableCommand[] = [];
   private readonly _redoStack: UndoableCommand[] = [];
+  private readonly _flushCallbacks = new Set<() => Promise<void>>();
 
   readonly canUndo = signal(false);
   readonly canRedo = signal(false);
+
+  registerPreUndoFlush(cb: () => Promise<void>): () => void {
+    this._flushCallbacks.add(cb);
+    return () => this._flushCallbacks.delete(cb);
+  }
+  async triggerUndo(): Promise<void> {
+    for (const cb of this._flushCallbacks) {
+      await cb();
+    }
+    this.undo();
+  }
+
+  async triggerRedo(): Promise<void> {
+    for (const cb of this._flushCallbacks) {
+      await cb();
+    }
+    this.redo();
+  }
 
   record(command: UndoableCommand): void {
     if (this._undoStack.length >= MAX_HISTORY) {

@@ -98,13 +98,13 @@ export class App implements OnInit, OnDestroy {
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.undoRedo.undo();
+        this.undoRedo.triggerUndo();
       });
     }
 
     if (window.quickboard?.onRedo) {
       this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.undoRedo.redo();
+        this.undoRedo.triggerRedo();
       });
     }
 
@@ -135,23 +135,29 @@ export class App implements OnInit, OnDestroy {
   }
 
   onKeyDown(event: KeyboardEvent): void {
-    if (this.isEditableTarget(event)) {
-      // Allow native in-field undo/redo behavior
-      return;
-    }
-
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
     const key = event.key.toLowerCase();
-    if (key === 'z' && !event.shiftKey) {
-      event.preventDefault();
-      this.undoRedo.undo();
-    } else if (key === 'z' && event.shiftKey) {
-      event.preventDefault();
-      this.undoRedo.redo();
-    } else if (key === 'y') {
-      event.preventDefault();
-      this.undoRedo.redo();
+
+    const isUndo = key === 'z' && !event.shiftKey;
+    const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
+
+    if (!isUndo && !isRedo) return;
+
+    if (this.isEditableTarget(event)) {
+      const target = event.target as HTMLElement | null;
+      // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
+      // but let regular inputs/textareas use the browser's native undo.
+      if (!target?.closest('#editorjs')) {
+        return;
+      }
+    }
+
+    event.preventDefault();
+    if (isUndo) {
+      this.undoRedo.triggerUndo();
+    } else {
+      this.undoRedo.triggerRedo();
     }
   }
 
