@@ -176,6 +176,8 @@ export class ScriptComponent implements OnInit, OnDestroy {
 
     // Snapshot the data we just loaded as the baseline for undo tracking
     this._scriptBaseline = JSON.parse(JSON.stringify(dataToRender));
+    // Release any suppression held by undo/redo-triggered board switches.
+    this._suppressScriptHistory = false;
   }
 
   private startAutoSave() {
@@ -262,8 +264,10 @@ export class ScriptComponent implements OnInit, OnDestroy {
               this._suppressScriptHistory = false;
             });
         } else {
-          this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
-          this._suppressScriptHistory = false;
+          // Cross-board: switch to the recorded board. The script effect will call
+          // loadBoardData, which renders the (already-updated) store data and
+          // clears _suppressScriptHistory once the load completes.
+          this.store.setCurrentBoard(boardId);
         }
       },
       redo: () => {
@@ -278,8 +282,8 @@ export class ScriptComponent implements OnInit, OnDestroy {
               this._suppressScriptHistory = false;
             });
         } else {
-          this._scriptBaseline = JSON.parse(JSON.stringify(newData));
-          this._suppressScriptHistory = false;
+          // Cross-board: switch to the recorded board.
+          this.store.setCurrentBoard(boardId);
         }
       },
     });

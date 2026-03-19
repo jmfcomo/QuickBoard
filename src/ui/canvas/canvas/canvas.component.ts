@@ -94,6 +94,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private _lcUndoStackLength = 0;
   /** Snapshot captured when an ObjectEraser stroke begins, for snapshot-based undo. */
   private _snapshotBeforeObjectErase: Record<string, unknown> | null = null;
+  /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
+   * the pre-stroke state even after the user has switched away from the original board. */
+  private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -210,6 +213,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       imageURLPrefix: 'assets/lc-images',
     });
 
+    container.addEventListener(
+      'mousedown',
+      () => {
+        if (!this._suppressLcHistory && this.lc) {
+          this._lcSnapshotBeforeStroke = this.lc.getSnapshot();
+        }
+      },
+      { capture: true },
+    );
+
     ensureSquareBrushShapeRegistered();
 
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
@@ -253,28 +266,51 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             this._lcUndoStackLength = currentLen;
             const lcRef = this.lc;
             const boardIdAtRecord = this.currentBoardId;
+            // Capture before/after snapshots so undo/redo works even after the user
+            // has switched to a different board (cross-board undo support).
+            const beforeSnapshot = this._lcSnapshotBeforeStroke;
+            const afterSnapshot = lcRef.getSnapshot();
+            this._lcSnapshotBeforeStroke = null;
             this.undoRedo.record({
               undo: () => {
-                // Only apply this undo to the board that originally recorded it.
-                if (!boardIdAtRecord || this.currentBoardId !== boardIdAtRecord) {
+                if (!boardIdAtRecord) return;
+                if (this.currentBoardId !== boardIdAtRecord) {
+                  // Cross-board: update the store with the pre-stroke canvas state
+                  // then switch to that board — the canvas effect will load it.
+                  if (beforeSnapshot) {
+                    this.store.updateCanvasData(boardIdAtRecord, beforeSnapshot);
+                  }
+                  this.store.setCurrentBoard(boardIdAtRecord);
                   return;
                 }
-                if (!lcRef.undoStack.length) {
-                  return;
-                }
+                // Same board: prefer LC native undo; fall back to snapshot restore.
                 this._suppressLcHistory = true;
-                this._lcUndoStackLength--;
-                lcRef.undo();
+                if (lcRef.undoStack.length > 0) {
+                  this._lcUndoStackLength--;
+                  lcRef.undo();
+                } else if (beforeSnapshot) {
+                  lcRef.loadSnapshot(beforeSnapshot);
+                  this._lcUndoStackLength = lcRef.undoStack.length;
+                }
                 this._suppressLcHistory = false;
               },
               redo: () => {
-                // Only apply this redo to the board that originally recorded it.
-                if (!boardIdAtRecord || this.currentBoardId !== boardIdAtRecord) {
+                if (!boardIdAtRecord) return;
+                if (this.currentBoardId !== boardIdAtRecord) {
+                  // Cross-board: restore the post-stroke snapshot and switch boards.
+                  this.store.updateCanvasData(boardIdAtRecord, afterSnapshot);
+                  this.store.setCurrentBoard(boardIdAtRecord);
                   return;
                 }
+                // Same board: prefer LC native redo; fall back to snapshot restore.
                 this._suppressLcHistory = true;
-                this._lcUndoStackLength++;
-                lcRef.redo();
+                if (lcRef.redoStack.length > 0) {
+                  this._lcUndoStackLength++;
+                  lcRef.redo();
+                } else {
+                  lcRef.loadSnapshot(afterSnapshot);
+                  this._lcUndoStackLength = lcRef.undoStack.length;
+                }
                 this._suppressLcHistory = false;
               },
             });
@@ -313,18 +349,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           JSON.stringify((after as { shapes?: unknown }).shapes)
         ) {
           const lcRef = lc;
-          // Capture the board ID at the time this undo/redo entry is recorded.
-          const snapshotBoardId =
-            typeof this.store.currentBoardId === 'function' ? this.store.currentBoardId() : null;
+          const snapshotBoardId = this.store.currentBoardId();
           this.undoRedo.record({
             undo: () => {
-              const currentBoardId =
-                typeof this.store.currentBoardId === 'function'
-                  ? this.store.currentBoardId()
-                  : null;
-              // If the active board has changed since this was recorded, do not
-              // apply the snapshot to the wrong board's canvas.
+              const currentBoardId = this.store.currentBoardId();
               if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
+                // Cross-board: update store with the pre-erase snapshot and switch boards.
+                this.store.updateCanvasData(snapshotBoardId, before);
+                this.store.setCurrentBoard(snapshotBoardId);
                 return;
               }
               this._suppressLcHistory = true;
@@ -333,11 +365,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               this._suppressLcHistory = false;
             },
             redo: () => {
-              const currentBoardId =
-                typeof this.store.currentBoardId === 'function'
-                  ? this.store.currentBoardId()
-                  : null;
+              const currentBoardId = this.store.currentBoardId();
               if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
+                // Cross-board: update store with the post-erase snapshot and switch boards.
+                this.store.updateCanvasData(snapshotBoardId, after);
+                this.store.setCurrentBoard(snapshotBoardId);
                 return;
               }
               this._suppressLcHistory = true;
@@ -561,20 +593,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         const boardId = this.currentBoardId;
         this.undoRedo.record({
           undo: () => {
-            const isCurrentBoard = this.currentBoardId === boardId;
-            if (isCurrentBoard) {
+            this.store.updateBackgroundColor(boardId, oldColor);
+            if (this.currentBoardId !== boardId) {
+              this.store.setCurrentBoard(boardId);
+            } else {
               this.backgroundColor.set(oldColor);
               this.lc?.setColor('background', oldColor);
             }
-            this.store.updateBackgroundColor(boardId, oldColor);
           },
           redo: () => {
-            const isCurrentBoard = this.currentBoardId === boardId;
-            if (isCurrentBoard) {
+            this.store.updateBackgroundColor(boardId, color);
+            if (this.currentBoardId !== boardId) {
+              this.store.setCurrentBoard(boardId);
+            } else {
               this.backgroundColor.set(color);
               this.lc?.setColor('background', color);
             }
-            this.store.updateBackgroundColor(boardId, color);
           },
         });
       }

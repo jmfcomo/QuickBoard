@@ -126,8 +126,18 @@ export class TimelineActions {
   recordBackgroundColorChange(boardId: string, oldColor: string, newColor: string): void {
     if (oldColor === newColor) return;
     this.undoRedo.record({
-      undo: () => this.store.updateBackgroundColor(boardId, oldColor),
-      redo: () => this.store.updateBackgroundColor(boardId, newColor),
+      undo: () => {
+        this.store.updateBackgroundColor(boardId, oldColor);
+        if (this.store.currentBoardId() !== boardId) {
+          this.store.setCurrentBoard(boardId);
+        }
+      },
+      redo: () => {
+        this.store.updateBackgroundColor(boardId, newColor);
+        if (this.store.currentBoardId() !== boardId) {
+          this.store.setCurrentBoard(boardId);
+        }
+      },
     });
   }
 }
