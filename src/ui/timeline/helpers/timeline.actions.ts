@@ -9,14 +9,14 @@ export class TimelineActions {
 
   addBoard(): string {
     const prevBoardId = this.store.currentBoardId();
-    const newBoardId = this.store.addBoard();
-    this.store.setCurrentBoard(newBoardId);
+    let boardId = this.store.addBoard();
+    this.store.setCurrentBoard(boardId);
 
     this.undoRedo.record({
       undo: () => {
         const boards = this.store.boards();
         if (boards.length > 1) {
-          this.store.deleteBoard(newBoardId);
+          this.store.deleteBoard(boardId);
           if (prevBoardId && this.store.boards().find((b) => b.id === prevBoardId)) {
             this.store.setCurrentBoard(prevBoardId);
           } else {
@@ -26,13 +26,13 @@ export class TimelineActions {
         }
       },
       redo: () => {
-        // Re-apply: add board again (new id, but position is equivalent)
-        const redoBoardId = this.store.addBoard();
-        this.store.setCurrentBoard(redoBoardId);
+        // Re-apply: add board again and update the tracked id
+        boardId = this.store.addBoard();
+        this.store.setCurrentBoard(boardId);
       },
     });
 
-    return newBoardId;
+    return boardId;
   }
 
   selectBoard(boardId: string) {
@@ -44,6 +44,7 @@ export class TimelineActions {
     if (boards.length <= 1) return;
 
     const boardIndex = boards.findIndex((b) => b.id === boardId);
+    if (boardIndex < 0) return;
     const boardSnapshot = { ...boards[boardIndex] };
     const wasCurrentBoard = this.store.currentBoardId() === boardId;
     const prevCurrentId = this.store.currentBoardId();

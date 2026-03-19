@@ -252,15 +252,26 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           if (currentLen > this._lcUndoStackLength) {
             this._lcUndoStackLength = currentLen;
             const lcRef = this.lc;
+            const boardIdAtRecord = this.currentBoardId;
             this.undoRedo.record({
               undo: () => {
-                if (!lcRef.undoStack.length) return;
+                // Only apply this undo to the board that originally recorded it.
+                if (!boardIdAtRecord || this.currentBoardId !== boardIdAtRecord) {
+                  return;
+                }
+                if (!lcRef.undoStack.length) {
+                  return;
+                }
                 this._suppressLcHistory = true;
                 this._lcUndoStackLength--;
                 lcRef.undo();
                 this._suppressLcHistory = false;
               },
               redo: () => {
+                // Only apply this redo to the board that originally recorded it.
+                if (!boardIdAtRecord || this.currentBoardId !== boardIdAtRecord) {
+                  return;
+                }
                 this._suppressLcHistory = true;
                 this._lcUndoStackLength++;
                 lcRef.redo();
@@ -302,14 +313,36 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           JSON.stringify((after as { shapes?: unknown }).shapes)
         ) {
           const lcRef = lc;
+          // Capture the board ID at the time this undo/redo entry is recorded.
+          const appStoreAny = this.appStore as any;
+          const snapshotBoardId =
+            typeof appStoreAny.currentBoardId === 'function'
+              ? appStoreAny.currentBoardId()
+              : null;
           this.undoRedo.record({
             undo: () => {
+              const currentBoardId =
+                typeof appStoreAny.currentBoardId === 'function'
+                  ? appStoreAny.currentBoardId()
+                  : null;
+              // If the active board has changed since this was recorded, do not
+              // apply the snapshot to the wrong board's canvas.
+              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
+                return;
+              }
               this._suppressLcHistory = true;
               lcRef.loadSnapshot(before);
               this._lcUndoStackLength = lcRef.undoStack.length;
               this._suppressLcHistory = false;
             },
             redo: () => {
+              const currentBoardId =
+                typeof appStoreAny.currentBoardId === 'function'
+                  ? appStoreAny.currentBoardId()
+                  : null;
+              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
+                return;
+              }
               this._suppressLcHistory = true;
               lcRef.loadSnapshot(after);
               this._lcUndoStackLength = lcRef.undoStack.length;
@@ -531,13 +564,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         const boardId = this.currentBoardId;
         this.undoRedo.record({
           undo: () => {
-            this.backgroundColor.set(oldColor);
-            this.lc?.setColor('background', oldColor);
+            const isCurrentBoard = this.currentBoardId === boardId;
+            if (isCurrentBoard) {
+              this.backgroundColor.set(oldColor);
+              this.lc?.setColor('background', oldColor);
+            }
             this.store.updateBackgroundColor(boardId, oldColor);
           },
           redo: () => {
-            this.backgroundColor.set(color);
-            this.lc?.setColor('background', color);
+            const isCurrentBoard = this.currentBoardId === boardId;
+            if (isCurrentBoard) {
+              this.backgroundColor.set(color);
+              this.lc?.setColor('background', color);
+            }
             this.store.updateBackgroundColor(boardId, color);
           },
         });
@@ -564,18 +603,40 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public undoStroke(): void {
-    if (!this.lc) return;
+    if (!this.lc) {
+      return;
+    }
+
+    // Only attempt undo when LC has something to undo, and keep our
+    // internal undo stack length in sync with LC's undo stack.
+    if (this.lc.undoStack.length === 0) {
+      // Ensure we don't drift if external code changed LC directly.
+      this._lcUndoStackLength = this.lc.undoStack.length;
+      return;
+    }
+
     this._suppressLcHistory = true;
-    this._lcUndoStackLength = Math.max(0, this._lcUndoStackLength - 1);
     this.lc.undo();
+    this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
   }
 
   public redoStroke(): void {
-    if (!this.lc) return;
+    if (!this.lc) {
+      return;
+    }
+
+    // Only attempt redo when LC has something to redo, and keep our
+    // internal undo stack length in sync with LC's undo stack.
+    if (this.lc.redoStack.length === 0) {
+      // Ensure we don't drift if external code changed LC directly.
+      this._lcUndoStackLength = this.lc.undoStack.length;
+      return;
+    }
+
     this._suppressLcHistory = true;
-    this._lcUndoStackLength++;
     this.lc.redo();
+    this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
   }
 

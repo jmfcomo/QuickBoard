@@ -26,18 +26,40 @@ export class UndoRedoService {
 
   undo(): void {
     const command = this._undoStack.pop();
-    if (!command) return;
-    command.undo();
-    this._redoStack.push(command);
-    this.updateSignals();
+    if (!command) {
+      return;
+    }
+
+    try {
+      command.undo();
+      this._redoStack.push(command);
+    } catch (error) {
+      // Restore command to undo stack if undo fails to keep history consistent
+      this._undoStack.push(command);
+      // Re-throw so callers can handle the error if needed
+      throw error;
+    } finally {
+      this.updateSignals();
+    }
   }
 
   redo(): void {
     const command = this._redoStack.pop();
-    if (!command) return;
-    command.redo();
-    this._undoStack.push(command);
-    this.updateSignals();
+    if (!command) {
+      return;
+    }
+
+    try {
+      command.redo();
+      this._undoStack.push(command);
+    } catch (error) {
+      // Restore command to redo stack if redo fails to keep history consistent
+      this._redoStack.push(command);
+      // Re-throw so callers can handle the error if needed
+      throw error;
+    } finally {
+      this.updateSignals();
+    }
   }
 
   clear(): void {

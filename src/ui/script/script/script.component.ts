@@ -254,19 +254,33 @@ export class ScriptComponent implements OnInit, OnDestroy {
         this.store.updateScriptData(boardId, oldData);
         // Re-render the editor if it is still showing this board
         if (this.editor && this.currentBoardId === boardId) {
-          this.editor.render(oldData).catch((e) => console.error('undo render failed', e));
+          this.editor
+            .render(oldData)
+            .catch((e) => console.error('undo render failed', e))
+            .finally(() => {
+              this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
+              this._suppressScriptHistory = false;
+            });
+        } else {
+          this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
+          this._suppressScriptHistory = false;
         }
-        this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
-        this._suppressScriptHistory = false;
       },
       redo: () => {
         this._suppressScriptHistory = true;
         this.store.updateScriptData(boardId, newData);
         if (this.editor && this.currentBoardId === boardId) {
-          this.editor.render(newData).catch((e) => console.error('redo render failed', e));
+          this.editor
+            .render(newData)
+            .catch((e) => console.error('redo render failed', e))
+            .finally(() => {
+              this._scriptBaseline = JSON.parse(JSON.stringify(newData));
+              this._suppressScriptHistory = false;
+            });
+        } else {
+          this._scriptBaseline = JSON.parse(JSON.stringify(newData));
+          this._suppressScriptHistory = false;
         }
-        this._scriptBaseline = JSON.parse(JSON.stringify(newData));
-        this._suppressScriptHistory = false;
       },
     });
 

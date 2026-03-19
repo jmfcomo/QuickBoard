@@ -117,16 +117,39 @@ export class App implements OnInit, OnDestroy {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
   }
 
+  private isEditableTarget(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return false;
+    }
+
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      return true;
+    }
+
+    if (target.isContentEditable) {
+      return true;
+    }
+
+    return !!target.closest('[contenteditable="true"]');
+  }
+
   onKeyDown(event: KeyboardEvent): void {
+    if (this.isEditableTarget(event)) {
+      // Allow native in-field undo/redo behavior
+      return;
+    }
+
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
-    if (event.key === 'z' && !event.shiftKey) {
+    const key = event.key.toLowerCase();
+    if (key === 'z' && !event.shiftKey) {
       event.preventDefault();
       this.undoRedo.undo();
-    } else if (event.key === 'z' && event.shiftKey) {
+    } else if (key === 'z' && event.shiftKey) {
       event.preventDefault();
       this.undoRedo.redo();
-    } else if (event.key === 'y') {
+    } else if (key === 'y') {
       event.preventDefault();
       this.undoRedo.redo();
     }
