@@ -9,10 +9,14 @@ import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
+import { UndoRedoService } from '../services/undo-redo.service';
 
 @Component({
   selector: 'app-root',
-  host: { '[class.dialog-mode]': 'dialogMode() !== null' },
+  host: {
+    '[class.dialog-mode]': 'dialogMode() !== null',
+    '(document:keydown)': 'onKeyDown($event)',
+  },
   imports: [
     CanvasComponent,
     ScriptComponent,
@@ -33,6 +37,7 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
+  private readonly undoRedo = inject(UndoRedoService);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -72,6 +77,8 @@ export class App implements OnInit, OnDestroy {
             // Legacy plain-JSON fallback
             this.sbd.loadLegacyJson(payload.content);
           }
+          // Clear history — the newly-loaded project starts with a clean slate
+          this.undoRedo.clear();
           // Derive default export prefix from the opened file's name.
           const stem =
             payload.filePath
@@ -91,13 +98,13 @@ export class App implements OnInit, OnDestroy {
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.canvas()?.undoStroke();
+        this.undoRedo.undo();
       });
     }
 
     if (window.quickboard?.onRedo) {
       this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.canvas()?.redoStroke();
+        this.undoRedo.redo();
       });
     }
 
@@ -108,6 +115,21 @@ export class App implements OnInit, OnDestroy {
 
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  onKeyDown(event: KeyboardEvent): void {
+    const ctrl = event.ctrlKey || event.metaKey;
+    if (!ctrl) return;
+    if (event.key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      this.undoRedo.undo();
+    } else if (event.key === 'z' && event.shiftKey) {
+      event.preventDefault();
+      this.undoRedo.redo();
+    } else if (event.key === 'y') {
+      event.preventDefault();
+      this.undoRedo.redo();
+    }
   }
 
   ngOnDestroy(): void {

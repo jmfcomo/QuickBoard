@@ -15,6 +15,8 @@ export interface LCTool {
 export interface LCInstance {
   undo(): void;
   redo(): void;
+  undoStack: unknown[];
+  redoStack: unknown[];
   setTool(tool: LCTool): void;
   backgroundShapes: unknown[];
   shapes: unknown[];
@@ -43,7 +45,7 @@ export interface LiterallyCanvas {
     options?: {
       imageURLPrefix?: string;
       imageSize?: { width: number; height: number };
-    }
+    },
   ): LCInstance;
   tools: {
     Pencil: LiterallyCanvasTool;

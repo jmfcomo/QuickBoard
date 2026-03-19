@@ -17,6 +17,7 @@ import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brus
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
+import { UndoRedoService } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-canvas',
@@ -73,6 +74,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly store = inject(AppStore);
   private readonly el = inject(ElementRef);
+  private readonly undoRedo = inject(UndoRedoService);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
@@ -84,6 +86,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
+  /** Set to true while we are programmatically calling lc.undo()/redo() so that
+   * the drawingChange listener doesn't create a duplicate history entry. */
+  private _suppressLcHistory = false;
+  /** Tracks the last-known LC undoStack length so we can distinguish a new
+   * user stroke (stack grew) from an undo/redo replay or snapshot load. */
+  private _lcUndoStackLength = 0;
+  /** Snapshot captured when an ObjectEraser stroke begins, for snapshot-based undo. */
+  private _snapshotBeforeObjectErase: Record<string, unknown> | null = null;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -234,6 +244,31 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           }
           this.updateCanvasTimeout = null;
         }, 300);
+
+        // Record a history entry for new user strokes (stack grew and we're
+        // not in the middle of an undo/redo replay or snapshot load).
+        if (!this._suppressLcHistory) {
+          const currentLen = this.lc.undoStack.length;
+          if (currentLen > this._lcUndoStackLength) {
+            this._lcUndoStackLength = currentLen;
+            const lcRef = this.lc;
+            this.undoRedo.record({
+              undo: () => {
+                if (!lcRef.undoStack.length) return;
+                this._suppressLcHistory = true;
+                this._lcUndoStackLength--;
+                lcRef.undo();
+                this._suppressLcHistory = false;
+              },
+              redo: () => {
+                this._suppressLcHistory = true;
+                this._lcUndoStackLength++;
+                lcRef.redo();
+                this._suppressLcHistory = false;
+              },
+            });
+          }
+        }
       }
     });
 
@@ -241,9 +276,50 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
-    this.toolInstances.set('object-eraser', new ObjectEraser(this.lc));
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
+
+    // ObjectEraser bypasses LC's undo stack (directly mutates lc.shapes), so
+    // we wrap begin/end to capture a before/after snapshot and record it ourselves.
+    const objectEraser = new ObjectEraser(this.lc);
+    const origBegin = objectEraser.begin!.bind(objectEraser);
+    const origEnd = objectEraser.end!.bind(objectEraser);
+    objectEraser.begin = (x, y, lc) => {
+      if (!this._suppressLcHistory) {
+        this._snapshotBeforeObjectErase = lc.getSnapshot();
+      }
+      origBegin(x, y, lc);
+    };
+    objectEraser.end = (x, y, lc) => {
+      origEnd(x, y, lc);
+      if (!this._suppressLcHistory && this._snapshotBeforeObjectErase !== null) {
+        const before = this._snapshotBeforeObjectErase;
+        this._snapshotBeforeObjectErase = null;
+        const after = lc.getSnapshot();
+        // Only record if something was actually removed
+        if (
+          JSON.stringify((before as { shapes?: unknown }).shapes) !==
+          JSON.stringify((after as { shapes?: unknown }).shapes)
+        ) {
+          const lcRef = lc;
+          this.undoRedo.record({
+            undo: () => {
+              this._suppressLcHistory = true;
+              lcRef.loadSnapshot(before);
+              this._lcUndoStackLength = lcRef.undoStack.length;
+              this._suppressLcHistory = false;
+            },
+            redo: () => {
+              this._suppressLcHistory = true;
+              lcRef.loadSnapshot(after);
+              this._lcUndoStackLength = lcRef.undoStack.length;
+              this._suppressLcHistory = false;
+            },
+          });
+        }
+      }
+    };
+    this.toolInstances.set('object-eraser', objectEraser);
 
     const brushTool = this.toolInstances.get('brush') as Brush | undefined;
     if (brushTool) {
@@ -271,6 +347,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.currentBoardId = boardId;
 
+    this._suppressLcHistory = true;
+    this._lcUndoStackLength = 0;
+
     // Clear canvas
     this.lc.shapes = [];
     this.lc.backgroundShapes = [];
@@ -289,6 +368,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
     this.fitCanvasToContainer();
+
+    this._lcUndoStackLength = this.lc.undoStack.length;
+    this._suppressLcHistory = false;
   }
 
   private observeCanvasResize(): void {
@@ -328,21 +410,21 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Pin the host to the exact 16:9 width for this height so the LC container
     // is never wider than the image, eliminating the gray side-strips.
-    const correctWidth = Math.floor(  
-      (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,  
+    const correctWidth = Math.floor(
+      (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,
     );
-    const host = this.el.nativeElement as HTMLElement;  
-    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');  
+    const host = this.el.nativeElement as HTMLElement;
+    const toolsBar = host.querySelector<HTMLElement>('.tools-bar');
 
-    // Derive the horizontal gap from computed styles instead of hard-coding it  
-    const containerStyles = window.getComputedStyle(container);  
-    const gapValue =  
-      containerStyles.columnGap && containerStyles.columnGap !== 'normal'  
-        ? containerStyles.columnGap  
-        : containerStyles.gap;  
-    const gap = Number.parseFloat(gapValue || '0') || 0;  
+    // Derive the horizontal gap from computed styles instead of hard-coding it
+    const containerStyles = window.getComputedStyle(container);
+    const gapValue =
+      containerStyles.columnGap && containerStyles.columnGap !== 'normal'
+        ? containerStyles.columnGap
+        : containerStyles.gap;
+    const gap = Number.parseFloat(gapValue || '0') || 0;
 
-    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;  
+    const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;
     host.style.width = correctWidth + toolsBarWidth + 'px';
 
     const scale = height / this.defaultCanvasSize.height;
@@ -439,10 +521,27 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public setBackgroundColor(color: string): void {
     if (!this.lc) return;
+    const oldColor = this.backgroundColor();
     this.backgroundColor.set(color);
     this.lc.setColor('background', color);
     if (this.currentBoardId) {
       this.store.updateBackgroundColor(this.currentBoardId, color);
+      // Record only if actually changed
+      if (oldColor !== color) {
+        const boardId = this.currentBoardId;
+        this.undoRedo.record({
+          undo: () => {
+            this.backgroundColor.set(oldColor);
+            this.lc?.setColor('background', oldColor);
+            this.store.updateBackgroundColor(boardId, oldColor);
+          },
+          redo: () => {
+            this.backgroundColor.set(color);
+            this.lc?.setColor('background', color);
+            this.store.updateBackgroundColor(boardId, color);
+          },
+        });
+      }
     }
   }
 
@@ -466,15 +565,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public undoStroke(): void {
     if (!this.lc) return;
-
-    // undoing last action
+    this._suppressLcHistory = true;
+    this._lcUndoStackLength = Math.max(0, this._lcUndoStackLength - 1);
     this.lc.undo();
+    this._suppressLcHistory = false;
   }
 
   public redoStroke(): void {
     if (!this.lc) return;
-
+    this._suppressLcHistory = true;
+    this._lcUndoStackLength++;
     this.lc.redo();
+    this._suppressLcHistory = false;
   }
 
   public hideTooltip(): void {

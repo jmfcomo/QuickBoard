@@ -138,20 +138,24 @@ function buildMenu(app, win, hooks = {}) {
     ],
   };
 
-  const undoMenu = {
-    label: 'Undo',
-    accelerator: 'CmdOrCtrl+Z',
-    click: () => {
-      win.webContents.send('quickboard:undo');
-    },
-  };
-
-  const redoMenu = {
-    label: 'Redo',
-    accelerator: 'CmdOrCtrl+Shift+Z',
-    click: () => {
-      win.webContents.send('quickboard:redo');
-    },
+  const editMenu = {
+    label: 'Edit',
+    submenu: [
+      {
+        label: 'Undo',
+        accelerator: 'CmdOrCtrl+Z',
+        click: () => {
+          win.webContents.send('quickboard:undo');
+        },
+      },
+      {
+        label: 'Redo',
+        accelerator: 'CmdOrCtrl+Shift+Z',
+        click: () => {
+          win.webContents.send('quickboard:redo');
+        },
+      },
+    ],
   };
 
   const template = [];
@@ -170,14 +174,12 @@ function buildMenu(app, win, hooks = {}) {
       ],
     });
     template.push(fileMenu);
+    template.push(editMenu);
     template.push(viewMenu);
-    template.push(undoMenu);
-    template.push(redoMenu);
   } else {
     template.push(fileMenu);
+    template.push(editMenu);
     template.push(viewMenu);
-    template.push(undoMenu);
-    template.push(redoMenu);
     template.push(optionsMenu);
     template.push({ role: 'quit' });
   }

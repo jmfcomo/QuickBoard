@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import EditorJS from '@editorjs/editorjs';
-import type { OutputBlockData } from '@editorjs/editorjs';
+import type { OutputData, OutputBlockData } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Paragraph from '@editorjs/paragraph';
 import { AppStore } from '../../../data/store/app.store';
+import { UndoRedoService } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-script',
@@ -15,10 +16,15 @@ import { AppStore } from '../../../data/store/app.store';
 export class ScriptComponent implements OnInit, OnDestroy {
   private readonly store = inject(AppStore);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly undoRedo = inject(UndoRedoService);
   private editor: EditorJS | null = null;
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
   private currentBoardId: string | null = null;
+  /** Snapshot of the script data when the user started editing on this board. */
+  private _scriptBaseline: OutputData | null = null;
+  /** True while we are restoring script data from an undo/redo command. */
+  private _suppressScriptHistory = false;
 
   constructor() {
     // Watch for board changes and reload editor data
@@ -63,6 +69,13 @@ export class ScriptComponent implements OnInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
+    const initialData = currentBoard?.scriptData || {
+      blocks: [],
+      time: Date.now(),
+      version: '2.28.0',
+    };
+    this._scriptBaseline = JSON.parse(JSON.stringify(initialData));
+
     this.editor = new EditorJS({
       holder: 'editorjs',
       autofocus: true,
@@ -72,11 +85,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
         list: List,
       },
       placeholder: 'Start typing here...',
-      data: currentBoard?.scriptData || {
-        blocks: [],
-        time: Date.now(),
-        version: '2.28.0',
-      },
+      data: initialData,
       onReady: () => {
         // Start auto-save only after editor is fully initialized
         this.startAutoSave();
@@ -87,23 +96,18 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private async switchBoard(boardId: string) {
     if (!this.editor || this.isSaving) return;
 
-    // First, save current board data
+    // First, save current board data and record undo entry
     if (this.currentBoardId) {
       try {
         this.isSaving = true;
         const data = await this.editor.save();
+        const dataToSave =
+          data.blocks && data.blocks.length > 0
+            ? data
+            : { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' };
 
-        // Only save if there's actual content (not just empty blocks)
-        if (data.blocks && data.blocks.length > 0) {
-          this.store.updateScriptData(this.currentBoardId, data);
-        } else {
-          // Save null instead of empty blocks to avoid validation issues
-          this.store.updateScriptData(this.currentBoardId, {
-            blocks: [],
-            time: Date.now(),
-            version: '2.28.0',
-          });
-        }
+        this.store.updateScriptData(this.currentBoardId, dataToSave);
+        this.recordScriptChangeIfNeeded(this.currentBoardId, dataToSave);
       } catch (error) {
         console.error('Failed to save before board switch:', error);
       } finally {
@@ -169,6 +173,9 @@ export class ScriptComponent implements OnInit, OnDestroy {
         console.error('Fallback render also failed:', fallbackError);
       }
     }
+
+    // Snapshot the data we just loaded as the baseline for undo tracking
+    this._scriptBaseline = JSON.parse(JSON.stringify(dataToRender));
   }
 
   private startAutoSave() {
@@ -179,8 +186,8 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private async saveEditorData() {
-    // Skip if already saving or no editor or no board
-    if (this.isSaving || !this.editor || !this.currentBoardId) {
+    // Skip if suppressed (undo/redo replay) or already saving
+    if (this._suppressScriptHistory || this.isSaving || !this.editor || !this.currentBoardId) {
       return;
     }
 
@@ -196,23 +203,75 @@ export class ScriptComponent implements OnInit, OnDestroy {
       }
 
       const boards = this.store.boards();
-      const currentBoard = boards.find((b) => b.id === this.currentBoardId);
 
       // Normalize empty data
       const dataToSave =
         !data.blocks || data.blocks.length === 0
-          ? { blocks: [], time: Date.now(), version: '2.28.0' }
+          ? { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' }
           : data;
 
-      // Only update if data has changed
-      if (JSON.stringify(dataToSave) !== JSON.stringify(currentBoard?.scriptData)) {
+      // Only update store and undo history when block content actually changed.
+      // We intentionally exclude `time` from this comparison — EditorJS updates
+      // it on every save() call regardless of whether the user typed anything.
+      const currentBoard = boards.find((b) => b.id === this.currentBoardId);
+      if (this.blocksKey(dataToSave) !== this.blocksKey(currentBoard?.scriptData ?? null)) {
         this.store.updateScriptData(this.currentBoardId, dataToSave);
+        this.recordScriptChangeIfNeeded(this.currentBoardId, dataToSave);
       }
     } catch (error) {
       console.error('Failed to save editor data:', error);
     } finally {
       this.isSaving = false;
     }
+  }
+
+  /**
+   * Returns a stable string key representing only the meaningful block content,
+   * excluding the `time` timestamp that EditorJS updates on every save() call.
+   */
+  private blocksKey(data: OutputData | null): string {
+    return JSON.stringify(data?.blocks ?? []);
+  }
+
+  /**
+   * Compare current script data against the baseline and, if different,
+   * push a single undo entry that captures both snapshots. The baseline
+   * is then advanced so that subsequent calls don't re-record the same
+   * change.
+   */
+  private recordScriptChangeIfNeeded(boardId: string, currentData: OutputData): void {
+    if (this._suppressScriptHistory) return;
+
+    // Compare only block content — ignore the ever-changing `time` field
+    if (this.blocksKey(this._scriptBaseline) === this.blocksKey(currentData)) return;
+
+    const oldData: OutputData = JSON.parse(JSON.stringify(this._scriptBaseline));
+    const newData: OutputData = JSON.parse(JSON.stringify(currentData));
+
+    this.undoRedo.record({
+      undo: () => {
+        this._suppressScriptHistory = true;
+        this.store.updateScriptData(boardId, oldData);
+        // Re-render the editor if it is still showing this board
+        if (this.editor && this.currentBoardId === boardId) {
+          this.editor.render(oldData).catch((e) => console.error('undo render failed', e));
+        }
+        this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
+        this._suppressScriptHistory = false;
+      },
+      redo: () => {
+        this._suppressScriptHistory = true;
+        this.store.updateScriptData(boardId, newData);
+        if (this.editor && this.currentBoardId === boardId) {
+          this.editor.render(newData).catch((e) => console.error('redo render failed', e));
+        }
+        this._scriptBaseline = JSON.parse(JSON.stringify(newData));
+        this._suppressScriptHistory = false;
+      },
+    });
+
+    // Advance baseline so the next diff starts from here
+    this._scriptBaseline = JSON.parse(JSON.stringify(currentData));
   }
 
   private saveEditorDataSync() {

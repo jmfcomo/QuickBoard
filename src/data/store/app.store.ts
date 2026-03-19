@@ -2,7 +2,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 
-interface Board {
+export interface Board {
   id: string;
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
@@ -245,6 +245,17 @@ export const AppStore = signalStore(
         audioLaneCount: Math.max(1, state.audioLaneCount - 1),
         audioLaneMixers: state.audioLaneMixers.filter((_, i) => i !== laneIndex),
       }));
+    },
+
+    /**
+     * Restore a previously-deleted board at a specific index.
+     * Used exclusively by the undo system.
+     */
+    restoreBoard(board: Board, index: number) {
+      const boards = [...store.boards()];
+      const clampedIndex = Math.max(0, Math.min(index, boards.length));
+      boards.splice(clampedIndex, 0, board);
+      patchState(store, { boards });
     },
   })),
   withComputed((store) => ({

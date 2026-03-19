@@ -28,46 +28,50 @@ export class AudioService {
     return peaks;
   }
 
-  async importAudioFile(file: File, startTime = 0, laneIndex = 0): Promise<void> {
+  async importAudioFile(file: File, startTime = 0, laneIndex = 0): Promise<string> {
     const url = URL.createObjectURL(file);
     const id = crypto.randomUUID();
 
     const arrayBuffer = await file.arrayBuffer();
 
-    try {
-      const player = new Tone.Player({
-        url: url,
-        onload: () => {
-          const duration = player.buffer.duration;
-          const mixer = this.store.audioLaneMixers()[laneIndex];
-          player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
-          player.mute = mixer?.muted ?? DEFAULT_MUTED;
+    return new Promise<string>((resolve, reject) => {
+      try {
+        const player = new Tone.Player({
+          url: url,
+          onload: () => {
+            const duration = player.buffer.duration;
+            const mixer = this.store.audioLaneMixers()[laneIndex];
+            player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+            player.mute = mixer?.muted ?? DEFAULT_MUTED;
 
-          player.toDestination();
-          player.sync().start(startTime, 0, duration);
-          this.players.set(id, player);
-          this._fileBuffers.set(id, { buffer: arrayBuffer, fileName: file.name });
+            player.toDestination();
+            player.sync().start(startTime, 0, duration);
+            this.players.set(id, player);
+            this._fileBuffers.set(id, { buffer: arrayBuffer, fileName: file.name });
 
-          this.waveforms.update((w) => ({ ...w, [id]: this.buildWaveform(player.buffer) }));
+            this.waveforms.update((w) => ({ ...w, [id]: this.buildWaveform(player.buffer) }));
 
-          const newTrack: AudioTrack = {
-            id,
-            name: file.name,
-            url,
-            startTime,
-            duration,
-            trimStart: 0,
-            fileDuration: duration,
-            laneIndex,
-          };
+            const newTrack: AudioTrack = {
+              id,
+              name: file.name,
+              url,
+              startTime,
+              duration,
+              trimStart: 0,
+              fileDuration: duration,
+              laneIndex,
+            };
 
-          this.store.addAudioTrack(newTrack);
-        },
-      });
-    } catch (error) {
-      console.error('Failed to load audio file:', error);
-      URL.revokeObjectURL(url);
-    }
+            this.store.addAudioTrack(newTrack);
+            resolve(id);
+          },
+        });
+      } catch (error) {
+        console.error('Failed to load audio file:', error);
+        URL.revokeObjectURL(url);
+        reject(error);
+      }
+    });
   }
 
   updatePlayerStartTime(trackId: string, newStartTime: number) {
@@ -100,8 +104,9 @@ export class AudioService {
     if (player) {
       player.dispose();
       this.players.delete(trackId);
-      this.store.removeAudioTrack(trackId);
     }
+    // Always remove from store regardless of player state
+    this.store.removeAudioTrack(trackId);
     this._fileBuffers.delete(trackId);
     this.waveforms.update((w) => {
       const next = { ...w };
@@ -155,6 +160,35 @@ export class AudioService {
 
   getFileBuffers(): Map<string, { buffer: ArrayBuffer; fileName: string }> {
     return new Map(this._fileBuffers);
+  }
+
+  async restoreAudioTrack(track: AudioTrack, buffer: ArrayBuffer, fileName: string): Promise<void> {
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+
+    return new Promise<void>((resolve) => {
+      const player = new Tone.Player({
+        url,
+        onload: () => {
+          const mixer = this.store.audioLaneMixers()[track.laneIndex];
+          player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+          player.mute = mixer?.muted ?? DEFAULT_MUTED;
+
+          player.toDestination();
+          player.sync().start(track.startTime, track.trimStart, track.duration);
+          this.players.set(track.id, player);
+          this._fileBuffers.set(track.id, { buffer, fileName });
+
+          this.waveforms.update((w) => ({
+            ...w,
+            [track.id]: this.buildWaveform(player.buffer),
+          }));
+
+          this.store.addAudioTrack({ ...track, url });
+          resolve();
+        },
+      });
+    });
   }
   async loadFromSavedTracks(tracks: AudioTrack[], files: Map<string, Blob>): Promise<void> {
     this.players.forEach((p) => p.dispose());

@@ -1,6 +1,7 @@
 import { Component, ElementRef, ViewChild, computed, inject, input, signal } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { AudioService } from '../../../services/audio.service';
+import { UndoRedoService } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-audio-tracks',
@@ -15,6 +16,7 @@ import { AudioService } from '../../../services/audio.service';
 export class AudioTracksComponent {
   readonly store = inject(AppStore);
   readonly audio = inject(AudioService);
+  private readonly undoRedo = inject(UndoRedoService);
 
   scale = input.required<number>();
 
@@ -93,13 +95,38 @@ export class AudioTracksComponent {
   async onMouseUp(): Promise<void> {
     if (this._audioDragging) {
       const targetLane = this.audioDragTargetLane();
-      if (
-        this._audioDragTrackId !== null &&
-        targetLane !== null &&
-        targetLane !== this._audioDragOriginalLane
-      ) {
-        this.audio.updateLane(this._audioDragTrackId, targetLane);
+      const trackId = this._audioDragTrackId;
+      const originalLane = this._audioDragOriginalLane;
+      const originalStartTime = this._audioDragOriginalStartTime;
+
+      if (trackId !== null && targetLane !== null && targetLane !== originalLane) {
+        this.audio.updateLane(trackId, targetLane);
       }
+
+      // Record the committed move as an undoable command
+      if (trackId !== null) {
+        const finalTrack = this.store.audioTracks().find((t) => t.id === trackId);
+        const finalStartTime = finalTrack?.startTime ?? originalStartTime;
+        const finalLane = finalTrack?.laneIndex ?? originalLane;
+
+        const hasStartTimeChange = finalStartTime !== originalStartTime;
+        const hasLaneChange = finalLane !== originalLane;
+
+        if (hasStartTimeChange || hasLaneChange) {
+          const capturedTrackId = trackId;
+          this.undoRedo.record({
+            undo: () => {
+              this.audio.updatePlayerStartTime(capturedTrackId, originalStartTime);
+              if (hasLaneChange) this.audio.updateLane(capturedTrackId, originalLane);
+            },
+            redo: () => {
+              this.audio.updatePlayerStartTime(capturedTrackId, finalStartTime);
+              if (hasLaneChange) this.audio.updateLane(capturedTrackId, finalLane);
+            },
+          });
+        }
+      }
+
       this._audioDragging = false;
       this._audioDragTrackId = null;
       this._audioDragOriginalLane = 0;
@@ -108,6 +135,32 @@ export class AudioTracksComponent {
     }
 
     if (this._audioTrimming) {
+      const trackId = this._audioTrimTrackId;
+      if (trackId !== null) {
+        const finalTrack = this.store.audioTracks().find((t) => t.id === trackId);
+        if (finalTrack) {
+          const origStart = this._audioTrimOriginalStartTime;
+          const origDuration = this._audioTrimOriginalDuration;
+          const origTrimStart = this._audioTrimOriginalTrimStart;
+          const finalStart = finalTrack.startTime;
+          const finalDuration = finalTrack.duration;
+          const finalTrimStart = finalTrack.trimStart;
+
+          if (
+            origStart !== finalStart ||
+            origDuration !== finalDuration ||
+            origTrimStart !== finalTrimStart
+          ) {
+            const capturedId = trackId;
+            this.undoRedo.record({
+              undo: () => this.audio.updateTrim(capturedId, origStart, origDuration, origTrimStart),
+              redo: () =>
+                this.audio.updateTrim(capturedId, finalStart, finalDuration, finalTrimStart),
+            });
+          }
+        }
+      }
+
       this._audioTrimming = false;
       this._audioTrimTrackId = null;
       this._audioTrimEdge = null;
@@ -148,7 +201,23 @@ export class AudioTracksComponent {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-    await this.audio.importAudioFile(file, this._pendingAudioStartTime, this._pendingAudioLane);
+
+    // importAudioFile now resolves once the track is fully loaded and in the store
+    const trackId = await this.audio.importAudioFile(
+      file,
+      this._pendingAudioStartTime,
+      this._pendingAudioLane,
+    );
+
+    const trackSnapshot = this.store.audioTracks().find((t) => t.id === trackId);
+    const bufferEntry = this.audio.getFileBuffers().get(trackId);
+    if (trackSnapshot && bufferEntry) {
+      const { buffer, fileName } = bufferEntry;
+      this.undoRedo.record({
+        undo: () => this.audio.removeTrack(trackId),
+        redo: async () => this.audio.restoreAudioTrack(trackSnapshot, buffer, fileName),
+      });
+    }
   }
 
   onLaneMouseMove(event: MouseEvent, laneIndex: number) {
@@ -192,7 +261,17 @@ export class AudioTracksComponent {
   }
 
   removeAudioTrack(trackId: string) {
+    const trackSnapshot = this.store.audioTracks().find((t) => t.id === trackId);
+    const bufferEntry = this.audio.getFileBuffers().get(trackId);
     this.audio.removeTrack(trackId);
+
+    if (trackSnapshot && bufferEntry) {
+      const { buffer, fileName } = bufferEntry;
+      this.undoRedo.record({
+        undo: async () => this.audio.restoreAudioTrack(trackSnapshot, buffer, fileName),
+        redo: () => this.audio.removeTrack(trackSnapshot.id),
+      });
+    }
   }
 
   addAudioLane() {

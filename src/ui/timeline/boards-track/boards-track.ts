@@ -82,6 +82,32 @@ export class BoardsTrackComponent {
 
   onMouseUp() {
     if (this.isResizing()) {
+      // Record the final duration change(s) now that the drag is stable
+      const boardId = this.resizingBoardId();
+      if (boardId) {
+        if (this.resizeEdge() === 'right') {
+          const newDuration = this.store.boards().find((b) => b.id === boardId)?.duration;
+          if (newDuration !== undefined) {
+            this.actions.recordDurationChange(boardId, this.resizeStartDuration, newDuration);
+          }
+        } else if (this.resizeEdge() === 'left' && this.resizePrevBoardId) {
+          const newPrevDuration = this.store
+            .boards()
+            .find((b) => b.id === this.resizePrevBoardId)?.duration;
+          const newDuration = this.store.boards().find((b) => b.id === boardId)?.duration;
+          if (newPrevDuration !== undefined && newDuration !== undefined) {
+            this.actions.recordDualDurationChange(
+              this.resizePrevBoardId,
+              this.resizeStartPrevDuration,
+              newPrevDuration,
+              boardId,
+              this.resizeStartDuration,
+              newDuration,
+            );
+          }
+        }
+      }
+
       this.isResizing.set(false);
       this.resizingBoardId.set(null);
       this.resizeEdge.set(null);
