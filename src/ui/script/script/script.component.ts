@@ -6,7 +6,7 @@ import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Paragraph from '@editorjs/paragraph';
 import { AppStore } from '../../../data/store/app.store';
-import { UndoRedoService } from '../../../services/undo-redo.service';
+import { UndoRedoService, UndoReservation } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-script',
@@ -21,10 +21,19 @@ export class ScriptComponent implements OnInit, OnDestroy {
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
   private currentBoardId: string | null = null;
-  /** Snapshot of the script data when the user started editing on this board. */
+  /** Snapshot of the script data at the start of the current editing session. */
   private _scriptBaseline: OutputData | null = null;
   /** True while we are restoring script data from an undo/redo command. */
   private _suppressScriptHistory = false;
+  /** Debounce timer for capturing the editor's latest content. */
+  private _changeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _editingSession: {
+    reservation: UndoReservation;
+    afterData: OutputData;
+    boardId: string;
+  } | null = null;
+  /** Bound focusout listener so we can remove it on destroy. */
+  private _focusoutHandler: ((e: FocusEvent) => void) | null = null;
 
   constructor() {
     // Watch for board changes and reload editor data
@@ -45,16 +54,34 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clear the auto-save interval
     if (this.saveInterval) {
       clearInterval(this.saveInterval);
       this.saveInterval = null;
     }
 
-    // Perform final synchronous save before destruction
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
+    }
+
+    // Remove focusout listener
+    if (this._focusoutHandler) {
+      document.getElementById('editorjs')?.removeEventListener('focusout', this._focusoutHandler);
+      this._focusoutHandler = null;
+    }
+
+    if (this._editingSession) {
+      if (this.blocksKey(this._editingSession.afterData) !== this.blocksKey(this._scriptBaseline)) {
+        this.commitEditingSession(this._editingSession);
+      } else {
+        this._editingSession.reservation.cancel();
+      }
+      this._editingSession = null;
+    }
+
+    // Perform final save before destruction
     this.saveEditorDataSync();
 
-    // Clean up EditorJS instance
     if (this.editor) {
       this.editor.destroy();
       this.editor = null;
@@ -62,7 +89,6 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private initializeEditor() {
-    // Get the current board or first board
     const boards = this.store.boards();
     const currentBoard = boards.find((b) => b.id === this.store.currentBoardId()) || boards[0];
     if (currentBoard) {
@@ -86,36 +112,76 @@ export class ScriptComponent implements OnInit, OnDestroy {
       },
       placeholder: 'Start typing here...',
       data: initialData,
+      onChange: () => {
+        this.handleEditorChange();
+      },
       onReady: () => {
-        // Start auto-save only after editor is fully initialized
         this.startAutoSave();
+        this.installFocusOutListener();
       },
     });
+  }
+
+  private installFocusOutListener() {
+    const editorEl = document.getElementById('editorjs');
+    if (!editorEl) return;
+    this._focusoutHandler = (e: FocusEvent) => {
+      // Only finalize when focus moves OUTSIDE the editor's DOM tree.
+      if (e.relatedTarget && editorEl.contains(e.relatedTarget as Node)) return;
+      this.finalizeEditingSession();
+    };
+    editorEl.addEventListener('focusout', this._focusoutHandler);
+  }
+
+  private handleEditorChange() {
+    if (this._suppressScriptHistory || !this.currentBoardId) return;
+
+    // Start a new editing session if none is active.
+    if (!this._editingSession) {
+      const boardId = this.currentBoardId;
+      const oldData: OutputData = JSON.parse(JSON.stringify(this._scriptBaseline));
+      const reservation = this.undoRedo.reserve();
+      this._editingSession = {
+        reservation,
+        afterData: JSON.parse(JSON.stringify(oldData)),
+        boardId,
+      };
+    }
+
+    // Debounce the async save so we capture the latest content without
+    // hammering editor.save() on every keystroke.
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+    }
+    this._changeDebounceTimer = setTimeout(() => {
+      this._changeDebounceTimer = null;
+      this.captureSessionData();
+    }, 500);
   }
 
   private async switchBoard(boardId: string) {
     if (!this.editor || this.isSaving) return;
 
-    // First, save current board data and record undo entry
-    if (this.currentBoardId) {
-      try {
-        this.isSaving = true;
+    this.isSaving = true;
+    try {
+      // Finalize any active editing session (captures latest data + commits undo)
+      await this.finalizeEditingSession();
+
+      // Persist latest editor content for the current board
+      if (this.currentBoardId) {
         const data = await this.editor.save();
         const dataToSave =
           data.blocks && data.blocks.length > 0
             ? data
             : { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' };
-
         this.store.updateScriptData(this.currentBoardId, dataToSave);
-        this.recordScriptChangeIfNeeded(this.currentBoardId, dataToSave);
-      } catch (error) {
-        console.error('Failed to save before board switch:', error);
-      } finally {
-        this.isSaving = false;
       }
+    } catch (error) {
+      console.error('Failed to save before board switch:', error);
+    } finally {
+      this.isSaving = false;
     }
 
-    // Then load new board data
     await this.loadBoardData(boardId);
   }
 
@@ -188,10 +254,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private async saveEditorData() {
-    // Skip if suppressed (undo/redo replay) or already saving
-    if (this._suppressScriptHistory || this.isSaving || !this.editor || !this.currentBoardId) {
-      return;
-    }
+    if (this.isSaving || !this.editor || !this.currentBoardId) return;
 
     this.isSaving = true;
     const boardIdAtSaveStart = this.currentBoardId;
@@ -199,26 +262,22 @@ export class ScriptComponent implements OnInit, OnDestroy {
     try {
       const data = await this.editor.save();
 
-      // Only save if we're still on the same board
-      if (boardIdAtSaveStart !== this.currentBoardId) {
-        return;
-      }
+      if (boardIdAtSaveStart !== this.currentBoardId) return;
 
-      const boards = this.store.boards();
-
-      // Normalize empty data
       const dataToSave =
         !data.blocks || data.blocks.length === 0
           ? { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' }
           : data;
 
-      // Only update store and undo history when block content actually changed.
-      // We intentionally exclude `time` from this comparison — EditorJS updates
-      // it on every save() call regardless of whether the user typed anything.
+      const boards = this.store.boards();
       const currentBoard = boards.find((b) => b.id === this.currentBoardId);
       if (this.blocksKey(dataToSave) !== this.blocksKey(currentBoard?.scriptData ?? null)) {
         this.store.updateScriptData(this.currentBoardId, dataToSave);
-        this.recordScriptChangeIfNeeded(this.currentBoardId, dataToSave);
+      }
+
+      // Keep the editing session's afterData up to date.
+      if (this._editingSession && this._editingSession.boardId === this.currentBoardId) {
+        this._editingSession.afterData = JSON.parse(JSON.stringify(dataToSave));
       }
     } catch (error) {
       console.error('Failed to save editor data:', error);
@@ -228,33 +287,57 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Returns a stable string key representing only the meaningful block content,
-   * excluding the `time` timestamp that EditorJS updates on every save() call.
+   * Async save that updates both the store and the active editing session's
+   * `afterData`.  Called from the onChange debounce.
    */
-  private blocksKey(data: OutputData | null): string {
-    return JSON.stringify(data?.blocks ?? []);
+  private async captureSessionData() {
+    if (!this.editor || !this.currentBoardId) return;
+
+    // Delegate to the shared save logic which already updates the session.
+    await this.saveEditorData();
+  }
+
+  private async finalizeEditingSession() {
+    if (!this._editingSession) return;
+
+    // Cancel pending debounce — we're about to capture now.
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
+    }
+
+    // Capture latest editor content into the session.
+    await this.captureSessionData();
+
+    const session = this._editingSession;
+    this._editingSession = null;
+
+    if (this.blocksKey(session.afterData) !== this.blocksKey(this._scriptBaseline)) {
+      this.commitEditingSession(session);
+      this._scriptBaseline = JSON.parse(JSON.stringify(session.afterData));
+    } else {
+      // No net content change — remove the reserved slot.
+      session.reservation.cancel();
+    }
   }
 
   /**
-   * Compare current script data against the baseline and, if different,
-   * push a single undo entry that captures both snapshots. The baseline
-   * is then advanced so that subsequent calls don't re-record the same
-   * change.
+   * Fill in the undo/redo logic for a reserved slot.
    */
-  private recordScriptChangeIfNeeded(boardId: string, currentData: OutputData): void {
-    if (this._suppressScriptHistory) return;
-
-    // Compare only block content — ignore the ever-changing `time` field
-    if (this.blocksKey(this._scriptBaseline) === this.blocksKey(currentData)) return;
-
+  private commitEditingSession(session: {
+    reservation: UndoReservation;
+    afterData: OutputData;
+    boardId: string;
+  }) {
     const oldData: OutputData = JSON.parse(JSON.stringify(this._scriptBaseline));
-    const newData: OutputData = JSON.parse(JSON.stringify(currentData));
+    const newData: OutputData = JSON.parse(JSON.stringify(session.afterData));
+    const boardId = session.boardId;
 
-    this.undoRedo.record({
+    session.reservation.commit({
       undo: () => {
+        this.discardEditingSession();
         this._suppressScriptHistory = true;
         this.store.updateScriptData(boardId, oldData);
-        // Re-render the editor if it is still showing this board
         if (this.editor && this.currentBoardId === boardId) {
           this.editor
             .render(oldData)
@@ -264,13 +347,11 @@ export class ScriptComponent implements OnInit, OnDestroy {
               this._suppressScriptHistory = false;
             });
         } else {
-          // Cross-board: switch to the recorded board. The script effect will call
-          // loadBoardData, which renders the (already-updated) store data and
-          // clears _suppressScriptHistory once the load completes.
           this.store.setCurrentBoard(boardId);
         }
       },
       redo: () => {
+        this.discardEditingSession();
         this._suppressScriptHistory = true;
         this.store.updateScriptData(boardId, newData);
         if (this.editor && this.currentBoardId === boardId) {
@@ -282,14 +363,24 @@ export class ScriptComponent implements OnInit, OnDestroy {
               this._suppressScriptHistory = false;
             });
         } else {
-          // Cross-board: switch to the recorded board.
           this.store.setCurrentBoard(boardId);
         }
       },
     });
+  }
 
-    // Advance baseline so the next diff starts from here
-    this._scriptBaseline = JSON.parse(JSON.stringify(currentData));
+  private discardEditingSession() {
+    if (!this._editingSession) return;
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
+    }
+    this._editingSession.reservation.cancel();
+    this._editingSession = null;
+  }
+
+  private blocksKey(data: OutputData | null): string {
+    return JSON.stringify(data?.blocks ?? []);
   }
 
   private saveEditorDataSync() {

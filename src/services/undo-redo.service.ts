@@ -5,6 +5,11 @@ export interface UndoableCommand {
   redo(): void;
 }
 
+export interface UndoReservation {
+  commit(command: UndoableCommand): void;
+  cancel(): void;
+}
+
 const MAX_HISTORY = 200;
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +27,42 @@ export class UndoRedoService {
     this._undoStack.push(command);
     this._redoStack.length = 0;
     this.updateSignals();
+  }
+
+  reserve(): UndoReservation {
+    const placeholder: UndoableCommand & { _inner: UndoableCommand | null } = {
+      _inner: null,
+      undo() {
+        this._inner?.undo();
+      },
+      redo() {
+        this._inner?.redo();
+      },
+    };
+
+    if (this._undoStack.length >= MAX_HISTORY) {
+      this._undoStack.shift();
+    }
+    this._undoStack.push(placeholder);
+    this._redoStack.length = 0;
+    this.updateSignals();
+
+    return {
+      commit: (command: UndoableCommand) => {
+        placeholder._inner = command;
+      },
+      cancel: () => {
+        const undoIdx = this._undoStack.indexOf(placeholder);
+        if (undoIdx !== -1) {
+          this._undoStack.splice(undoIdx, 1);
+        }
+        const redoIdx = this._redoStack.indexOf(placeholder);
+        if (redoIdx !== -1) {
+          this._redoStack.splice(redoIdx, 1);
+        }
+        this.updateSignals();
+      },
+    };
   }
 
   undo(): void {
