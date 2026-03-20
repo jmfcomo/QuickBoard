@@ -127,6 +127,10 @@
   display: flex;
 }
 
+.timeline-board.selected .duplicate-btn,
+.timeline-board:focus-within .duplicate-btn {
+  display: flex;
+}
 .duplicate-btn:hover {
   background: var(--accent);
 }

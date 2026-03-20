@@ -133,7 +133,9 @@ export class TimelineActions {
       canvasData: source.canvasData
         ? (JSON.parse(JSON.stringify(source.canvasData)) as Record<string, unknown>)
         : null,
-      scriptData: source.scriptData ? JSON.parse(JSON.stringify(source.scriptData)) : null,
+      scriptData: source.scriptData
+        ? (JSON.parse(JSON.stringify(source.scriptData)) as NonNullable<Board['scriptData']>)
+        : null,
       previewUrl: source.previewUrl,
       backgroundColor: source.backgroundColor,
       duration: source.duration,
