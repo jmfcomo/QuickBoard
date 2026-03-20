@@ -46,6 +46,7 @@ export class BoardsTrackComponent {
   }
 
   deleteBoard(boardId: string) {
+    if (this.store.boards().length <= 1) return;
     this.actions.deleteBoard(boardId);
   }
 

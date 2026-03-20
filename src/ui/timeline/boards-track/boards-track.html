@@ -54,16 +54,15 @@
         <span aria-hidden="true">⧉</span>
       </button>
 
-      @if (store.boards().length > 1) {
-        <button
-          type="button"
-          class="delete-btn"
-          aria-label="Delete board {{ $index + 1 }}"
-          (click)="$event.stopPropagation(); deleteBoard(board.id)"
-        >
-          <span aria-hidden="true">×</span>
-        </button>
-      }
+      <button
+        type="button"
+        class="delete-btn"
+        aria-label="Delete board {{ $index + 1 }}"
+        [disabled]="store.boards().length <= 1"
+        (click)="$event.stopPropagation(); deleteBoard(board.id)"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
     </div>
   }
 
