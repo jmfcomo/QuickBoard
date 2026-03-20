@@ -1,5 +1,5 @@
 import { Component, ElementRef, ViewChild, computed, inject, input, signal } from '@angular/core';
-import { AppStore } from '../../../data/store/app.store';
+import { AppStore, AudioTrack } from '../../../data/store/app.store';
 import { AudioService } from '../../../services/audio.service';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 
@@ -24,6 +24,10 @@ export class AudioTracksComponent {
 
   readonly MIN_DURATION = 0.5;
   readonly MAX_AUDIO_LANES = 4;
+  readonly ADD_AUDIO_BUTTON_WIDTH = 72;
+  readonly ADD_AUDIO_BUTTON_GAP_PX = 20;
+  readonly VOLUME_LINE_PADDING_PX = 4;
+  readonly MIN_ADD_AUDIO_LEFT_PX = 8;
 
   // Audio clip drag state
   audioDragTrackId = signal<string | null>(null);
@@ -47,10 +51,15 @@ export class AudioTracksComponent {
   private _audioTrimOriginalTrimStart = 0;
   private _audioTrimFileDuration = 0;
 
-  // Lane hover state
-  hoverLaneIndex = signal<number | null>(null);
-  hoverLaneX = signal(0);
   hoveredClipId = signal<string | null>(null);
+
+  // Clip volume drag state
+  volumeDragTrackId = signal<string | null>(null);
+  private _volumeDragging = false;
+  private _volumeTrackId: string | null = null;
+  private _volumeDragRect: DOMRect | null = null;
+  private _volumeOriginalTrackVolume = 1;
+  private _volumeOriginalLaneVolume = 1;
 
   projectWidthPx = computed(() => this.store.totalDuration() * this.scale());
 
@@ -73,17 +82,30 @@ export class AudioTracksComponent {
           const deleteLeftPx = Math.max(leftPx + 4, visibleRight - 20);
           return {
             ...t,
+            volume: typeof t.volume === 'number' ? t.volume : 1,
             leftPx,
             widthPx: w,
             deleteLeftPx,
-            waveformPath: this.buildWaveformPath(waveforms[t.id] ?? [], w, clipH),
+            waveformPath: this.buildWaveformPath(
+              waveforms[t.id] ?? [],
+              w,
+              clipH,
+              t.trimStart,
+              t.duration,
+              t.fileDuration,
+            ),
           };
-        }),
+        })
+        .sort((a, b) => a.startTime - b.startTime),
+      addButtonLeftPx: this.computeLaneAddButtonLeftPx(i, tracks, s, projW),
     }));
   });
 
   onMouseMove(event: MouseEvent) {
-    if (this._audioTrimming) {
+    if (this._volumeDragging) {
+      event.preventDefault();
+      this.handleVolumeDragMove(event);
+    } else if (this._audioTrimming) {
       event.preventDefault();
       this.handleAudioTrimMove(event);
     } else if (this._audioDragging) {
@@ -134,6 +156,37 @@ export class AudioTracksComponent {
       this.audioDragTargetLane.set(null);
     }
 
+    if (this._volumeDragging) {
+      const trackId = this._volumeTrackId;
+      if (trackId) {
+        const track = this.store.audioTracks().find((t) => t.id === trackId);
+        if (track) {
+          const laneVolume = this.store.audioLaneMixers()[track.laneIndex]?.volume ?? 1;
+          const finalTrackVolume = track.volume;
+          const initialTrackVolume = this._volumeOriginalTrackVolume;
+          const initialLaneVolume = this._volumeOriginalLaneVolume;
+
+          if (Math.abs(finalTrackVolume - initialTrackVolume) > 0.0001) {
+            this.undoRedo.record({
+              undo: () => {
+                this.audio.setTrackVolume(trackId, initialTrackVolume);
+                this.store.setAudioLaneVolume(track.laneIndex, initialLaneVolume);
+              },
+              redo: () => {
+                this.audio.setTrackVolume(trackId, finalTrackVolume);
+                this.store.setAudioLaneVolume(track.laneIndex, laneVolume);
+              },
+            });
+          }
+        }
+      }
+
+      this._volumeDragging = false;
+      this._volumeTrackId = null;
+      this._volumeDragRect = null;
+      this.volumeDragTrackId.set(null);
+    }
+
     if (this._audioTrimming) {
       const trackId = this._audioTrimTrackId;
       if (trackId !== null) {
@@ -172,19 +225,35 @@ export class AudioTracksComponent {
     return Math.round(value * 100) / 100;
   }
 
-  private buildWaveformPath(peaks: number[], width: number, height: number): string {
+  private buildWaveformPath(
+    peaks: number[],
+    width: number,
+    height: number,
+    trimStart: number,
+    duration: number,
+    fileDuration: number,
+  ): string {
     if (!peaks.length) return '';
+
+    const safeFileDuration = Math.max(0.001, fileDuration || 0);
+    const startRatio = Math.max(0, Math.min(1, trimStart / safeFileDuration));
+    const endRatio = Math.max(0, Math.min(1, (trimStart + duration) / safeFileDuration));
+    const startIdx = Math.floor(startRatio * peaks.length);
+    const endIdx = Math.max(startIdx + 1, Math.ceil(endRatio * peaks.length));
+    const visiblePeaks = peaks.slice(startIdx, endIdx);
+    if (!visiblePeaks.length) return '';
+
     const mid = height / 2;
-    const step = width / peaks.length;
+    const step = width / visiblePeaks.length;
     let d = `M 0 ${mid}`;
-    for (let i = 0; i < peaks.length; i++) {
+    for (let i = 0; i < visiblePeaks.length; i++) {
       const x = i * step;
-      const amp = peaks[i] * mid * 0.85;
+      const amp = visiblePeaks[i] * mid * 0.85;
       d += ` L ${x.toFixed(1)} ${(mid - amp).toFixed(1)}`;
     }
-    for (let i = peaks.length - 1; i >= 0; i--) {
+    for (let i = visiblePeaks.length - 1; i >= 0; i--) {
       const x = i * step;
-      const amp = peaks[i] * mid * 0.85;
+      const amp = visiblePeaks[i] * mid * 0.85;
       d += ` L ${x.toFixed(1)} ${(mid + amp).toFixed(1)}`;
     }
     return d + ' Z';
@@ -209,15 +278,9 @@ export class AudioTracksComponent {
       this._pendingAudioLane,
     );
 
-    const trackSnapshot = this.store.audioTracks().find((t) => t.id === trackId);
-    const bufferEntry = this.audio.getFileBuffers().get(trackId);
-    if (trackSnapshot && bufferEntry) {
-      const { buffer, fileName } = bufferEntry;
-      this.undoRedo.record({
-        undo: () => this.audio.removeTrack(trackId),
-        redo: async () => this.audio.restoreAudioTrack(trackSnapshot, buffer, fileName),
-      });
-    }
+    this.fitTrackToLaneSpace(trackId, this._pendingAudioLane, this._pendingAudioStartTime);
+
+    this.recordAudioTrackAdd(trackId);
   }
 
   onLaneMouseMove(event: MouseEvent, laneIndex: number) {
@@ -233,23 +296,78 @@ export class AudioTracksComponent {
       return cursorX >= left && cursorX <= right;
     });
     this.hoveredClipId.set(hoveredTrack?.id ?? null);
-
-    if ((event.target as Element).closest('.audio-clip, .audio-trim-handle')) {
-      this.hoverLaneIndex.set(null);
-      return;
-    }
-    this.hoverLaneIndex.set(laneIndex);
-    this.hoverLaneX.set(cursorX);
   }
 
   onLaneMouseLeave() {
-    this.hoverLaneIndex.set(null);
     this.hoveredClipId.set(null);
   }
 
-  addAudioAtHover(laneIndex: number) {
-    const startTime = Math.max(0, this.snap(this.hoverLaneX() / this.scale()));
+  addAudioAtLaneEnd(laneIndex: number) {
+    const startTime = this.getLaneInsertTime(laneIndex);
     this.openAudioFile(laneIndex, startTime);
+  }
+
+  onLaneDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = 'copy';
+  }
+
+  async onLaneDrop(event: DragEvent, laneIndex: number) {
+    event.preventDefault();
+
+    const files = Array.from(event.dataTransfer?.files ?? []).filter((file) =>
+      file.type.startsWith('audio/'),
+    );
+    if (files.length === 0) return;
+
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    let cursorSec = Math.max(0, this.snap((event.clientX - rect.left) / this.scale()));
+
+    const addedTrackIds: string[] = [];
+    for (const file of files) {
+      const startTime = cursorSec;
+      const trackId = await this.audio.importAudioFile(file, startTime, laneIndex);
+      this.fitTrackToLaneSpace(trackId, laneIndex, startTime);
+      addedTrackIds.push(trackId);
+
+      const inserted = this.store.audioTracks().find((t) => t.id === trackId);
+      if (!inserted) continue;
+      cursorSec = this.snap(inserted.startTime + inserted.duration);
+    }
+
+    if (addedTrackIds.length === 1) {
+      this.recordAudioTrackAdd(addedTrackIds[0]);
+      return;
+    }
+
+    if (addedTrackIds.length > 1) {
+      const snapshots = addedTrackIds
+        .map((trackId) => {
+          const trackSnapshot = this.store.audioTracks().find((t) => t.id === trackId);
+          const bufferEntry = this.audio.getFileBuffers().get(trackId);
+          if (!trackSnapshot || !bufferEntry) return null;
+          return {
+            trackSnapshot,
+            buffer: bufferEntry.buffer,
+            fileName: bufferEntry.fileName,
+          };
+        })
+        .filter((entry): entry is { trackSnapshot: AudioTrack; buffer: ArrayBuffer; fileName: string } => !!entry);
+
+      if (snapshots.length > 0) {
+        this.undoRedo.record({
+          undo: () => {
+            snapshots.forEach((entry) => this.audio.removeTrack(entry.trackSnapshot.id));
+          },
+          redo: () => {
+            snapshots.forEach((entry) => {
+              void this.audio.restoreAudioTrack(entry.trackSnapshot, entry.buffer, entry.fileName);
+            });
+          },
+        });
+      }
+    }
   }
 
   onLaneTrackClick(event: MouseEvent, laneIndex: number) {
@@ -367,5 +485,136 @@ export class AudioTracksComponent {
         this.audioDragTargetLane.set(idx);
       }
     }
+  }
+
+  startVolumeDrag(event: MouseEvent, trackId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const clipElement = (event.currentTarget as HTMLElement).closest('.audio-clip');
+    if (!clipElement) return;
+
+    this._volumeDragging = true;
+    this._volumeTrackId = trackId;
+    this._volumeDragRect = clipElement.getBoundingClientRect();
+    const track = this.store.audioTracks().find((t) => t.id === trackId);
+    this._volumeOriginalTrackVolume = track?.volume ?? 1;
+    this._volumeOriginalLaneVolume =
+      track ? (this.store.audioLaneMixers()[track.laneIndex]?.volume ?? 1) : 1;
+    this.volumeDragTrackId.set(trackId);
+    this.handleVolumeDragMove(event);
+  }
+
+  private handleVolumeDragMove(event: MouseEvent) {
+    if (!this._volumeDragging || !this._volumeTrackId || !this._volumeDragRect) return;
+    const y = event.clientY - this._volumeDragRect.top;
+    const paddedHeight = Math.max(1, this._volumeDragRect.height - this.VOLUME_LINE_PADDING_PX * 2);
+    const clampedY = Math.max(this.VOLUME_LINE_PADDING_PX, Math.min(y, this._volumeDragRect.height - this.VOLUME_LINE_PADDING_PX));
+    const ratio = 1 - (clampedY - this.VOLUME_LINE_PADDING_PX) / paddedHeight;
+    const volume = Math.max(0, Math.min(1, ratio));
+    this.audio.setTrackVolume(this._volumeTrackId, volume);
+  }
+
+  getVolumeLineTopPercent(volume: number): number {
+    const clampedVolume = Math.max(0, Math.min(1, volume));
+    const topPadPercent = 10;
+    const bottomPadPercent = 10;
+    const usablePercent = 100 - topPadPercent - bottomPadPercent;
+    return topPadPercent + (1 - clampedVolume) * usablePercent;
+  }
+
+  getVolumeTooltip(volume: number): string {
+    return `${Math.round(Math.max(0, Math.min(1, volume)) * 100)}%`;
+  }
+
+  private getLaneInsertTime(laneIndex: number): number {
+    const laneTracks = this.store
+      .audioTracks()
+      .filter((t) => t.laneIndex === laneIndex)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    if (laneTracks.length === 0) return 0;
+
+    const laneEnd = Math.max(...laneTracks.map((t) => t.startTime + t.duration));
+    return this.snap(Math.min(laneEnd, this.store.totalDuration()));
+  }
+
+  private computeLaneAddButtonLeftPx(
+    laneIndex: number,
+    tracks: AudioTrack[],
+    scale: number,
+    projectWidth: number,
+  ): number | null {
+    const maxLeft = Math.max(0, projectWidth - this.ADD_AUDIO_BUTTON_WIDTH);
+    if (maxLeft < this.MIN_ADD_AUDIO_LEFT_PX) {
+      return null;
+    }
+
+    const laneTracks = tracks
+      .filter((t) => t.laneIndex === laneIndex)
+      .map((t) => {
+        const left = Math.max(0, t.startTime * scale);
+        const right = Math.min(projectWidth, left + Math.max(t.duration * scale, 40));
+        return { left, right };
+      })
+      .filter((clip) => clip.right > this.MIN_ADD_AUDIO_LEFT_PX && clip.left < projectWidth)
+      .sort((a, b) => a.left - b.left);
+
+    if (laneTracks.length === 0) {
+      return this.MIN_ADD_AUDIO_LEFT_PX;
+    }
+
+    const lastClip = laneTracks[laneTracks.length - 1];
+    const rightSideCandidate = lastClip.right + this.ADD_AUDIO_BUTTON_GAP_PX;
+    if (rightSideCandidate <= maxLeft) {
+      return rightSideCandidate;
+    }
+
+    for (let i = laneTracks.length - 1; i >= 0; i--) {
+      const current = laneTracks[i];
+      const prevRight = i > 0 ? laneTracks[i - 1].right : this.MIN_ADD_AUDIO_LEFT_PX;
+      const slotStart = prevRight + (i > 0 ? this.ADD_AUDIO_BUTTON_GAP_PX : 0);
+      const slotEnd = current.left - this.ADD_AUDIO_BUTTON_GAP_PX;
+      const candidate = slotEnd - this.ADD_AUDIO_BUTTON_WIDTH;
+
+      if (candidate >= slotStart && candidate >= this.MIN_ADD_AUDIO_LEFT_PX) {
+        return Math.min(maxLeft, candidate);
+      }
+    }
+
+    return null;
+  }
+
+  private fitTrackToLaneSpace(trackId: string, laneIndex: number, requestedStart: number) {
+    const track = this.store.audioTracks().find((t) => t.id === trackId);
+    if (!track) return;
+
+    const totalDuration = this.store.totalDuration();
+    const laneTracks = this.store
+      .audioTracks()
+      .filter((t) => t.laneIndex === laneIndex && t.id !== trackId)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    const startTime = Math.max(0, this.snap(Math.min(requestedStart, totalDuration)));
+    const nextTrack = laneTracks.find((t) => t.startTime > startTime);
+    const endCap = Math.min(totalDuration, nextTrack?.startTime ?? totalDuration);
+    const maxDuration = Math.max(0.1, this.snap(endCap - startTime));
+    const fittedDuration = Math.min(track.fileDuration, track.duration, maxDuration);
+
+    this.audio.updateTrim(trackId, startTime, fittedDuration, track.trimStart);
+  }
+
+  private recordAudioTrackAdd(trackId: string) {
+    const trackSnapshot = this.store.audioTracks().find((t) => t.id === trackId);
+    const bufferEntry = this.audio.getFileBuffers().get(trackId);
+    if (!trackSnapshot || !bufferEntry) return;
+
+    const { buffer, fileName } = bufferEntry;
+    this.undoRedo.record({
+      undo: () => this.audio.removeTrack(trackId),
+      redo: () => {
+        void this.audio.restoreAudioTrack(trackSnapshot, buffer, fileName);
+      },
+    });
   }
 }

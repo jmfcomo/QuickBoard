@@ -4,17 +4,16 @@
       <app-canvas></app-canvas>
       <app-script></app-script>
     </div>
+    <button
+      type="button"
+      class="resize-handle"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize timeline"
+      (mousedown)="onResizeMouseDown($event)"
+    ></button>
     <app-timeline></app-timeline>
   </div>
-  <button
-    type="button"
-    class="resize-handle"
-    role="separator"
-    aria-orientation="vertical"
-    aria-label="Resize timeline"
-    (mousedown)="onResizeMouseDown($event)"
-  ></button>
-  <app-timeline></app-timeline>
 
   <app-export-settings
     [visible]="exportIpc.settingsVisible()"

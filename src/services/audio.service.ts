@@ -41,7 +41,8 @@ export class AudioService {
           onload: () => {
             const duration = player.buffer.duration;
             const mixer = this.store.audioLaneMixers()[laneIndex];
-            player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+            const initialVolume = mixer?.volume ?? DEFAULT_VOLUME;
+            player.volume.value = Tone.gainToDb(Math.max(0, initialVolume));
             player.mute = mixer?.muted ?? DEFAULT_MUTED;
 
             player.toDestination();
@@ -60,6 +61,7 @@ export class AudioService {
               trimStart: 0,
               fileDuration: duration,
               laneIndex,
+              volume: initialVolume,
             };
 
             this.store.addAudioTrack(newTrack);
@@ -96,6 +98,11 @@ export class AudioService {
   }
 
   updateLane(trackId: string, laneIndex: number) {
+    const player = this.players.get(trackId);
+    const mixer = this.store.audioLaneMixers()[laneIndex];
+    if (player) {
+      player.mute = mixer?.muted ?? DEFAULT_MUTED;
+    }
     this.store.updateAudioLane(trackId, laneIndex);
   }
 
@@ -137,14 +144,16 @@ export class AudioService {
   }
 
   setLaneVolume(laneIndex: number, volume: number) {
-    const tracks = this.store.audioTracks().filter((t) => t.laneIndex === laneIndex);
-    tracks.forEach((t) => {
-      const player = this.players.get(t.id);
-      if (player) {
-        player.volume.value = Tone.gainToDb(Math.max(0, volume));
-      }
-    });
     this.store.setAudioLaneVolume(laneIndex, volume);
+  }
+
+  setTrackVolume(trackId: string, volume: number) {
+    const safeVolume = Math.max(0, Math.min(1, volume));
+    const player = this.players.get(trackId);
+    if (player) {
+      player.volume.value = Tone.gainToDb(Math.max(0, safeVolume));
+    }
+    this.store.updateAudioVolume(trackId, safeVolume);
   }
 
   setLaneMuted(laneIndex: number, muted: boolean) {
@@ -171,7 +180,9 @@ export class AudioService {
         url,
         onload: () => {
           const mixer = this.store.audioLaneMixers()[track.laneIndex];
-          player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+          const trackVolume =
+            typeof track.volume === 'number' ? track.volume : (mixer?.volume ?? DEFAULT_VOLUME);
+          player.volume.value = Tone.gainToDb(Math.max(0, trackVolume));
           player.mute = mixer?.muted ?? DEFAULT_MUTED;
 
           player.toDestination();
@@ -184,7 +195,7 @@ export class AudioService {
             [track.id]: this.buildWaveform(player.buffer),
           }));
 
-          this.store.addAudioTrack({ ...track, url });
+          this.store.addAudioTrack({ ...track, url, volume: trackVolume });
           resolve();
         },
       });
@@ -212,7 +223,11 @@ export class AudioService {
               url,
               onload: () => {
                 const mixer = this.store.audioLaneMixers()[track.laneIndex];
-                player.volume.value = Tone.gainToDb(mixer?.volume ?? DEFAULT_VOLUME);
+                const trackVolume =
+                  typeof track.volume === 'number'
+                    ? track.volume
+                    : (mixer?.volume ?? DEFAULT_VOLUME);
+                player.volume.value = Tone.gainToDb(Math.max(0, trackVolume));
                 player.mute = mixer?.muted ?? DEFAULT_MUTED;
 
                 player.toDestination();

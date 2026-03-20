@@ -29,14 +29,9 @@ function toBufferFromIpc(value) {
   throw new TypeError('Invalid buffer type');
 }
 
-async function exportPngSequence(win) {
+async function exportRequest(win) {
   const defaultDirPath = _app.getPath('documents');
-  win.webContents.send('quickboard:request-png-export', { defaultDirPath });
-}
-
-async function exportVideoRequest(win) {
-  const defaultDirPath = _app.getPath('documents');
-  win.webContents.send('quickboard:request-video-export', { defaultDirPath });
+  win.webContents.send('quickboard:request-export', { defaultDirPath });
 }
 
 function registerIpcHandlers() {
@@ -107,4 +102,4 @@ function registerIpcHandlers() {
   });
 }
 
-module.exports = { init, exportPngSequence, exportVideoRequest, registerIpcHandlers };
+module.exports = { init, exportRequest, registerIpcHandlers };

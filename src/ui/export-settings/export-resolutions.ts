@@ -6,6 +6,7 @@ export interface ExportResolution {
 }
 
 export interface ExportSettings {
+  format: 'png' | 'video';
   resolution: ExportResolution;
   prefix: string;
   dirPath: string;

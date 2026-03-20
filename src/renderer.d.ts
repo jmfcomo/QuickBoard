@@ -15,8 +15,7 @@ declare global {
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       openExternal: (url: string) => void;
-      onRequestPngExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
-      onRequestVideoExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
+      onRequestExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
       pickExportDir: () => Promise<string | null>;
       sendPngExportFrame: (payload: {
         dirPath: string;

@@ -20,6 +20,7 @@ export class ExportSettingsComponent {
 
   protected readonly resolutions = EXPORT_RESOLUTIONS;
   protected selectedIndex = signal(Math.min(2, this.resolutions.length - 1)); // default: Full HD
+  protected selectedFormat = signal<'png' | 'video'>('png');
   protected prefix = signal('board');
   protected dirPath = signal('');
   protected isBrowsing = signal(false);
@@ -33,10 +34,16 @@ export class ExportSettingsComponent {
     // Sync internal signals from inputs each time the dialog opens.
     effect(() => {
       if (this.visible()) {
+        this.selectedFormat.set(this.exportType());
         this.prefix.set(this.defaultPrefix() || 'board');
         this.dirPath.set(this.defaultDirPath());
       }
     });
+  }
+
+  protected onFormatChange(event: Event): void {
+    const nextValue = (event.target as HTMLSelectElement).value;
+    this.selectedFormat.set(nextValue === 'video' ? 'video' : 'png');
   }
 
   protected onSelectChange(event: Event): void {
@@ -65,6 +72,7 @@ export class ExportSettingsComponent {
     const rawPrefix = this.prefix().trim();
     const safePrefix = rawPrefix.length > 0 ? rawPrefix : 'board';
     this.confirmExport.emit({
+      format: this.selectedFormat(),
       resolution: this.selectedResolution(),
       prefix: safePrefix,
       dirPath: this.dirPath(),

@@ -1,65 +1,85 @@
 @if (visible()) {
   <div class="overlay">
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="export-settings-title">
-      <h3 class="title" id="export-settings-title">
-        {{ exportType() === 'video' ? 'Export MP4 Video' : 'Export PNG Sequence' }}
-      </h3>
-      <p class="subtitle">
-        {{ boardCount() }} frame{{ boardCount() !== 1 ? 's' : '' }} will be exported.
-      </p>
+      <header class="dialog-header">
+        <p class="eyebrow">Export Setup</p>
+        <h3 class="title" id="export-settings-title">
+          {{ selectedFormat() === 'video' ? 'Export MP4 Video' : 'Export PNG Sequence' }}
+        </h3>
+        <p class="subtitle">
+          {{ boardCount() }} frame{{ boardCount() !== 1 ? 's' : '' }} ready for export.
+        </p>
+      </header>
 
-      <div class="field">
-        <label class="field-label" for="resolution-select">Resolution</label>
-        <select
-          id="resolution-select"
-          class="resolution-select"
-          [value]="selectedIndex()"
-          (change)="onSelectChange($event)"
-        >
-          @for (res of resolutions; track $index) {
-            <option [value]="$index">{{ res.label }}</option>
+      <section class="summary-strip" aria-label="Export summary">
+        <div class="summary-item">
+          <label class="summary-label" for="format-select">Format</label>
+          <select
+            id="format-select"
+            class="summary-select"
+            [value]="selectedFormat()"
+            (change)="onFormatChange($event)"
+          >
+            <option value="png">PNG Sequence</option>
+            <option value="video">MP4 Video</option>
+          </select>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Frames</span>
+          <span class="summary-value">{{ boardCount() }}</span>
+        </div>
+      </section>
+
+      <div class="content-grid">
+        <div class="field field-card">
+          <label class="field-label" for="resolution-select">Resolution</label>
+          <select
+            id="resolution-select"
+            class="resolution-select"
+            [value]="selectedIndex()"
+            (change)="onSelectChange($event)"
+          >
+            @for (res of resolutions; track $index) {
+              <option [value]="$index">{{ res.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field field-card">
+          <label class="field-label" for="prefix-input">File Name Prefix</label>
+          <input
+            id="prefix-input"
+            class="text-input"
+            type="text"
+            [value]="prefix()"
+            (input)="onPrefixChange($event)"
+            placeholder="board"
+            spellcheck="false"
+          />
+          @if (selectedFormat() === 'video') {
+            <p class="resolution-hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
+          } @else {
+            <p class="resolution-hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
           }
-        </select>
-      </div>
+        </div>
 
-      <p class="resolution-hint">
-        Output: {{ selectedResolution().width }} × {{ selectedResolution().height }} px
-      </p>
-
-      <div class="field">
-        <label class="field-label" for="prefix-input">File Name Prefix</label>
-        <input
-          id="prefix-input"
-          class="text-input"
-          type="text"
-          [value]="prefix()"
-          (input)="onPrefixChange($event)"
-          placeholder="board"
-          spellcheck="false"
-        />
-        @if (exportType() === 'video') {
-          <p class="resolution-hint">Output: {{ prefix().trim() || 'board' }}.mp4</p>
-        } @else {
-          <p class="resolution-hint">Files: {{ prefix().trim() || 'board' }}_001.png, …</p>
-        }
-      </div>
-
-      <div class="field">
-        <span class="field-label" id="folder-label">Export Folder</span>
-        <div class="path-row" aria-labelledby="folder-label">
-          <span class="path-display" [title]="dirPath()">{{
-            dirPath() || 'No folder selected'
-          }}</span>
-          <button class="btn-browse" type="button" [disabled]="isBrowsing()" (click)="onBrowse()">
-            Browse…
-          </button>
+        <div class="field field-card folder-card">
+          <span class="field-label" id="folder-label">Export Folder</span>
+          <div class="path-row" aria-labelledby="folder-label">
+            <span class="path-display" [title]="dirPath()">{{
+              dirPath() || 'No folder selected'
+            }}</span>
+            <button class="btn-browse" type="button" [disabled]="isBrowsing()" (click)="onBrowse()">
+              {{ isBrowsing() ? 'Opening…' : 'Choose Folder' }}
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="actions">
-        <button class="btn-cancel" (click)="onCancel()">Cancel</button>
+        <button class="btn-cancel" type="button" (click)="onCancel()">Cancel</button>
         <button class="btn-export" [disabled]="!dirPath() || isBrowsing()" (click)="onConfirm()">
-          Export
+          {{ selectedFormat() === 'video' ? 'Export Video' : 'Export Sequence' }}
         </button>
       </div>
     </div>

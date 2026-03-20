@@ -10,6 +10,7 @@ import { ThemeService } from '../services/theme.service';
 import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
+import { PlaybackService } from '../services/playback.service';
 
 @Component({
   selector: 'app-root',
@@ -38,6 +39,7 @@ export class App implements OnInit, OnDestroy {
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
   private readonly undoRedo = inject(UndoRedoService);
+  private readonly playback = inject(PlaybackService);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -135,9 +137,25 @@ export class App implements OnInit, OnDestroy {
   }
 
   onKeyDown(event: KeyboardEvent): void {
+    const key = event.key.toLowerCase();
+
+    if (key === 'escape' && this.exportIpc.settingsVisible()) {
+      event.preventDefault();
+      this.exportIpc.onSettingsCancel();
+      return;
+    }
+
+    if ((key === ' ' || key === 'spacebar') && !event.ctrlKey && !event.metaKey) {
+      if (event.repeat || this.isEditableTarget(event) || this.dialogMode() !== null) {
+        return;
+      }
+      event.preventDefault();
+      this.playback.togglePlayback();
+      return;
+    }
+
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
-    const key = event.key.toLowerCase();
 
     const isUndo = key === 'z' && !event.shiftKey;
     const isRedo = (key === 'z' && event.shiftKey) || key === 'y';

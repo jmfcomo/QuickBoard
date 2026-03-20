@@ -54,8 +54,7 @@ function createWindow() {
   const hooks = {
     onSave: fileio.requestSaveFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
-    onExportPngSequence: exportModule.exportPngSequence,
-    onExportVideo: exportModule.exportVideoRequest,
+    onExport: exportModule.exportRequest,
   };
 
   buildMenu(app, win, hooks);

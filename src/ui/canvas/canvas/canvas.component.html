@@ -24,7 +24,15 @@
       </button>
     }
     <div class="separator"></div>
-    <button (click)="clearCanvas()" class="tool-button" (mouseenter)="showTooltip($event, 'Clear Canvas')" (mouseleave)="hideTooltip()" aria-label="Clear Canvas">🗑️</button>
+    <button
+      (click)="requestClearCanvas()"
+      class="tool-button"
+      (mouseenter)="showTooltip($event, 'Clear Canvas')"
+      (mouseleave)="hideTooltip()"
+      aria-label="Clear Canvas"
+    >
+      🗑️
+    </button>
   </div>
   @if (tooltipVisible()) {
     <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
@@ -37,3 +45,35 @@
     </div>
   </div>
 </div>
+
+@if (showClearCanvasConfirm()) {
+  <div
+    class="overlay"
+    role="button"
+    tabindex="0"
+    (click)="cancelClearCanvas()"
+    (keydown.enter)="cancelClearCanvas()"
+    (keydown.escape)="cancelClearCanvas()"
+  >
+    <div
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Clear canvas confirmation"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <header class="dialog-header centered">
+        <h3 class="title">CLEAR CANVAS</h3>
+        <p class="subtitle">Are you sure? This will erase all contents of this board.</p>
+      </header>
+
+      <div class="dialog-actions">
+        <button class="btn-close" type="button" (click)="cancelClearCanvas()">Cancel</button>
+        <button class="btn-danger" type="button" (click)="confirmClearCanvas()">
+          Clear Canvas
+        </button>
+      </div>
+    </div>
+  </div>
+}

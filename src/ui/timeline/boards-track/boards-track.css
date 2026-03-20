@@ -12,7 +12,7 @@
   position: absolute;
   top: 4px;
   bottom: 4px;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-body);
   border: 1px solid var(--border-default);
   border-radius: 6px;
   cursor: pointer;
@@ -40,8 +40,9 @@
   z-index: 10;
 }
 
-.timeline-board.selected .delete-btn {
-  display: flex;
+.timeline-board.selected .delete-btn,
+.timeline-board.selected .duplicate-btn {
+  display: none;
 }
 
 .board-content {
@@ -98,8 +99,22 @@
   display: flex;
 }
 
+.timeline-board:focus-within .delete-btn,
+.timeline-board:focus-visible .delete-btn {
+  display: flex;
+}
+
 .delete-btn:hover {
   background: var(--danger);
+}
+
+.delete-btn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+.delete-btn:disabled:hover {
+  background: var(--overlay-dark-light);
 }
 
 /* ─── Duplicate button ───────────────────────────────────── */
@@ -127,12 +142,13 @@
   display: flex;
 }
 
-.timeline-board.selected .duplicate-btn,
-.timeline-board:focus-within .duplicate-btn {
+.timeline-board:focus-within .duplicate-btn,
+.timeline-board:focus-visible .duplicate-btn {
   display: flex;
 }
+
 .duplicate-btn:hover {
-  background: var(--accent);
+  background: var(--accent-hover);
 }
 
 /* ─── Resize handles ─────────────────────────────────────── */
@@ -157,11 +173,11 @@
 }
 
 .resize-handle:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--bg-hover) 70%, transparent);
 }
 
 .resize-handle:active {
-  background: rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--bg-hover-light) 80%, transparent);
 }
 
 .timeline-board.resizing {

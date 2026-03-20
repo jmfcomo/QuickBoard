@@ -14,20 +14,6 @@
     >
       M
     </button>
-    <div class="lane-volume-wrap">
-      <input
-        type="range"
-        class="lane-volume-slider"
-        min="0"
-        max="100"
-        step="1"
-        [value]="lane.volume * 100"
-        [disabled]="lane.muted"
-        [attr.aria-label]="'Volume for lane ' + (lane.laneIndex + 1)"
-        [attr.title]="'Volume: ' + (lane.volume * 100).toFixed(0) + '%'"
-        (input)="setLaneVolume(lane.laneIndex, $event)"
-      />
-    </div>
     <button
       type="button"
       class="lane-delete-btn"
@@ -42,7 +28,17 @@
 }
 
 @if (canAddLane()) {
-  <div class="controls-add-lane-row"></div>
+  <div class="controls-add-lane-row">
+    <button
+      type="button"
+      class="controls-add-lane-btn"
+      aria-label="Add audio lane"
+      title="Add audio lane"
+      (click)="addLane()"
+    >
+      <span class="controls-add-lane-icon" aria-hidden="true">+</span>
+    </button>
+  </div>
 }
 
 <div class="controls-bottom-spacer"></div>

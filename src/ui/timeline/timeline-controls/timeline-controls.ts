@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { AudioService } from '../../../services/audio.service';
+import { UndoRedoService } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-timeline-controls',
@@ -11,6 +12,7 @@ import { AudioService } from '../../../services/audio.service';
 export class TimelineControlsComponent {
   readonly store = inject(AppStore);
   readonly audio = inject(AudioService);
+  readonly undoRedo = inject(UndoRedoService);
 
   readonly MAX_AUDIO_LANES = 4;
 
@@ -30,9 +32,17 @@ export class TimelineControlsComponent {
     this.audio.setLaneMuted(laneIndex, !current);
   }
 
-  setLaneVolume(laneIndex: number, event: Event) {
-    const input = event.target as HTMLInputElement;
-    this.audio.setLaneVolume(laneIndex, parseFloat(input.value) / 100);
+  addLane() {
+    const previousCount = this.store.audioLaneCount();
+    this.store.addAudioLane();
+    const newCount = this.store.audioLaneCount();
+    if (newCount === previousCount) return;
+
+    const addedLaneIndex = newCount - 1;
+    this.undoRedo.record({
+      undo: () => this.store.removeAudioLane(addedLaneIndex),
+      redo: () => this.store.addAudioLane(),
+    });
   }
 
   removeLane(laneIndex: number) {
