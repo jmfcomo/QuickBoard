@@ -26,13 +26,13 @@ export class PropertiesBarComponent {
   readonly colorToleranceChange = output<number>();
 
   readonly showStrokeSize = computed(() =>
-    ['pencil', 'brush', 'rectangle', 'eraser'].includes(this.activeTool())
+    ['pencil', 'brush', 'rectangle', 'circle', 'eraser'].includes(this.activeTool())
   );
   readonly showColorTolerance = computed(() => this.activeTool() === 'bucket-fill');
   readonly showBrushSpacing = computed(() => this.activeTool() === 'brush');
 
   readonly propertyLabel = computed(() =>
-    this.activeTool() === 'rectangle' ? 'Stroke' : 'Size'
+    ['rectangle', 'circle'].includes(this.activeTool()) ? 'Stroke' : 'Size'
   );
 
   readonly strokeSizeSliderPos = computed(() => {
