@@ -149,15 +149,11 @@ export class AudioService {
 
   setTrackVolume(trackId: string, volume: number) {
     const safeVolume = Math.max(0, Math.min(1, volume));
-    const track = this.store.audioTracks().find((t) => t.id === trackId);
     const player = this.players.get(trackId);
     if (player) {
       player.volume.value = Tone.gainToDb(Math.max(0, safeVolume));
     }
     this.store.updateAudioVolume(trackId, safeVolume);
-    if (track) {
-      this.store.setAudioLaneVolume(track.laneIndex, safeVolume);
-    }
   }
 
   setLaneMuted(laneIndex: number, muted: boolean) {
