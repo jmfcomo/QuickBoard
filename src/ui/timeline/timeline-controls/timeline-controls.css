@@ -2,10 +2,10 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 80px;
+  width: 36px;
   overflow: hidden;
   border-right: 1px solid var(--border-default);
-  background: var(--bg-panel, var(--bg-body));
+  background: var(--bg-body);
   z-index: 30;
   position: sticky;
   left: 0;
@@ -16,18 +16,19 @@
 .controls-top-spacer {
   height: 109px;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: none;
 }
 
 .controls-lane {
-  height: 48px;
+  height: 40px;
   flex-shrink: 0;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 4px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--bg-subtle, rgba(0, 0, 0, 0.03));
+  justify-content: center;
+  padding: 0 2px;
+  border-bottom: none;
+  background: var(--bg-body);
 }
 
 .controls-lane.last-lane {
@@ -35,8 +36,11 @@
 }
 
 .controls-add-lane-row {
-  height: 32px;
+  height: 40px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .controls-bottom-spacer {
@@ -47,13 +51,13 @@
 /* ─── Mute button ──────────────────────────────────────────── */
 .lane-mute-btn {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 1.5px solid var(--border-default);
   background: transparent;
   color: var(--text-light);
   border-radius: 3px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -72,90 +76,34 @@
 }
 
 .lane-mute-btn.muted {
-  background: var(--danger, #ef4444);
-  border-color: var(--danger, #ef4444);
-  color: #fff;
-}
-
-/* ─── Volume slider ────────────────────────────────────────── */
-.lane-volume-wrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-
-.lane-volume-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(
-    to right,
-    var(--border-active, #3b82f6) 0%,
-    var(--border-active, #3b82f6) calc(var(--val, 100) * 1%),
-    var(--border-default) calc(var(--val, 100) * 1%),
-    var(--border-default) 100%
-  );
-  cursor: pointer;
-  outline: none;
-  padding: 0;
-  margin: 0;
-  transition: opacity 0.15s;
-}
-
-.lane-volume-slider:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.lane-volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-active, #3b82f6);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 0.1s;
-}
-
-.lane-volume-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
-.lane-volume-slider::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-active, #3b82f6);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--text-on-accent);
 }
 
 /* ─── Lane delete ──────────────────────────────────────────── */
 .lane-delete-btn {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  border: none;
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border-default);
   background: transparent;
   color: var(--text-light);
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  opacity: 0;
   transition:
     background 0.15s,
-    color 0.15s;
+    color 0.15s,
+    opacity 0.15s;
 }
 
 .lane-delete-btn.hidden {
@@ -168,6 +116,39 @@
 }
 
 .lane-delete-btn:hover {
-  background: var(--danger, #ef4444);
-  color: #fff;
+  background: var(--danger);
+  color: var(--text-on-accent);
+}
+
+.controls-add-lane-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px dashed var(--border-default);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-light);
+  font-size: 0;
+  line-height: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background-color 0.15s;
+}
+
+.controls-add-lane-icon {
+  display: block;
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+.controls-add-lane-btn:hover {
+  color: var(--text-default);
+  border-color: var(--border-darker);
+  background: var(--bg-hover);
 }

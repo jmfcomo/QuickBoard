@@ -17,7 +17,21 @@
         class="audio-lane-track"
         (mousemove)="onLaneMouseMove($event, lane.laneIndex)"
         (mouseleave)="onLaneMouseLeave()"
+        (dragover)="onLaneDragOver($event)"
+        (drop)="onLaneDrop($event, lane.laneIndex)"
       >
+        @if (lane.addButtonLeftPx !== null) {
+          <button
+            type="button"
+            class="add-audio-clip-btn"
+            [style.left.px]="lane.addButtonLeftPx"
+            aria-label="Add audio in lane {{ lane.laneIndex + 1 }}"
+            (click)="addAudioAtLaneEnd(lane.laneIndex)"
+          >
+            <span class="add-audio-clip-icon" aria-hidden="true">+</span>
+          </button>
+        }
+
         <!-- clips clipped to project duration -->
         <div class="audio-lane-clip-zone" [style.width.px]="projectWidthPx()">
           @for (clip of lane.clips; track clip.id) {
@@ -48,20 +62,19 @@
                   <path [attr.d]="clip.waveformPath" class="waveform-path" />
                 </svg>
               }
+              <div
+                class="audio-volume-hitbox"
+                [style.top.%]="getVolumeLineTopPercent(clip.volume)"
+                [attr.title]="getVolumeTooltip(clip.volume)"
+                (mousedown)="startVolumeDrag($event, clip.id)"
+              >
+                <div
+                  class="audio-volume-line"
+                  [class.dragging]="volumeDragTrackId() === clip.id"
+                ></div>
+              </div>
               <span class="audio-clip-name">{{ clip.name }}</span>
             </div>
-          }
-
-          @if (hoverLaneIndex() === lane.laneIndex && hoverLaneX() < projectWidthPx()) {
-            <button
-              type="button"
-              class="lane-add-cursor-btn"
-              [style.left.px]="hoverLaneX()"
-              aria-label="Add audio here"
-              (click)="$event.stopPropagation(); addAudioAtHover(lane.laneIndex)"
-            >
-              +
-            </button>
           }
         </div>
 
@@ -88,16 +101,7 @@
 
   @if (canAddLane()) {
     <div class="audio-lane audio-lane-add-row">
-      <div class="audio-lane-track">
-        <button
-          type="button"
-          class="add-audio-lane-btn"
-          aria-label="Add audio lane"
-          (click)="addAudioLane()"
-        >
-          + Audio Lane
-        </button>
-      </div>
+      <div class="audio-lane-track"></div>
     </div>
   }
 </div>

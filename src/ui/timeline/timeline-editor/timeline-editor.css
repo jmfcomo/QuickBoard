@@ -48,7 +48,7 @@
 /* ─── Ruler ─────────────────────────────────────────────── */
 .timeline-ruler {
   height: 22px;
-  background-color: var(--bg-body, #fff);
+  background-color: var(--bg-body);
   border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
@@ -66,6 +66,11 @@
   display: flex;
   align-items: flex-end;
   padding-bottom: 3px;
+}
+
+.timeline-tick.origin {
+  border-left: none;
+  padding-left: 5px;
 }
 
 .tick-label {

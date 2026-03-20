@@ -74,7 +74,7 @@
   padding: 3px 6px;
   border-radius: 4px;
   border: 1px solid var(--border-default);
-  background: var(--bg-panel);
+  background: var(--bg-body);
   color: var(--text-default);
   font-size: 12px;
   font-variant-numeric: tabular-nums;

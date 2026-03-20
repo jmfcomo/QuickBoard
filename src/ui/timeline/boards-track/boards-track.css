@@ -12,7 +12,7 @@
   position: absolute;
   top: 4px;
   bottom: 4px;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-body);
   border: 1px solid var(--border-default);
   border-radius: 6px;
   cursor: pointer;
@@ -126,13 +126,8 @@
 .timeline-board:hover .duplicate-btn {
   display: flex;
 }
-
-.timeline-board.selected .duplicate-btn,
-.timeline-board:focus-within .duplicate-btn {
-  display: flex;
-}
 .duplicate-btn:hover {
-  background: var(--accent);
+  background: var(--accent-hover);
 }
 
 /* ─── Resize handles ─────────────────────────────────────── */
@@ -157,11 +152,11 @@
 }
 
 .resize-handle:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--bg-hover) 70%, transparent);
 }
 
 .resize-handle:active {
-  background: rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--bg-hover-light) 80%, transparent);
 }
 
 .timeline-board.resizing {
