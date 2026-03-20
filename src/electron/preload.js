@@ -75,10 +75,10 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:redo', listener);
     return () => ipcRenderer.removeListener('quickboard:redo', listener);
   },
-  onRequestPngExport: (handler) => {
+  onRequestExport: (handler) => {
     const listener = (_event, payload) => handler(payload);
-    ipcRenderer.on('quickboard:request-png-export', listener);
-    return () => ipcRenderer.removeListener('quickboard:request-png-export', listener);
+    ipcRenderer.on('quickboard:request-export', listener);
+    return () => ipcRenderer.removeListener('quickboard:request-export', listener);
   },
   sendPngExportFrame: async (payload) => {
     if (
@@ -106,11 +106,6 @@ contextBridge.exposeInMainWorld('quickboard', {
     });
   },
   pickExportDir: () => ipcRenderer.invoke('quickboard:pick-export-dir'),
-  onRequestVideoExport: (handler) => {
-    const listener = (_event, payload) => handler(payload);
-    ipcRenderer.on('quickboard:request-video-export', listener);
-    return () => ipcRenderer.removeListener('quickboard:request-video-export', listener);
-  },
   sendVideoFile: async (payload) => {
     if (
       !payload ||

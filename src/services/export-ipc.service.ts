@@ -52,23 +52,11 @@ export class ExportIpcService {
   init(): () => void {
     const cleanups: (() => void)[] = [];
 
-    if (window.quickboard?.onRequestPngExport) {
+    if (window.quickboard?.onRequestExport) {
       cleanups.push(
-        window.quickboard.onRequestPngExport((payload) => {
+        window.quickboard.onRequestExport((payload) => {
           this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
           this.settingsBoardCount.set(this.exportService.store.boards().length);
-          this.settingsMode.set('png');
-          this.settingsVisible.set(true);
-        }),
-      );
-    }
-
-    if (window.quickboard?.onRequestVideoExport) {
-      cleanups.push(
-        window.quickboard.onRequestVideoExport((payload) => {
-          this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
-          this.settingsBoardCount.set(this.exportService.store.boards().length);
-          this.settingsMode.set('video');
           this.settingsVisible.set(true);
         }),
       );
@@ -78,7 +66,8 @@ export class ExportIpcService {
   }
 
   async onSettingsConfirm(settings: ExportSettings): Promise<void> {
-    if (this.settingsMode() === 'video') {
+    this.settingsMode.set(settings.format);
+    if (settings.format === 'video') {
       await this.runVideoExport(settings);
     } else {
       await this.runPngExport(settings);

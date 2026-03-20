@@ -139,6 +139,12 @@ export class App implements OnInit, OnDestroy {
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
 
+    if (key === 'escape' && this.exportIpc.settingsVisible()) {
+      event.preventDefault();
+      this.exportIpc.onSettingsCancel();
+      return;
+    }
+
     if ((key === ' ' || key === 'spacebar') && !event.ctrlKey && !event.metaKey) {
       if (event.repeat || this.isEditableTarget(event) || this.dialogMode() !== null) {
         return;
