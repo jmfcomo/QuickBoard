@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import EditorJS from '@editorjs/editorjs';
-import type { OutputBlockData } from '@editorjs/editorjs';
+import type { OutputData, OutputBlockData } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
 import Paragraph from '@editorjs/paragraph';
 import { AppStore } from '../../../data/store/app.store';
+import { UndoRedoService, UndoReservation } from '../../../services/undo-redo.service';
 
 @Component({
   selector: 'app-script',
@@ -15,10 +16,30 @@ import { AppStore } from '../../../data/store/app.store';
 export class ScriptComponent implements OnInit, OnDestroy {
   private readonly store = inject(AppStore);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly undoRedo = inject(UndoRedoService);
   private editor: EditorJS | null = null;
   private saveInterval: ReturnType<typeof setInterval> | null = null;
   private isSaving = false;
   private currentBoardId: string | null = null;
+  /** Snapshot of the script data at the start of the current editing session. */
+  private _scriptBaseline: OutputData | null = null;
+  /** True while we are restoring script data from an undo/redo command. */
+  private _suppressScriptHistory = false;
+  /** Debounce timer for capturing the editor's latest content. */
+  private _changeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _editingSession: {
+    reservation: UndoReservation;
+    afterData: OutputData;
+    boardId: string;
+  } | null = null;
+  /** Bound focusout listener so we can remove it on destroy. */
+  private _focusoutHandler: ((e: FocusEvent) => void) | null = null;
+  /** Bound input listener that fires synchronously on every keystroke. */
+  private _inputHandler: (() => void) | null = null;
+  /** Unregister callback for the UndoRedoService pre-undo flush. */
+  private _removeFlush: (() => void) | null = null;
+  /** Active save promise to prevent concurrent saves. */
+  private _savePromise: Promise<void> | null = null;
 
   constructor() {
     // Watch for board changes and reload editor data
@@ -35,20 +56,48 @@ export class ScriptComponent implements OnInit, OnDestroy {
     // Ensure we are in the browser and not in SSR or test environment
     if (isPlatformBrowser(this.platformId)) {
       this.initializeEditor();
+      this._removeFlush = this.undoRedo.registerPreUndoFlush(async () => {
+        await this.finalizeEditingSession();
+      });
     }
   }
 
   ngOnDestroy() {
-    // Clear the auto-save interval
+    this._removeFlush?.();
+
     if (this.saveInterval) {
       clearInterval(this.saveInterval);
       this.saveInterval = null;
     }
 
-    // Perform final synchronous save before destruction
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
+    }
+
+    // Remove editor DOM listeners
+    const editorEl = document.getElementById('editorjs');
+    if (this._inputHandler) {
+      editorEl?.removeEventListener('input', this._inputHandler, true);
+      this._inputHandler = null;
+    }
+    if (this._focusoutHandler) {
+      editorEl?.removeEventListener('focusout', this._focusoutHandler);
+      this._focusoutHandler = null;
+    }
+
+    if (this._editingSession) {
+      if (this.blocksKey(this._editingSession.afterData) !== this.blocksKey(this._scriptBaseline)) {
+        this.commitEditingSession(this._editingSession);
+      } else {
+        this._editingSession.reservation.cancel();
+      }
+      this._editingSession = null;
+    }
+
+    // Perform final save before destruction
     this.saveEditorDataSync();
 
-    // Clean up EditorJS instance
     if (this.editor) {
       this.editor.destroy();
       this.editor = null;
@@ -56,12 +105,18 @@ export class ScriptComponent implements OnInit, OnDestroy {
   }
 
   private initializeEditor() {
-    // Get the current board or first board
     const boards = this.store.boards();
     const currentBoard = boards.find((b) => b.id === this.store.currentBoardId()) || boards[0];
     if (currentBoard) {
       this.currentBoardId = currentBoard.id;
     }
+
+    const initialData = currentBoard?.scriptData || {
+      blocks: [],
+      time: Date.now(),
+      version: '2.28.0',
+    };
+    this._scriptBaseline = JSON.parse(JSON.stringify(initialData));
 
     this.editor = new EditorJS({
       holder: 'editorjs',
@@ -72,46 +127,86 @@ export class ScriptComponent implements OnInit, OnDestroy {
         list: List,
       },
       placeholder: 'Start typing here...',
-      data: currentBoard?.scriptData || {
-        blocks: [],
-        time: Date.now(),
-        version: '2.28.0',
+      data: initialData,
+      onChange: () => {
+        this.handleEditorChange();
       },
       onReady: () => {
-        // Start auto-save only after editor is fully initialized
         this.startAutoSave();
+        this.installEditorListeners();
       },
     });
+  }
+
+  private installEditorListeners() {
+    const editorEl = document.getElementById('editorjs');
+    if (!editorEl) return;
+
+    this._inputHandler = () => {
+      this.ensureEditingSession();
+    };
+    // Use capture so we see the event from contenteditable children.
+    editorEl.addEventListener('input', this._inputHandler, true);
+
+    this._focusoutHandler = (e: FocusEvent) => {
+      // Only finalize when focus moves OUTSIDE the editor's DOM tree.
+      if (e.relatedTarget && editorEl.contains(e.relatedTarget as Node)) return;
+      this.finalizeEditingSession();
+    };
+    editorEl.addEventListener('focusout', this._focusoutHandler);
+  }
+
+  private ensureEditingSession() {
+    if (this._suppressScriptHistory || !this.currentBoardId) return;
+    if (this._editingSession) return;
+
+    const reservation = this.undoRedo.reserve();
+    this._editingSession = {
+      reservation,
+      afterData: JSON.parse(JSON.stringify(this._scriptBaseline)),
+      boardId: this.currentBoardId,
+    };
+  }
+
+  private handleEditorChange() {
+    if (this._suppressScriptHistory || !this.currentBoardId) return;
+
+    this.ensureEditingSession();
+
+    // Debounce the async save so we capture the latest content without
+    // hammering editor.save() on every keystroke.
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+    }
+    this._changeDebounceTimer = setTimeout(() => {
+      this._changeDebounceTimer = null;
+      this.captureSessionData();
+    }, 500);
   }
 
   private async switchBoard(boardId: string) {
     if (!this.editor || this.isSaving) return;
 
-    // First, save current board data
-    if (this.currentBoardId) {
-      try {
-        this.isSaving = true;
-        const data = await this.editor.save();
+    this.isSaving = true;
+    try {
+      // Finalize any active editing session (captures latest data + commits undo)
+      await this.finalizeEditingSession();
 
-        // Only save if there's actual content (not just empty blocks)
-        if (data.blocks && data.blocks.length > 0) {
-          this.store.updateScriptData(this.currentBoardId, data);
-        } else {
-          // Save null instead of empty blocks to avoid validation issues
-          this.store.updateScriptData(this.currentBoardId, {
-            blocks: [],
-            time: Date.now(),
-            version: '2.28.0',
-          });
-        }
-      } catch (error) {
-        console.error('Failed to save before board switch:', error);
-      } finally {
-        this.isSaving = false;
+      // Persist latest editor content for the current board
+      if (this.currentBoardId) {
+        const data = await this.editor.save();
+        const dataToSave =
+          data.blocks && data.blocks.length > 0
+            ? data
+            : { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' };
+        this.store.updateScriptData(this.currentBoardId, dataToSave);
       }
+    } catch (error) {
+      console.error('Failed to save before board switch:', error);
+    } finally {
+      this.isSaving = false;
     }
 
-    // Then load new board data
     await this.loadBoardData(boardId);
   }
 
@@ -169,50 +264,158 @@ export class ScriptComponent implements OnInit, OnDestroy {
         console.error('Fallback render also failed:', fallbackError);
       }
     }
+
+    // Snapshot the data we just loaded as the baseline for undo tracking
+    this._scriptBaseline = JSON.parse(JSON.stringify(dataToRender));
+    // Release any suppression held by undo/redo-triggered board switches.
+    this._suppressScriptHistory = false;
   }
 
   private startAutoSave() {
     // Auto-save every 5 seconds
     this.saveInterval = setInterval(() => {
-      this.saveEditorData();
+      // Don't leak unhandled promise rejections
+      this.saveEditorData().catch((e) => {
+        console.error('Auto-save failed:', e);
+      });
     }, 5000);
   }
 
-  private async saveEditorData() {
-    // Skip if already saving or no editor or no board
-    if (this.isSaving || !this.editor || !this.currentBoardId) {
-      return;
-    }
+  private saveEditorData(): Promise<void> {
+    if (this._savePromise) return this._savePromise;
+    if (!this.editor || !this.currentBoardId) return Promise.resolve();
 
     this.isSaving = true;
     const boardIdAtSaveStart = this.currentBoardId;
 
-    try {
-      const data = await this.editor.save();
+    const doSave = async () => {
+      try {
+        const data = await this.editor!.save();
 
-      // Only save if we're still on the same board
-      if (boardIdAtSaveStart !== this.currentBoardId) {
-        return;
+        if (boardIdAtSaveStart !== this.currentBoardId) return;
+
+        const dataToSave =
+          !data.blocks || data.blocks.length === 0
+            ? { blocks: [] as OutputBlockData[], time: Date.now(), version: '2.28.0' }
+            : data;
+
+        const boards = this.store.boards();
+        const currentBoard = boards.find((b) => b.id === this.currentBoardId);
+        if (this.blocksKey(dataToSave) !== this.blocksKey(currentBoard?.scriptData ?? null)) {
+          this.store.updateScriptData(this.currentBoardId!, dataToSave);
+        }
+
+        // Keep the editing session's afterData up to date.
+        if (this._editingSession && this._editingSession.boardId === this.currentBoardId) {
+          this._editingSession.afterData = JSON.parse(JSON.stringify(dataToSave));
+        }
+      } catch (error) {
+        console.error('Failed to save editor data:', error);
+      } finally {
+        this.isSaving = false;
+        this._savePromise = null;
       }
+    };
 
-      const boards = this.store.boards();
-      const currentBoard = boards.find((b) => b.id === this.currentBoardId);
+    this._savePromise = doSave();
+    return this._savePromise;
+  }
 
-      // Normalize empty data
-      const dataToSave =
-        !data.blocks || data.blocks.length === 0
-          ? { blocks: [], time: Date.now(), version: '2.28.0' }
-          : data;
+  /**
+   * Async save that updates both the store and the active editing session's
+   * `afterData`.  Called from the onChange debounce.
+   */
+  private async captureSessionData() {
+    if (!this.editor || !this.currentBoardId) return;
 
-      // Only update if data has changed
-      if (JSON.stringify(dataToSave) !== JSON.stringify(currentBoard?.scriptData)) {
-        this.store.updateScriptData(this.currentBoardId, dataToSave);
-      }
-    } catch (error) {
-      console.error('Failed to save editor data:', error);
-    } finally {
-      this.isSaving = false;
+    // Delegate to the shared save logic which already updates the session.
+    await this.saveEditorData();
+  }
+
+  private async finalizeEditingSession() {
+    if (!this._editingSession) return;
+
+    // Cancel pending debounce — we're about to capture now.
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
     }
+
+    // Capture latest editor content into the session.
+    await this.captureSessionData();
+
+    const session = this._editingSession;
+    this._editingSession = null;
+
+    if (this.blocksKey(session.afterData) !== this.blocksKey(this._scriptBaseline)) {
+      this.commitEditingSession(session);
+      this._scriptBaseline = JSON.parse(JSON.stringify(session.afterData));
+    } else {
+      // No net content change — remove the reserved slot.
+      session.reservation.cancel();
+    }
+  }
+
+  /**
+   * Fill in the undo/redo logic for a reserved slot.
+   */
+  private commitEditingSession(session: {
+    reservation: UndoReservation;
+    afterData: OutputData;
+    boardId: string;
+  }) {
+    const oldData: OutputData = JSON.parse(JSON.stringify(this._scriptBaseline));
+    const newData: OutputData = JSON.parse(JSON.stringify(session.afterData));
+    const boardId = session.boardId;
+
+    session.reservation.commit({
+      undo: () => {
+        this.discardEditingSession();
+        this._suppressScriptHistory = true;
+        this.store.updateScriptData(boardId, oldData);
+        if (this.editor && this.currentBoardId === boardId) {
+          this.editor
+            .render(oldData)
+            .catch((e) => console.error('undo render failed', e))
+            .finally(() => {
+              this._scriptBaseline = JSON.parse(JSON.stringify(oldData));
+              this._suppressScriptHistory = false;
+            });
+        } else {
+          this.store.setCurrentBoard(boardId);
+        }
+      },
+      redo: () => {
+        this.discardEditingSession();
+        this._suppressScriptHistory = true;
+        this.store.updateScriptData(boardId, newData);
+        if (this.editor && this.currentBoardId === boardId) {
+          this.editor
+            .render(newData)
+            .catch((e) => console.error('redo render failed', e))
+            .finally(() => {
+              this._scriptBaseline = JSON.parse(JSON.stringify(newData));
+              this._suppressScriptHistory = false;
+            });
+        } else {
+          this.store.setCurrentBoard(boardId);
+        }
+      },
+    });
+  }
+
+  private discardEditingSession() {
+    if (!this._editingSession) return;
+    if (this._changeDebounceTimer) {
+      clearTimeout(this._changeDebounceTimer);
+      this._changeDebounceTimer = null;
+    }
+    this._editingSession.reservation.cancel();
+    this._editingSession = null;
+  }
+
+  private blocksKey(data: OutputData | null): string {
+    return JSON.stringify(data?.blocks ?? []);
   }
 
   private saveEditorDataSync() {

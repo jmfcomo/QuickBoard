@@ -9,10 +9,14 @@ import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
+import { UndoRedoService } from '../services/undo-redo.service';
 
 @Component({
   selector: 'app-root',
-  host: { '[class.dialog-mode]': 'dialogMode() !== null' },
+  host: {
+    '[class.dialog-mode]': 'dialogMode() !== null',
+    '(document:keydown)': 'onKeyDown($event)',
+  },
   imports: [
     CanvasComponent,
     ScriptComponent,
@@ -33,6 +37,7 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
+  private readonly undoRedo = inject(UndoRedoService);
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
@@ -72,6 +77,8 @@ export class App implements OnInit, OnDestroy {
             // Legacy plain-JSON fallback
             this.sbd.loadLegacyJson(payload.content);
           }
+          // Clear history — the newly-loaded project starts with a clean slate
+          this.undoRedo.clear();
           // Derive default export prefix from the opened file's name.
           const stem =
             payload.filePath
@@ -91,13 +98,13 @@ export class App implements OnInit, OnDestroy {
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.canvas()?.undoStroke();
+        this.undoRedo.triggerUndo();
       });
     }
 
     if (window.quickboard?.onRedo) {
       this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.canvas()?.redoStroke();
+        this.undoRedo.triggerRedo();
       });
     }
 
@@ -108,6 +115,50 @@ export class App implements OnInit, OnDestroy {
 
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  private isEditableTarget(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return false;
+    }
+
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      return true;
+    }
+
+    if (target.isContentEditable) {
+      return true;
+    }
+
+    return !!target.closest('[contenteditable="true"]');
+  }
+
+  onKeyDown(event: KeyboardEvent): void {
+    const ctrl = event.ctrlKey || event.metaKey;
+    if (!ctrl) return;
+    const key = event.key.toLowerCase();
+
+    const isUndo = key === 'z' && !event.shiftKey;
+    const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
+
+    if (!isUndo && !isRedo) return;
+
+    if (this.isEditableTarget(event)) {
+      const target = event.target as HTMLElement | null;
+      // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
+      // but let regular inputs/textareas use the browser's native undo.
+      if (!target?.closest('#editorjs')) {
+        return;
+      }
+    }
+
+    event.preventDefault();
+    if (isUndo) {
+      this.undoRedo.triggerUndo();
+    } else {
+      this.undoRedo.triggerRedo();
+    }
   }
 
   ngOnDestroy(): void {

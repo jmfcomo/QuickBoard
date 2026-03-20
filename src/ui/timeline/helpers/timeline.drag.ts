@@ -1,9 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
+import { TimelineActions } from './timeline.actions';
 
 @Injectable({ providedIn: 'root' })
 export class TimelineDrag {
   private readonly store = inject(AppStore);
+  private readonly actions = inject(TimelineActions);
 
   draggingBoardId = signal<string | null>(null);
   dragOverBoardId = signal<string | null>(null);
@@ -95,6 +97,7 @@ export class TimelineDrag {
 
       if (targetIndex !== startIndex) {
         this.store.reorderBoards(startIndex, targetIndex);
+        this.actions.recordReorder(startIndex, targetIndex);
       }
     }
 
