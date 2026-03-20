@@ -23,7 +23,7 @@
     "electron:dev": "ng build --watch & wait-on dist/index.html && electron electron-main.js",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "npm run build && electron-builder --windows",
-    "electron:build:mac": "npm run build && electron-builder --mac",
+    "electron:build:mac": "npm run build && node scripts/package-mac.js",
     "electron:build:linux": "npm run build && electron-builder --linux",
     "cap:init": "cap init",
     "cap:sync": "npm run build:mobile && cap sync",
@@ -85,7 +85,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico",
+      "icon": "branding/QuickBoard_icon_Windows.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "nsis": {
@@ -105,9 +105,15 @@
           ]
         }
       ],
-      "icon": "build/icon.icns",
+      "icon": "branding/QuickBoard_icon_macOSLegacy.icns",
       "category": "public.app-category.productivity",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "extraResources": [
+        {
+          "from": "branding/QuickBoard_icon_macOS.icon",
+          "to": "QuickBoard_icon_macOS.icon"
+        }
+      ]
     },
     "dmg": {
       "writeUpdateInfo": false
@@ -127,7 +133,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "branding/QuickBoard_icon_Linux.png",
       "category": "Utility",
       "artifactName": "${name}-${version}.${ext}",
       "mimeTypes": [
@@ -168,6 +174,7 @@
     "@capacitor/cli": "^6.2.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/ios": "^6.2.0",
+    "@electron/packager": "^19.1.0",
     "@types/node": "^25.2.0",
     "angular-eslint": "21.1.0",
     "concurrently": "^9.2.1",
