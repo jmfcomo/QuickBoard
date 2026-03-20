@@ -99,6 +99,11 @@
   display: flex;
 }
 
+.timeline-board:focus-within .delete-btn,
+.timeline-board:focus-visible .delete-btn {
+  display: flex;
+}
+
 .delete-btn:hover {
   background: var(--danger);
 }
@@ -136,6 +141,12 @@
 .timeline-board:hover .duplicate-btn {
   display: flex;
 }
+
+.timeline-board:focus-within .duplicate-btn,
+.timeline-board:focus-visible .duplicate-btn {
+  display: flex;
+}
+
 .duplicate-btn:hover {
   background: var(--accent-hover);
 }
