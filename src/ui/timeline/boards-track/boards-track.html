@@ -45,6 +45,15 @@
         </div>
       </div>
 
+      <button
+        type="button"
+        class="duplicate-btn"
+        aria-label="Duplicate board {{ $index + 1 }}"
+        (click)="$event.stopPropagation(); duplicateBoard(board.id)"
+      >
+        <span aria-hidden="true">⧉</span>
+      </button>
+
       @if (store.boards().length > 1) {
         <button
           type="button"
