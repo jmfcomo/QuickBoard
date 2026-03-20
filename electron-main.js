@@ -36,8 +36,14 @@ function getArgvFilePath() {
 }
 
 function createWindow() {
+  const iconPath =
+    process.platform === 'linux'
+      ? path.join(__dirname, 'branding', 'QuickBoard_icon_Linux.png')
+      : undefined;
+
   const win = new BrowserWindow({
     ...appSettings.window,
+    ...(iconPath ? { icon: iconPath } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'src', 'electron', 'preload.js'),
       contextIsolation: true,
