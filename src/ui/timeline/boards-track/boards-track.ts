@@ -49,6 +49,10 @@ export class BoardsTrackComponent {
     this.actions.deleteBoard(boardId);
   }
 
+  duplicateBoard(boardId: string) {
+    this.actions.duplicateBoard(boardId);
+  }
+
   startResize(event: MouseEvent, boardId: string, edge: 'left' | 'right') {
     event.preventDefault();
     event.stopPropagation();
