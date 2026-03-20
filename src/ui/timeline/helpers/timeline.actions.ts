@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { AppStore } from '../../../data/store/app.store';
+import { AppStore, Board } from '../../../data/store/app.store';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 
 @Injectable({ providedIn: 'root' })
@@ -120,6 +120,43 @@ export class TimelineActions {
         this.store.updateBoardDuration(boardId, newDuration);
       },
     });
+  }
+
+  duplicateBoard(boardId: string): string | undefined {
+    const boards = this.store.boards();
+    const boardIndex = boards.findIndex((b) => b.id === boardId);
+    if (boardIndex < 0) return undefined;
+
+    const source = boards[boardIndex];
+    const newBoard: Board = {
+      id: crypto.randomUUID(),
+      canvasData: source.canvasData
+        ? (JSON.parse(JSON.stringify(source.canvasData)) as Record<string, unknown>)
+        : null,
+      scriptData: source.scriptData
+        ? (JSON.parse(JSON.stringify(source.scriptData)) as NonNullable<Board['scriptData']>)
+        : null,
+      previewUrl: source.previewUrl,
+      backgroundColor: source.backgroundColor,
+      duration: source.duration,
+    };
+
+    const insertIndex = boardIndex + 1;
+    this.store.restoreBoard(newBoard, insertIndex);
+    this.store.setCurrentBoard(newBoard.id);
+
+    this.undoRedo.record({
+      undo: () => {
+        this.store.deleteBoard(newBoard.id);
+        this.store.setCurrentBoard(boardId);
+      },
+      redo: () => {
+        this.store.restoreBoard(newBoard, insertIndex);
+        this.store.setCurrentBoard(newBoard.id);
+      },
+    });
+
+    return newBoard.id;
   }
 
   /** Record a background color change on a board. */
