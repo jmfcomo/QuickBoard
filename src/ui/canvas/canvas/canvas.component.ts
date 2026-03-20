@@ -105,6 +105,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly tooltipVisible = signal(false);
   readonly tooltipTop = signal(0);
   readonly tooltipLeft = signal(0);
+  readonly showClearCanvasConfirm = signal(false);
   private tooltipDelay: number | null = null;
   private tooltipCooldown: number | null = null;
   private tooltipWarm = false;
@@ -554,16 +555,72 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public clearCanvas(): void {
+  public requestClearCanvas(): void {
+    this.hideTooltip();
+    this.showClearCanvasConfirm.set(true);
+  }
+
+  public cancelClearCanvas(): void {
+    this.showClearCanvasConfirm.set(false);
+  }
+
+  public confirmClearCanvas(): void {
     if (!this.lc) return;
 
+    const lcRef = this.lc;
+    const boardIdAtClear = this.currentBoardId;
+    const before = lcRef.getSnapshot();
+
+    this._suppressLcHistory = true;
+
     // Clear all shapes
-    this.lc.shapes = [];
-    this.lc.backgroundShapes = [];
-    this.lc.repaintLayer('main');
+    lcRef.shapes = [];
+    lcRef.backgroundShapes = [];
+    lcRef.repaintLayer('main');
 
     // Trigger clear event
-    this.lc.trigger('clear');
+    lcRef.trigger('clear');
+
+    const after = lcRef.getSnapshot();
+    this._lcUndoStackLength = lcRef.undoStack.length;
+    this._suppressLcHistory = false;
+
+    const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
+    const beforeBgShapes = JSON.stringify((before as { backgroundShapes?: unknown }).backgroundShapes ?? []);
+    const afterShapes = JSON.stringify((after as { shapes?: unknown }).shapes ?? []);
+    const afterBgShapes = JSON.stringify((after as { backgroundShapes?: unknown }).backgroundShapes ?? []);
+
+    // Only record a history entry when clear actually removes something.
+    if (beforeShapes !== afterShapes || beforeBgShapes !== afterBgShapes) {
+      this.undoRedo.record({
+        undo: () => {
+          if (!boardIdAtClear) return;
+          if (this.currentBoardId !== boardIdAtClear) {
+            this.store.updateCanvasData(boardIdAtClear, before);
+            this.store.setCurrentBoard(boardIdAtClear);
+            return;
+          }
+          this._suppressLcHistory = true;
+          lcRef.loadSnapshot(before);
+          this._lcUndoStackLength = lcRef.undoStack.length;
+          this._suppressLcHistory = false;
+        },
+        redo: () => {
+          if (!boardIdAtClear) return;
+          if (this.currentBoardId !== boardIdAtClear) {
+            this.store.updateCanvasData(boardIdAtClear, after);
+            this.store.setCurrentBoard(boardIdAtClear);
+            return;
+          }
+          this._suppressLcHistory = true;
+          lcRef.loadSnapshot(after);
+          this._lcUndoStackLength = lcRef.undoStack.length;
+          this._suppressLcHistory = false;
+        },
+      });
+    }
+
+    this.showClearCanvasConfirm.set(false);
   }
 
   public setStrokeColor(color: string): void {
