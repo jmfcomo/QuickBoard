@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -125,8 +128,8 @@ jobs:
         with:
           name: linux-build
           path: |
-            release/quickboard-*.AppImage
-            release/quickboard-*.deb
+            release/QuickBoard-*.AppImage
+            release/QuickBoard-*.deb
           retention-days: 7
 
       - name: Upload to release
@@ -134,8 +137,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/quickboard-*.AppImage
-            release/quickboard-*.deb
+            release/QuickBoard-*.AppImage
+            release/QuickBoard-*.deb
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -31,12 +31,9 @@ console.log(
     : `macOS ${macOSVersion} — using .icns only (.icon compilation requires macOS 26+).`,
 );
 
-const icon = supportsIconComposer
-  ? [
-      path.join(root, 'branding', 'QuickBoard_icon_macOSLegacy.icns'),
-      path.join(root, 'branding', 'QuickBoard_icon_macOS.icon'),
-    ]
-  : path.join(root, 'branding', 'QuickBoard_icon_macOSLegacy.icns');
+// Always pass the .icns to packager — it expects a single file path.
+// The .icon bundle (Icon Composer) is handled separately after packaging.
+const icon = path.join(root, 'branding', 'QuickBoard_icon_macOSLegacy.icns');
 
 packager({
   dir: root,
@@ -62,6 +59,21 @@ packager({
 })
   .then((appPaths) => {
     console.log('Packaged .app bundles:', appPaths.join(', '));
+
+    // On macOS 26+, copy the Icon Composer (.icon) bundle into each .app's
+    // Resources directory for dynamic/adaptive icon support, then re-sign
+    // so the ad-hoc code signature stays valid (required for arm64).
+    if (supportsIconComposer) {
+      const iconBundleSrc = path.join(root, 'branding', 'QuickBoard_icon_macOS.icon');
+      for (const appDir of appPaths) {
+        const appBundle = path.join(appDir, 'QuickBoard.app');
+        const resourcesDir = path.join(appBundle, 'Contents', 'Resources');
+        console.log(`Copying .icon bundle into ${path.basename(appDir)}...`);
+        execSync(`cp -R "${iconBundleSrc}" "${resourcesDir}/"`, { stdio: 'inherit' });
+        console.log(`Re-signing ${path.basename(appDir)}...`);
+        execSync(`codesign --force --deep --sign - "${appBundle}"`, { stdio: 'inherit' });
+      }
+    }
 
     // Wrap each .app bundle in a .dmg so CI artifacts match expected output.
     // appPaths entries look like: release/QuickBoard-darwin-x64
