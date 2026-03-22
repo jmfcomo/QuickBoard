@@ -469,25 +469,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const container = this.canvasContainer().nativeElement;
     const height = container.clientHeight;
-    // Guard: skip if height hasn't changed to avoid ResizeObserver feedback loops
-    // when we set host.style.width below (width change also triggers the observer)
     if (height <= 0 || height === this.lastFitHeight) return;
     this.lastFitHeight = height;
 
-    // Pin the host to the exact 16:9 width for this height so the LC container
-    // is never wider than the image, eliminating the gray side-strips.
     const correctWidth = Math.floor(
       (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,
     );
     const host = this.el.nativeElement as HTMLElement;
     const toolsBar = host.querySelector<HTMLElement>('.tools-bar');
 
-    // Derive the horizontal gap from computed styles instead of hard-coding it
-    const containerStyles = window.getComputedStyle(container);
-    const gapValue =
-      containerStyles.columnGap && containerStyles.columnGap !== 'normal'
-        ? containerStyles.columnGap
-        : containerStyles.gap;
+    const flexRow = host.querySelector<HTMLElement>('.canvas-container');
+    const flexRowStyles = flexRow ? window.getComputedStyle(flexRow) : null;
+    const gapValue = flexRowStyles
+      ? flexRowStyles.columnGap && flexRowStyles.columnGap !== 'normal'
+        ? flexRowStyles.columnGap
+        : flexRowStyles.gap
+      : null;
     const gap = Number.parseFloat(gapValue || '0') || 0;
 
     const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;
@@ -586,9 +583,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this._suppressLcHistory = false;
 
     const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
-    const beforeBgShapes = JSON.stringify((before as { backgroundShapes?: unknown }).backgroundShapes ?? []);
+    const beforeBgShapes = JSON.stringify(
+      (before as { backgroundShapes?: unknown }).backgroundShapes ?? [],
+    );
     const afterShapes = JSON.stringify((after as { shapes?: unknown }).shapes ?? []);
-    const afterBgShapes = JSON.stringify((after as { backgroundShapes?: unknown }).backgroundShapes ?? []);
+    const afterBgShapes = JSON.stringify(
+      (after as { backgroundShapes?: unknown }).backgroundShapes ?? [],
+    );
 
     // Only record a history entry when clear actually removes something.
     if (beforeShapes !== afterShapes || beforeBgShapes !== afterBgShapes) {
