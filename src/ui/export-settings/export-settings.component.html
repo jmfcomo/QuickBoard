@@ -26,7 +26,26 @@
         </div>
         <div class="summary-item">
           <span class="summary-label">Frames</span>
-          <span class="summary-value">{{ boardCount() }}</span>
+          <span><input
+            class="text-input"
+            type="number"
+            [value]="startIndex()"
+            (input)="onStartChange($event)"
+            placeholder="{{ startIndex() + 1 }}"
+            min="1"
+            max="{{boardCount()}}"
+            step="1">
+          <p class="hint">Starting frame: {{ startIndex() + 1 }}</p>
+          <input
+            class="text-input"
+            type="number"
+            [value]="endIndex()"
+            (input)="onEndChange($event)"
+            placeholder= "{{ endIndex() + 1 }}"
+            min="1"
+            max="{{boardCount()}}"
+            step="1">
+          <p class="hint">Ending frame: {{ endIndex() + 1 }}</p></span>
         </div>
       </section>
 
@@ -57,9 +76,9 @@
             spellcheck="false"
           />
           @if (selectedFormat() === 'video') {
-            <p class="resolution-hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
+            <p class="hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
           } @else {
-            <p class="resolution-hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
+            <p class="hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
           }
         </div>
 
