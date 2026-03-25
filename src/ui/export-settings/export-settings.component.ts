@@ -69,7 +69,7 @@ export class ExportSettingsComponent {
 
     this.startIndex.set(clamped - 1);
     // Ensure end index is not less than start index
-    if (this.endIndex() < clamped) {
+    if (this.endIndex() < clamped - 1) {
       this.endIndex.set(clamped - 1);
     }
   }
@@ -79,7 +79,7 @@ export class ExportSettingsComponent {
     const clamped = Number.isNaN(parsed) ? this.endIndex() : Math.max(0, Math.min(parsed, this.boardCount()));
     this.endIndex.set(clamped - 1);
     // Ensure start index is not greater than end index
-    if (this.startIndex() > clamped) {
+    if (this.startIndex() > clamped - 1) {
       this.startIndex.set(clamped - 1);
     }
     if (this.endIndex() > this.boardCount() - 1) {
@@ -105,6 +105,8 @@ export class ExportSettingsComponent {
       resolution: this.selectedResolution(),
       prefix: safePrefix,
       dirPath: this.dirPath(),
+      startIndex: this.startIndex(),
+      endIndex: this.endIndex(),
     });
   }
 

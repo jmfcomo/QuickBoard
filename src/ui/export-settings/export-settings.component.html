@@ -29,9 +29,8 @@
           <span><input
             class="text-input"
             type="number"
-            [value]="startIndex()"
+            [value]="startIndex() + 1"
             (input)="onStartChange($event)"
-            placeholder="{{ startIndex() + 1 }}"
             min="1"
             max="{{boardCount()}}"
             step="1">
@@ -39,9 +38,8 @@
           <input
             class="text-input"
             type="number"
-            [value]="endIndex()"
+            [value]="endIndex() + 1"
             (input)="onEndChange($event)"
-            placeholder= "{{ endIndex() + 1 }}"
             min="1"
             max="{{boardCount()}}"
             step="1">
