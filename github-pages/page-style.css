@@ -1,0 +1,43 @@
+body {
+	font-family: Calibri;
+	margin: auto;
+	background-color: #FFDDDD;
+	max-width: 70%;
+}
+
+header {
+	margin: auto;
+	border-bottom: #95529c solid 5px;
+	padding-left: 2%;
+	overflow: hidden;
+}
+
+#main-desc {
+	margin: auto;
+	width: 96%;
+}
+
+.left-float {
+	float: left;
+	width: 55%;
+	padding-right: 2%;
+}
+
+#left-header {
+	float: left;
+}
+
+#right-header {
+	float: right;
+	margin-top: 6vh;
+}
+
+a {
+	color: #d351e0;
+}
+
+footer {
+	text-align: center;
+	border-top: #95529c solid 5px;
+	font-style: italic;
+}
