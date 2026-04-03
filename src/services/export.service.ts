@@ -94,16 +94,20 @@ export class ExportService {
     ) => Promise<void>,
     mimeType = 'image/png',
     abortSignal?: AbortSignal,
+    startIndex = 0,
+    endIndex?: number,
   ): Promise<void> {
-    const boards = this.store.boards();
-    const padLength = Math.max(3, String(boards.length).length);
+    const allBoards = this.store.boards();
+    const end = endIndex ?? allBoards.length - 1;
+    const boards = allBoards.slice(startIndex, end + 1);
+    const padLength = Math.max(3, String(allBoards.length).length);
     const ext = mimeType === 'image/jpeg' ? '.jpg' : '.png';
-    for (let index = 0; index < boards.length; index++) {
+    for (let i = 0; i < boards.length; i++) {
       if (abortSignal?.aborted) {
         throw new Error('Export canceled by user.');
       }
-      const board = boards[index];
-      const frameNum = String(index + 1).padStart(padLength, '0');
+      const board = boards[i];
+      const frameNum = String(startIndex + i + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}${ext}`;
       const dataUrl = await this.renderSingleBoard(
         board.canvasData,
@@ -111,7 +115,7 @@ export class ExportService {
         scale,
         mimeType,
       );
-      await onFrame({ name: fileName, dataUrl }, index + 1, boards.length);
+      await onFrame({ name: fileName, dataUrl }, i + 1, boards.length);
     }
   }
 
@@ -147,8 +151,11 @@ export class ExportService {
     onEncodingProgress?: (progress: number) => void,
     abortSignal?: AbortSignal,
   ): Promise<Uint8Array> {
-    const boards = this.store.boards();
+    const allBoards = this.store.boards();
     const audioTracks = this.store.audioTracks();
+    const startIndex = settings.startIndex;
+    const endIndex = settings.endIndex;
+    const boards = allBoards.slice(startIndex, endIndex + 1);
 
     if (!boards.length) {
       const message =
@@ -191,6 +198,8 @@ export class ExportService {
       },
       'image/jpeg',
       abortSignal,
+      startIndex,
+      endIndex,
     );
 
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');

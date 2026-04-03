@@ -26,24 +26,30 @@
         </div>
         <div class="summary-item">
           <span class="summary-label">Frames</span>
-          <span><input
-            class="text-input"
-            type="number"
-            [value]="startIndex() + 1"
-            (input)="onStartChange($event)"
-            min="1"
-            max="{{boardCount()}}"
-            step="1">
-          <p class="hint">Starting frame: {{ startIndex() + 1 }}</p>
-          <input
-            class="text-input"
-            type="number"
-            [value]="endIndex() + 1"
-            (input)="onEndChange($event)"
-            min="1"
-            max="{{boardCount()}}"
-            step="1">
-          <p class="hint">Ending frame: {{ endIndex() + 1 }}</p></span>
+          <span
+            ><input
+              class="text-input"
+              type="number"
+              [value]="startRaw()"
+              (input)="onStartInput($event)"
+              (blur)="onStartBlur()"
+              min="1"
+              [max]="boardCount()"
+              step="1"
+            />
+            <p class="hint">Starting frame: {{ startIndex() + 1 }}</p>
+            <input
+              class="text-input"
+              type="number"
+              [value]="endRaw()"
+              (input)="onEndInput($event)"
+              (blur)="onEndBlur()"
+              min="1"
+              [max]="boardCount()"
+              step="1"
+            />
+            <p class="hint">Ending frame: {{ endIndex() + 1 }}</p></span
+          >
         </div>
       </section>
 
