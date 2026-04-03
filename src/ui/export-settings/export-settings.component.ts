@@ -20,6 +20,10 @@ export class ExportSettingsComponent {
 
   protected readonly resolutions = EXPORT_RESOLUTIONS;
   protected selectedIndex = signal(Math.min(2, this.resolutions.length - 1)); // default: Full HD
+  protected startIndex = signal(0);
+  protected endIndex = signal(this.boardCount() - 1);
+  protected startRaw = signal('1');
+  protected endRaw = signal(String(this.boardCount()));
   protected selectedFormat = signal<'png' | 'video'>('png');
   protected prefix = signal('board');
   protected dirPath = signal('');
@@ -37,6 +41,10 @@ export class ExportSettingsComponent {
         this.selectedFormat.set(this.exportType());
         this.prefix.set(this.defaultPrefix() || 'board');
         this.dirPath.set(this.defaultDirPath());
+        this.startIndex.set(0);
+        this.endIndex.set(this.boardCount() - 1);
+        this.startRaw.set('1');
+        this.endRaw.set(String(this.boardCount()));
       }
     });
   }
@@ -58,6 +66,42 @@ export class ExportSettingsComponent {
     this.prefix.set((event.target as HTMLInputElement).value);
   }
 
+  protected onStartInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    this.startRaw.set(raw);
+    const parsed = parseInt(raw, 10);
+    if (!Number.isNaN(parsed)) {
+      const clamped = Math.max(1, Math.min(parsed, this.boardCount()));
+      this.startIndex.set(clamped - 1);
+      if (this.endIndex() < clamped - 1) {
+        this.endIndex.set(clamped - 1);
+        this.endRaw.set(String(clamped));
+      }
+    }
+  }
+
+  protected onStartBlur(): void {
+    this.startRaw.set(String(this.startIndex() + 1));
+  }
+
+  protected onEndInput(event: Event): void {
+    const raw = (event.target as HTMLInputElement).value;
+    this.endRaw.set(raw);
+    const parsed = parseInt(raw, 10);
+    if (!Number.isNaN(parsed)) {
+      const clamped = Math.max(1, Math.min(parsed, this.boardCount()));
+      this.endIndex.set(clamped - 1);
+      if (this.startIndex() > clamped - 1) {
+        this.startIndex.set(clamped - 1);
+        this.startRaw.set(String(clamped));
+      }
+    }
+  }
+
+  protected onEndBlur(): void {
+    this.endRaw.set(String(this.endIndex() + 1));
+  }
+
   protected async onBrowse(): Promise<void> {
     this.isBrowsing.set(true);
     try {
@@ -76,6 +120,8 @@ export class ExportSettingsComponent {
       resolution: this.selectedResolution(),
       prefix: safePrefix,
       dirPath: this.dirPath(),
+      startIndex: this.startIndex(),
+      endIndex: this.endIndex(),
     });
   }
 

@@ -10,6 +10,8 @@ export interface ExportSettings {
   resolution: ExportResolution;
   prefix: string;
   dirPath: string;
+  startIndex: number;
+  endIndex: number;
 }
 
 export const EXPORT_RESOLUTIONS: ExportResolution[] = [

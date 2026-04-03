@@ -90,8 +90,9 @@ export class ExportIpcService {
     }
     this._lastExportPath.set(dirPath);
 
-    this.exportTotal.set(this.exportService.store.boards().length);
-    this.exportFrameCount.set(this.exportService.store.boards().length);
+    const frameCount = settings.endIndex - settings.startIndex + 1;
+    this.exportTotal.set(frameCount);
+    this.exportFrameCount.set(frameCount);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportStatus.set('exporting');
@@ -118,6 +119,8 @@ export class ExportIpcService {
         },
         'image/png',
         this.abortController.signal,
+        settings.startIndex,
+        settings.endIndex,
       );
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
@@ -157,7 +160,7 @@ export class ExportIpcService {
     this._lastExportPath.set(dirPath);
 
     this.exportTotal.set(100);
-    this.exportFrameCount.set(this.exportService.store.boards().length);
+    this.exportFrameCount.set(settings.endIndex - settings.startIndex + 1);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
     this.exportMessage.set('');

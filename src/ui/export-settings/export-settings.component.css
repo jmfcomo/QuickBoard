@@ -173,7 +173,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-glow) 75%, transparent);
 }
 
-.resolution-hint {
+.hint {
   margin: 0;
   font-size: 11px;
   color: var(--text-light);
