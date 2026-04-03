@@ -31,6 +31,12 @@ export class SbdService {
         },
       );
     }
+    if (Array.isArray(rawJson.boards)) {
+      rawJson.boards = rawJson.boards.map((board: { previewUrl?: string }) => ({
+        ...board,
+        previewUrl: board.previewUrl?.startsWith('blob:') ? null : (board.previewUrl ?? null),
+      }));
+    }
     zip.file('project.json', JSON.stringify(rawJson, null, 2));
 
     for (const [id, { buffer, fileName }] of audioBuffers) {

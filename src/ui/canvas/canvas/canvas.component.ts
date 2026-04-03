@@ -99,6 +99,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
    * the pre-stroke state even after the user has switched away from the original board. */
   private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
+  private _canvasDirty = false;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -123,10 +124,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
       // Only reload when switching boards or when the canvas data reference changes
       if (boardIdChanged) {
-        // Save current board data before switching
-        if (this.currentBoardId && this.lc) {
+        if (this.currentBoardId && this.lc && this._canvasDirty) {
           this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
+          this._canvasDirty = false;
         }
         this.loadBoardData(selectedBoardId);
       } else if (canvasDataChanged) {
@@ -148,10 +149,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             // Render background color
             this.lc.setColor('background', firstBoard.backgroundColor ?? '#ffffff');
             this.lc.repaintLayer('main');
-            // Save preview
+            // Save preview as a Blob URL to keep base64 data off the V8 heap
             const snapshot = this.lc.getSnapshot();
-            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
-            this.store.updateCanvasData(firstBoard.id, snapshot, preview);
+            const boardId = firstBoard.id;
+            this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
+              if (!blob) return;
+              const newUrl = URL.createObjectURL(blob);
+              const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
+              this.store.updateCanvasData(boardId, snapshot, newUrl);
+              if (oldUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(oldUrl);
+              }
+            }, 'image/png');
           }
         }
       }, 0);
@@ -245,6 +254,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
+        this._canvasDirty = true;
         // Debounce the canvas data update to avoid excessive store updates
         if (this.updateCanvasTimeout !== null) {
           clearTimeout(this.updateCanvasTimeout);
@@ -253,10 +263,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           if (this.lc && this.currentBoardId) {
             const snapshot = this.lc.getSnapshot();
             this.lastLoadedCanvasData = snapshot;
+            this._canvasDirty = false;
 
-            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
-
-            this.store.updateCanvasData(this.currentBoardId, snapshot, preview);
+            const boardId = this.currentBoardId;
+            this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
+              if (!blob) return;
+              const newUrl = URL.createObjectURL(blob);
+              const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
+              this.store.updateCanvasData(boardId, snapshot, newUrl);
+              if (oldUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(oldUrl);
+              }
+            }, 'image/png');
           }
           this.updateCanvasTimeout = null;
         }, 300);
@@ -412,6 +430,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const board = boards.find((b) => b.id === boardId);
 
     this.currentBoardId = boardId;
+    this._canvasDirty = false;
 
     this._suppressLcHistory = true;
     this._lcUndoStackLength = 0;
@@ -435,7 +454,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.backgroundColor.set(boardBackground);
     this.fitCanvasToContainer();
 
-    this._lcUndoStackLength = this.lc.undoStack.length;
+    this.lc.undoStack.length = 0;
+    this.lc.redoStack.length = 0;
+    this._lcUndoStackLength = 0;
     this._suppressLcHistory = false;
   }
 
