@@ -27,6 +27,44 @@ import { UndoRedoService } from '../../../services/undo-redo.service';
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
+  readonly onionSkinLayers = computed(() => {
+    if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const boards = this.store.boards();
+    const currentBoardId = this.store.currentBoardId();
+    if (!currentBoardId || boards.length < 2) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
+    if (currentIndex === -1) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const overlays: { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[] = [];
+    const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
+    const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
+
+    if (previousBoard?.onionPreviewUrl) {
+      overlays.push({
+        id: previousBoard.id,
+        onionPreviewUrl: previousBoard.onionPreviewUrl,
+        position: 'prev',
+      });
+    }
+
+    if (nextBoard?.onionPreviewUrl) {
+      overlays.push({
+        id: nextBoard.id,
+        onionPreviewUrl: nextBoard.onionPreviewUrl,
+        position: 'next',
+      });
+    }
+
+    return overlays;
+  });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
   private readonly toolSizeMap = signal<Record<string, number>>({
@@ -42,6 +80,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
   readonly backgroundColor = signal<string>('#ffffff');
+  readonly onionLayerRect = signal({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
+  readonly onionImageRect = signal({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
@@ -81,7 +131,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private currentBoardId: string | null = null;
-  private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -125,7 +174,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       if (boardIdChanged) {
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
-          this.store.updateCanvasData(this.currentBoardId, this.lc.getSnapshot());
+          this.persistCurrentBoardData(this.currentBoardId, true);
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
         }
         this.loadBoardData(selectedBoardId);
@@ -150,8 +199,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             this.lc.repaintLayer('main');
             // Save preview
             const snapshot = this.lc.getSnapshot();
-            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
-            this.store.updateCanvasData(firstBoard.id, snapshot, preview);
+            const previews = this.createBoardPreviews();
+            this.store.updateCanvasData(
+              firstBoard.id,
+              snapshot,
+              previews.previewUrl,
+              previews.onionPreviewUrl,
+            );
           }
         }
       }, 0);
@@ -163,12 +217,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (this.initCanvasTimeout !== null) {
       clearTimeout(this.initCanvasTimeout);
       this.initCanvasTimeout = null;
-    }
-
-    // Clear the update timeout to prevent memory leaks and errors after component destruction
-    if (this.updateCanvasTimeout !== null) {
-      clearTimeout(this.updateCanvasTimeout);
-      this.updateCanvasTimeout = null;
     }
 
     // Clean up LiterallyCanvas instance and event listeners
@@ -231,7 +279,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
     if (currentBoard?.canvasData) {
-      this.lc.loadSnapshot(currentBoard.canvasData);
+      this.lc.loadSnapshot(this.withoutViewportState(currentBoard.canvasData));
     }
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
@@ -242,25 +290,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // ensuring LC sees post-reflow container dimensions.
     this.observeCanvasResize();
     window.addEventListener('resize', this.onWindowResize);
+    this.syncOnionLayerRect();
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
-        // Debounce the canvas data update to avoid excessive store updates
-        if (this.updateCanvasTimeout !== null) {
-          clearTimeout(this.updateCanvasTimeout);
-        }
-        this.updateCanvasTimeout = window.setTimeout(() => {
-          if (this.lc && this.currentBoardId) {
-            const snapshot = this.lc.getSnapshot();
-            this.lastLoadedCanvasData = snapshot;
-
-            const preview = this.lc.getImage({ scale: 0.2 }).toDataURL('image/png');
-
-            this.store.updateCanvasData(this.currentBoardId, snapshot, preview);
-          }
-          this.updateCanvasTimeout = null;
-        }, 300);
-
         // Record a history entry for new user strokes (stack grew and we're
         // not in the middle of an undo/redo replay or snapshot load).
         if (!this._suppressLcHistory) {
@@ -317,6 +350,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                 this._suppressLcHistory = false;
               },
             });
+
+            if (boardIdAtRecord) {
+              this.persistCurrentBoardData(boardIdAtRecord, true);
+            }
           }
         }
       }
@@ -382,6 +419,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               this._suppressLcHistory = false;
             },
           });
+
+          if (snapshotBoardId) {
+            this.persistCurrentBoardData(snapshotBoardId, true);
+          }
         }
       }
     };
@@ -422,7 +463,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Load new board data
     if (board?.canvasData) {
-      this.lc.loadSnapshot(board.canvasData);
+      this.lc.loadSnapshot(this.withoutViewportState(board.canvasData));
       // Track the loaded data reference
       this.lastLoadedCanvasData = board.canvasData;
     } else {
@@ -434,6 +475,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
     this.fitCanvasToContainer();
+    this.syncOnionLayerRect();
+
+    if (board && (!board.previewUrl || !board.onionPreviewUrl)) {
+      this.persistCurrentBoardData(board.id, true);
+    }
 
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
@@ -461,7 +507,147 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeRafId = window.requestAnimationFrame(() => {
       this.resizeRafId = null;
       this.fitCanvasToContainer();
+      this.syncOnionLayerRect();
     });
+  }
+
+  private createBoardPreviews(): { previewUrl: string; onionPreviewUrl: string } {
+    if (!this.lc) {
+      return { previewUrl: '', onionPreviewUrl: '' };
+    }
+
+    const fullSizeImage = this.lc.getImage({
+      scale: 1,
+      includeWatermark: false,
+      rect: {
+        x: 0,
+        y: 0,
+        width: this.defaultCanvasSize.width,
+        height: this.defaultCanvasSize.height,
+      },
+    });
+
+    return {
+      previewUrl: this.lc.getImage({ scale: 0.2 }).toDataURL('image/png'),
+      onionPreviewUrl: this.createTransparentOnionPreview(fullSizeImage),
+    };
+  }
+
+  private persistCurrentBoardData(boardId: string, includePreviews: boolean): void {
+    if (!this.lc) {
+      return;
+    }
+
+    const normalizedSnapshot = this.withoutViewportState(this.lc.getSnapshot());
+    this.lastLoadedCanvasData = normalizedSnapshot;
+
+    if (includePreviews) {
+      const previews = this.createBoardPreviews();
+      this.store.updateCanvasData(
+        boardId,
+        normalizedSnapshot,
+        previews.previewUrl,
+        previews.onionPreviewUrl,
+      );
+      return;
+    }
+
+    this.store.updateCanvasData(boardId, normalizedSnapshot);
+  }
+
+  private createTransparentOnionPreview(source: HTMLCanvasElement): string {
+    const width = source.width;
+    const height = source.height;
+    if (width <= 0 || height <= 0) {
+      return source.toDataURL('image/png');
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return source.toDataURL('image/png');
+    }
+
+    ctx.drawImage(source, 0, 0);
+
+    const bgColor = this.parseColorToRgb(this.lc?.getColor('background') ?? '#ffffff');
+    if (!bgColor) {
+      return canvas.toDataURL('image/png');
+    }
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const tolerance = 3;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      if (
+        Math.abs(r - bgColor.r) <= tolerance &&
+        Math.abs(g - bgColor.g) <= tolerance &&
+        Math.abs(b - bgColor.b) <= tolerance
+      ) {
+        data[i + 3] = 0;
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  private withoutViewportState(snapshot: Record<string, unknown>): Record<string, unknown> {
+    const normalized = { ...snapshot };
+    delete (normalized as { position?: unknown }).position;
+    delete (normalized as { scale?: unknown }).scale;
+    return normalized;
+  }
+
+  private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
+    const parserCanvas = document.createElement('canvas');
+    parserCanvas.width = 1;
+    parserCanvas.height = 1;
+    const parserCtx = parserCanvas.getContext('2d');
+    if (!parserCtx) {
+      return null;
+    }
+
+    parserCtx.fillStyle = '#000000';
+    parserCtx.fillStyle = color;
+    const normalized = parserCtx.fillStyle;
+
+    if (typeof normalized !== 'string') {
+      return null;
+    }
+
+    if (normalized.startsWith('#')) {
+      const hex = normalized.slice(1);
+      if (hex.length === 3) {
+        const r = Number.parseInt(hex[0] + hex[0], 16);
+        const g = Number.parseInt(hex[1] + hex[1], 16);
+        const b = Number.parseInt(hex[2] + hex[2], 16);
+        return { r, g, b };
+      }
+      if (hex.length === 6) {
+        const r = Number.parseInt(hex.slice(0, 2), 16);
+        const g = Number.parseInt(hex.slice(2, 4), 16);
+        const b = Number.parseInt(hex.slice(4, 6), 16);
+        return { r, g, b };
+      }
+    }
+
+    const rgbMatch = normalized.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgbMatch) {
+      return {
+        r: Number.parseInt(rgbMatch[1], 10),
+        g: Number.parseInt(rgbMatch[2], 10),
+        b: Number.parseInt(rgbMatch[3], 10),
+      };
+    }
+
+    return null;
   }
 
   private fitCanvasToContainer(): void {
@@ -498,6 +684,38 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     this.lc.setZoom(scale);
+  }
+
+  private syncOnionLayerRect(): void {
+    if (!this.lc) return;
+
+    const container = this.canvasContainer().nativeElement;
+    const liveCanvas = this.lc.canvas;
+    if (!container || !liveCanvas) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const liveCanvasRect = liveCanvas.getBoundingClientRect();
+
+    this.onionLayerRect.set({
+      left: liveCanvasRect.left - containerRect.left,
+      top: liveCanvasRect.top - containerRect.top,
+      width: liveCanvasRect.width,
+      height: liveCanvasRect.height,
+    });
+
+    const backingScale = this.lc.backingScale || 1;
+    const renderScale = this.lc.getRenderScale?.() || this.lc.scale * backingScale || backingScale;
+    const imageLeft = this.lc.position.x / backingScale;
+    const imageTop = this.lc.position.y / backingScale;
+    const imageWidth = (this.defaultCanvasSize.width * renderScale) / backingScale;
+    const imageHeight = (this.defaultCanvasSize.height * renderScale) / backingScale;
+
+    this.onionImageRect.set({
+      left: imageLeft,
+      top: imageTop,
+      width: imageWidth,
+      height: imageHeight,
+    });
   }
 
   public setTool(toolId: string): void {
@@ -581,6 +799,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const after = lcRef.getSnapshot();
     this._lcUndoStackLength = lcRef.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (boardIdAtClear) {
+      this.persistCurrentBoardData(boardIdAtClear, true);
+    }
 
     const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
     const beforeBgShapes = JSON.stringify(
@@ -711,6 +933,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.undo();
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (this.currentBoardId) {
+      this.persistCurrentBoardData(this.currentBoardId, true);
+    }
   }
 
   public redoStroke(): void {
@@ -730,6 +956,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.redo();
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (this.currentBoardId) {
+      this.persistCurrentBoardData(this.currentBoardId, true);
+    }
   }
 
   public hideTooltip(): void {

@@ -28,6 +28,50 @@
   gap: 4px;
 }
 
+.onion-skin-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+  color: var(--text-default);
+  margin-right: 10px;
+}
+
+.onion-skin-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.onion-skin-btn.active {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  color: var(--text-on-accent);
+}
+
+.onion-skin-icon {
+  width: 21px;
+  height: 21px;
+  display: block;
+}
+
+.onion-skin-icon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.onion-skin-icon .left {
+  stroke-dasharray: 2.1 2.1;
+}
+
 .menu-right {
   justify-content: flex-end;
   min-width: 160px;
