@@ -116,11 +116,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   constructor() {
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
-      const boards = this.store.boards();
 
       if (!this.lc || !selectedBoardId) return;
 
-      const currentBoard = boards.find((b) => b.id === selectedBoardId);
       const boardIdChanged = selectedBoardId !== this.currentBoardId;
       const currentBoardData = this.canvasDataService.getCanvasData(selectedBoardId);
       const canvasDataChanged = currentBoardData !== this.lastLoadedCanvasData;

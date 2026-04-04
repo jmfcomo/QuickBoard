@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { signalStore, withState, withMethods, withComputed, patchState } from '@ngrx/signals';
 import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
@@ -131,33 +131,51 @@ export const AppStore = signalStore(
 
       loadFromJson(jsonString: string) {
         try {
-          const data = JSON.parse(jsonString) as AppState & { boards: any[] };
+          const data = JSON.parse(jsonString) as AppState & { boards: unknown[] };
           if (!data || !Array.isArray(data.boards)) {
             throw new Error('Invalid JSON structure: "boards" array is required');
           }
 
           canvasDataService.clear();
-          const cleanedBoards = (data.boards as any[]).map((b) => {
+          const cleanedBoards = (data.boards as unknown[]).map((iterBoard) => {
+            const b = iterBoard as { id: string; canvasData?: unknown };
             if (b.canvasData) {
-              let shapes: any[] = [];
-              let backgroundShapes: any[] = [];
+              let shapes: unknown[] = [];
+              let backgroundShapes: unknown[] = [];
+
+              // Handle case where canvasData might be a serialized string in deeply old files
+              const parsedCanvasData =
+                typeof b.canvasData === 'string'
+                  ? (JSON.parse(b.canvasData) as Record<string, unknown>)
+                  : (b.canvasData as Record<string, unknown>);
 
               // Only attempt pre-hydration if LC is globally available (standard browser environment)
               if (typeof LC !== 'undefined' && LC.snapshotJSONToShapes) {
-                shapes = b.canvasData.shapes
-                  ? (LC.snapshotJSONToShapes(b.canvasData.shapes) as any[])
-                  : [];
-                backgroundShapes = b.canvasData.backgroundShapes
-                  ? (LC.snapshotJSONToShapes(b.canvasData.backgroundShapes) as any[])
-                  : [];
+                try {
+                  shapes = parsedCanvasData['shapes']
+                    ? (LC.snapshotJSONToShapes(
+                        parsedCanvasData['shapes'] as Record<string, unknown>[],
+                      ) as unknown[])
+                    : [];
+                  backgroundShapes = parsedCanvasData['backgroundShapes']
+                    ? (LC.snapshotJSONToShapes(
+                        parsedCanvasData['backgroundShapes'] as Record<string, unknown>[],
+                      ) as unknown[])
+                    : [];
+                } catch (e) {
+                  console.warn('Failed to pre-hydrate LC shapes for board', b.id, e);
+                  shapes = [];
+                  backgroundShapes = [];
+                }
               }
 
               canvasDataService.setCanvasData(b.id, {
-                snapshot: b.canvasData,
+                snapshot: parsedCanvasData,
                 shapes: shapes.length > 0 ? shapes : undefined,
                 backgroundShapes: backgroundShapes.length > 0 ? backgroundShapes : undefined,
               });
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { canvasData, ...rest } = b;
             return rest;
           });

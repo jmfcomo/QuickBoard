@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 
 export interface CachedBoardData {
-  shapes?: any[];
-  backgroundShapes?: any[];
+  shapes?: unknown[];
+  backgroundShapes?: unknown[];
   snapshot: Record<string, unknown>;
 }
 
