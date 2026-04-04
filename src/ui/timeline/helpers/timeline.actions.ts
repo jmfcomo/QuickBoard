@@ -143,7 +143,8 @@ export class TimelineActions {
       scriptData: source.scriptData
         ? (JSON.parse(JSON.stringify(source.scriptData)) as NonNullable<Board['scriptData']>)
         : null,
-      previewUrl: source.previewUrl,
+      // Clear blob URLs on duplication to avoid shared reference issues and double revocation
+      previewUrl: source.previewUrl?.startsWith('blob:') ? null : source.previewUrl,
       backgroundColor: source.backgroundColor,
       duration: source.duration,
     };

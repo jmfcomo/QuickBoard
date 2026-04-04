@@ -160,18 +160,24 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             // Render background color
             this.lc.setColor('background', firstBoard.backgroundColor ?? '#ffffff');
             this.lc.repaintLayer('main');
-            // Save preview as a Blob URL to keep base64 data off the V8 heap
-            const snapshot = this.lc.getSnapshot();
+
             const boardId = firstBoard.id;
+            const snapshot = this.lc.getSnapshot();
+            const shapes = [...this.lc.shapes];
+            const backgroundShapes = [...this.lc.backgroundShapes];
+
+            // Update CanvasDataService immediately
+            this.canvasDataService.setCanvasData(boardId, {
+              shapes,
+              backgroundShapes,
+              snapshot,
+            });
+
+            // Save preview as a Blob URL to keep base64 data off the V8 heap
             this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
-              if (!blob) return;
+              if (!this.lc || !blob) return;
               const newUrl = URL.createObjectURL(blob);
               const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
-              this.canvasDataService.setCanvasData(boardId, {
-                shapes: [...this.lc!.shapes],
-                backgroundShapes: [...this.lc!.backgroundShapes],
-                snapshot,
-              });
               this.store.updateBoardPreview(boardId, newUrl);
               if (oldUrl?.startsWith('blob:')) {
                 URL.revokeObjectURL(oldUrl);
@@ -280,20 +286,27 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         }
         this.updateCanvasTimeout = window.setTimeout(() => {
           if (this.lc && this.currentBoardId) {
+            const boardId = this.currentBoardId;
             const snapshot = this.lc.getSnapshot();
+            const shapes = [...this.lc.shapes];
+            const backgroundShapes = [...this.lc.backgroundShapes];
+
             this.lastLoadedCanvasData = snapshot;
             this._canvasDirty = false;
 
-            const boardId = this.currentBoardId;
+            // Update CanvasDataService immediately
+            this.canvasDataService.setCanvasData(boardId, {
+              shapes,
+              backgroundShapes,
+              snapshot,
+            });
+
             this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
-              if (!blob) return;
+              if (!this.lc || this.currentBoardId !== boardId || !blob) return;
+
               const newUrl = URL.createObjectURL(blob);
               const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
-              this.canvasDataService.setCanvasData(boardId, {
-                shapes: [...this.lc!.shapes],
-                backgroundShapes: [...this.lc!.backgroundShapes],
-                snapshot,
-              });
+
               this.store.updateBoardPreview(boardId, newUrl);
               if (oldUrl?.startsWith('blob:')) {
                 URL.revokeObjectURL(oldUrl);

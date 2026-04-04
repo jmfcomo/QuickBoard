@@ -85,6 +85,12 @@ export const AppStore = signalStore(
       },
 
       deleteBoard(boardId: string) {
+        // Revoke the blob URL to prevent memory leaks
+        const boardToDelete = store.boards().find((b) => b.id === boardId);
+        if (boardToDelete?.previewUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(boardToDelete.previewUrl);
+        }
+
         canvasDataService.deleteCanvasData(boardId);
         const boards = store.boards().filter((b) => b.id !== boardId);
         patchState(store, { boards });
