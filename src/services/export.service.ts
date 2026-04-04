@@ -4,6 +4,7 @@ import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
+import type { AudioTrack } from '../data';
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
@@ -217,14 +218,9 @@ export class ExportService {
       let filterStr = '';
       let amixInputs = '';
 
-      const exportStartTime = allBoards
-        .slice(0, startIndex)
-        .reduce((sum, b) => sum + (b.duration ?? 3), 0);
-      const exportDuration = boards.reduce((sum, b) => sum + (b.duration ?? 3), 0);
-      const exportEndTime = exportStartTime + exportDuration;
+      for (let i = 0; i < audioTracks.length; i++) {
+        const track: AudioTrack = audioTracks[i];
 
-      let audioInputIndex = 0;
-      for (const track of audioTracks) {
         const response = await fetch(track.url);
         const blob = await response.blob();
 
@@ -265,53 +261,45 @@ export class ExportService {
           }
         }
 
-        const trackStart = track.startTime ?? 0; // seconds
-        const trackTrimStart = Math.max(0, track.trimStart ?? 0); // seconds into source
-        const trackPlayDuration =
-          track.duration && track.duration > 0 ? track.duration : (track.fileDuration ?? Infinity);
-        const trackEnd = trackStart + trackPlayDuration;
-        const overlapStart = Math.max(trackStart, exportStartTime);
-        const overlapEnd = Math.min(trackEnd, exportEndTime);
-        if (overlapEnd <= overlapStart) {
-          continue;
-        }
-
-        const adjustedTrimStart = trackTrimStart + (overlapStart - trackStart);
-        const overlapDuration = overlapEnd - overlapStart;
-
-        const audioFileName = `audio_${audioInputIndex}.${audioExtension}`;
+        const audioFileName = `audio_${i}.${audioExtension}`;
         await ffmpeg.writeFile(audioFileName, await fetchFile(blob));
         writtenAudio.push(audioFileName);
 
         ffmpegArgs.push('-i', audioFileName);
 
-        const delayMs = Math.floor((overlapStart - exportStartTime) * 1000);
-        if (adjustedTrimStart > 0 || isFinite(overlapDuration)) {
-          let filterChain = `[${audioInputIndex + 1}:a]atrim=`;
-          filterChain += `start=${adjustedTrimStart}`;
-          if (isFinite(overlapDuration) && overlapDuration > 0) {
-            filterChain += `:duration=${overlapDuration}`;
+        const delayMs = Math.floor(track.startTime * 1000);
+        const trimStart = Math.max(0, track.trimStart);
+        const hasTrimStart = trimStart > 0;
+        const hasDuration = track.duration > 0;
+
+        if (hasTrimStart || hasDuration) {
+          let filterChain = `[${i + 1}:a]atrim=`;
+
+          if (hasTrimStart) {
+            filterChain += `start=${trimStart}`;
+          } else {
+            filterChain += 'start=0';
           }
-          filterChain += `,asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a${audioInputIndex}];`;
+
+          if (hasDuration) {
+            filterChain += `:duration=${track.duration}`;
+          }
+
+          filterChain += `,asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a${i}];`;
           filterStr += filterChain;
         } else {
-          filterStr += `[${audioInputIndex + 1}:a]adelay=${delayMs}|${delayMs}[a${audioInputIndex}];`;
+          filterStr += `[${i + 1}:a]adelay=${delayMs}|${delayMs}[a${i}];`;
         }
 
-        amixInputs += `[a${audioInputIndex}]`;
-        audioInputIndex++;
+        amixInputs += `[a${i}]`;
       }
 
       if (abortSignal?.aborted) throw new Error('Export canceled by user.');
 
-      if (audioInputIndex === 0) {
-        ffmpegArgs.push('-map', '0:v');
-      } else {
-        filterStr += `${amixInputs}amix=inputs=${audioInputIndex}:normalize=0[aout]`;
-        ffmpegArgs.push('-filter_complex', filterStr);
-        ffmpegArgs.push('-map', '0:v');
-        ffmpegArgs.push('-map', '[aout]');
-      }
+      filterStr += `${amixInputs}amix=inputs=${audioTracks.length}:normalize=0[aout]`;
+      ffmpegArgs.push('-filter_complex', filterStr);
+      ffmpegArgs.push('-map', '0:v');
+      ffmpegArgs.push('-map', '[aout]');
     } else {
       ffmpegArgs.push('-map', '0:v');
     }
