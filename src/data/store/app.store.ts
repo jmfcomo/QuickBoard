@@ -7,7 +7,6 @@ export interface Board {
   canvasData: Record<string, unknown> | null;
   scriptData: OutputData | null;
   previewUrl: string | null;
-  onionPreviewUrl: string | null;
   backgroundColor: string;
   duration: number;
 }
@@ -60,7 +59,6 @@ const initialState: AppState = {
       canvasData: null,
       scriptData: null,
       previewUrl: null,
-      onionPreviewUrl: null,
       backgroundColor: '#ffffff',
       duration: 3,
     },
@@ -91,7 +89,6 @@ export const AppStore = signalStore(
         canvasData: null,
         scriptData: null,
         previewUrl: null,
-        onionPreviewUrl: null,
         backgroundColor,
         duration,
       };
@@ -108,7 +105,6 @@ export const AppStore = signalStore(
       boardId: string,
       canvasData: Record<string, unknown>,
       previewUrl?: string,
-      onionPreviewUrl?: string,
     ) {
       const normalizedCanvasData = normalizeCanvasData(canvasData);
       const boards = store
@@ -119,7 +115,6 @@ export const AppStore = signalStore(
                 ...board,
                 canvasData: normalizedCanvasData,
                 previewUrl: previewUrl ?? board.previewUrl,
-                onionPreviewUrl: onionPreviewUrl ?? board.onionPreviewUrl,
               }
             : board,
         );
@@ -177,13 +172,17 @@ export const AppStore = signalStore(
                   : (laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1),
             }))
           : [];
-        const normalizedBoards = data.boards.map((board) => ({
-          ...board,
-          onionPreviewUrl:
-            (board as Partial<Board>).onionPreviewUrl !== undefined
-              ? ((board as Partial<Board>).onionPreviewUrl ?? null)
-              : null,
-        }));
+        const normalizedBoards = data.boards.map((board) => {
+          const partial = board as Partial<Board>;
+          return {
+            id: partial.id ?? crypto.randomUUID(),
+            canvasData: partial.canvasData ?? null,
+            scriptData: partial.scriptData ?? null,
+            previewUrl: partial.previewUrl ?? null,
+            backgroundColor: partial.backgroundColor ?? '#ffffff',
+            duration: partial.duration ?? 3,
+          };
+        });
 
         patchState(store, {
           boards: normalizedBoards,

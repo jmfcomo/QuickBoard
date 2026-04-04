@@ -28,8 +28,8 @@ import { UndoRedoService } from '../../../services/undo-redo.service';
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   private readonly boardPreviewScale = 0.2;
-  private readonly onionPreviewScale = 0.4;
   private readonly previewDebounceMs = 160;
+  private readonly onionPreviewCache = signal<Record<string, string>>({});
   readonly onionSkinLayers = computed(() => {
     if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
       return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
@@ -46,22 +46,44 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
     }
 
+    const onionPreviewCache = this.onionPreviewCache();
     const overlays: { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[] = [];
     const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
     const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
+    const previousOnionPreview = previousBoard ? onionPreviewCache[previousBoard.id] : undefined;
+    const nextOnionPreview = nextBoard ? onionPreviewCache[nextBoard.id] : undefined;
 
-    if (previousBoard?.onionPreviewUrl) {
+    // For middle boards, render both neighbors together so onion skin does not pop in one side at a time.
+    if (previousBoard && nextBoard) {
+      if (!previousOnionPreview || !nextOnionPreview) {
+        return overlays;
+      }
+
       overlays.push({
         id: previousBoard.id,
-        onionPreviewUrl: previousBoard.onionPreviewUrl,
+        onionPreviewUrl: previousOnionPreview,
+        position: 'prev',
+      });
+      overlays.push({
+        id: nextBoard.id,
+        onionPreviewUrl: nextOnionPreview,
+        position: 'next',
+      });
+      return overlays;
+    }
+
+    if (previousBoard && previousOnionPreview) {
+      overlays.push({
+        id: previousBoard.id,
+        onionPreviewUrl: previousOnionPreview,
         position: 'prev',
       });
     }
 
-    if (nextBoard?.onionPreviewUrl) {
+    if (nextBoard && nextOnionPreview) {
       overlays.push({
         id: nextBoard.id,
-        onionPreviewUrl: nextBoard.onionPreviewUrl,
+        onionPreviewUrl: nextOnionPreview,
         position: 'next',
       });
     }
@@ -194,6 +216,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.loadBoardData(selectedBoardId);
       }
     });
+
+    effect(() => {
+      const onionSkinEnabled = this.store.onionSkinEnabled();
+      const currentBoardId = this.store.currentBoardId();
+      this.store.boards();
+
+      if (!onionSkinEnabled || !currentBoardId) {
+        return;
+      }
+
+      this.ensureAdjacentOnionPreviews(currentBoardId);
+    });
   }
 
   ngAfterViewInit() {
@@ -216,8 +250,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               firstBoard.id,
               snapshot,
               previews.previewUrl,
-              previews.onionPreviewUrl,
             );
+            this.updateOnionPreviewForCurrentBoard(firstBoard.id);
           }
         }
       }, 0);
@@ -491,9 +525,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.fitCanvasToContainer();
     this.syncOnionLayerRect();
 
-    if (board && (!board.previewUrl || !board.onionPreviewUrl)) {
+    if (board && !board.previewUrl) {
       this.persistCurrentBoardData(board.id, true);
     }
+
+    this.updateOnionPreviewForCurrentBoard(boardId);
+    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
@@ -525,13 +562,24 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  private createBoardPreviews(): { previewUrl: string; onionPreviewUrl: string } {
+  private createBoardPreviews(): { previewUrl: string } {
     if (!this.lc) {
-      return { previewUrl: '', onionPreviewUrl: '' };
+      return { previewUrl: '' };
     }
 
+    return {
+      previewUrl: this.lc.getImage({ scale: this.boardPreviewScale }).toDataURL('image/png'),
+    };
+  }
+
+  private updateOnionPreviewForCurrentBoard(boardId: string): void {
+    if (!this.lc || this.currentBoardId !== boardId) {
+      return;
+    }
+
+    // Onion skin previews are generated at full canvas resolution for precise animation alignment.
     const onionImage = this.lc.getImage({
-      scale: this.onionPreviewScale,
+      scale: 1,
       includeWatermark: false,
       rect: {
         x: 0,
@@ -541,10 +589,127 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       },
     });
 
-    return {
-      previewUrl: this.lc.getImage({ scale: this.boardPreviewScale }).toDataURL('image/png'),
-      onionPreviewUrl: this.createTransparentOnionPreview(onionImage),
-    };
+    const onionPreviewUrl = this.createTransparentOnionPreview(onionImage);
+    this.onionPreviewCache.update((cache) => ({
+      ...cache,
+      [boardId]: onionPreviewUrl,
+    }));
+  }
+
+  private ensureAdjacentOnionPreviews(currentBoardId: string): void {
+    const boards = this.store.boards();
+    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const adjacentBoards = [
+      currentIndex > 0 ? boards[currentIndex - 1] : null,
+      currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null,
+    ].filter((board): board is NonNullable<typeof board> => Boolean(board));
+
+    if (adjacentBoards.length === 0) {
+      return;
+    }
+
+    const cache = this.onionPreviewCache();
+    const nextEntries: Record<string, string> = {};
+
+    for (const board of adjacentBoards) {
+      if (cache[board.id]) {
+        continue;
+      }
+
+      const preview = this.renderOnionPreviewForBoard(board.canvasData, board.backgroundColor);
+      if (preview) {
+        nextEntries[board.id] = preview;
+      }
+    }
+
+    if (Object.keys(nextEntries).length > 0) {
+      this.onionPreviewCache.update((existing) => ({
+        ...existing,
+        ...nextEntries,
+      }));
+    }
+  }
+
+  private renderOnionPreviewForBoard(
+    canvasData: Record<string, unknown> | null,
+    backgroundColor: string,
+  ): string | null {
+    const container = document.createElement('div');
+    container.style.cssText =
+      'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
+    document.body.appendChild(container);
+
+    let preview: string | null = null;
+    let lc: LCInstance | null = null;
+
+    try {
+      lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
+      lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+      if (canvasData) {
+        lc.loadSnapshot(this.withoutViewportState(canvasData));
+      } else {
+        lc.repaintLayer('main');
+      }
+      lc.setColor('background', backgroundColor || '#ffffff');
+
+      const onionImage = lc.getImage({
+        scale: 1,
+        includeWatermark: false,
+        rect: {
+          x: 0,
+          y: 0,
+          width: this.defaultCanvasSize.width,
+          height: this.defaultCanvasSize.height,
+        },
+      });
+
+      preview = this.createTransparentOnionPreview(onionImage, backgroundColor || '#ffffff');
+    } catch {
+      preview = null;
+    } finally {
+      try {
+        lc?.teardown();
+      } catch {
+        // Ignore teardown errors.
+      }
+      document.body.removeChild(container);
+    }
+
+    return preview;
+  }
+
+  private getOnionPreviewKeepIds(boardId: string): string[] {
+    const boards = this.store.boards();
+    const currentIndex = boards.findIndex((board) => board.id === boardId);
+    if (currentIndex === -1) {
+      return [boardId];
+    }
+
+    const ids = [boardId];
+    if (currentIndex > 0) {
+      ids.push(boards[currentIndex - 1].id);
+    }
+    if (currentIndex < boards.length - 1) {
+      ids.push(boards[currentIndex + 1].id);
+    }
+    return ids;
+  }
+
+  private pruneOnionPreviewCache(keepIds: string[]): void {
+    const keep = new Set(keepIds);
+    this.onionPreviewCache.update((cache) => {
+      const nextCache: Record<string, string> = {};
+      for (const [id, previewUrl] of Object.entries(cache)) {
+        if (keep.has(id)) {
+          nextCache[id] = previewUrl;
+        }
+      }
+      return nextCache;
+    });
   }
 
   private persistCurrentBoardData(
@@ -567,12 +732,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       }
 
       const previews = this.createBoardPreviews();
-      this.store.updateCanvasData(
-        boardId,
-        normalizedSnapshot,
-        previews.previewUrl,
-        previews.onionPreviewUrl,
-      );
+      this.store.updateCanvasData(boardId, normalizedSnapshot, previews.previewUrl);
+      this.updateOnionPreviewForCurrentBoard(boardId);
+      this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
       return;
     }
 
@@ -629,7 +791,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardId = this.pendingPreviewBoardId;
     const snapshot = this.pendingPreviewSnapshot;
     const previews = this.createBoardPreviews();
-    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl, previews.onionPreviewUrl);
+    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl);
+    this.updateOnionPreviewForCurrentBoard(boardId);
+    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
     this.pendingPreviewBoardId = null;
     this.pendingPreviewSnapshot = null;
@@ -650,7 +814,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.pendingPreviewSnapshot = null;
   }
 
-  private createTransparentOnionPreview(source: HTMLCanvasElement): string {
+  private createTransparentOnionPreview(source: HTMLCanvasElement, backgroundColor?: string): string {
     const width = source.width;
     const height = source.height;
     if (width <= 0 || height <= 0) {
@@ -667,7 +831,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     ctx.drawImage(source, 0, 0);
 
-    const bgColor = this.getCachedBackgroundRgb(this.lc?.getColor('background') ?? '#ffffff');
+    const bgColor = this.getCachedBackgroundRgb(
+      backgroundColor ?? this.lc?.getColor('background') ?? '#ffffff',
+    );
     if (!bgColor) {
       return canvas.toDataURL('image/png');
     }

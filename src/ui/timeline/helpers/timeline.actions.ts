@@ -137,7 +137,6 @@ export class TimelineActions {
         ? (JSON.parse(JSON.stringify(source.scriptData)) as NonNullable<Board['scriptData']>)
         : null,
       previewUrl: source.previewUrl,
-      onionPreviewUrl: source.onionPreviewUrl,
       backgroundColor: source.backgroundColor,
       duration: source.duration,
     };
