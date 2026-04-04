@@ -94,16 +94,20 @@ export class ExportService {
     ) => Promise<void>,
     mimeType = 'image/png',
     abortSignal?: AbortSignal,
+    startIndex = 0,
+    endIndex?: number,
   ): Promise<void> {
-    const boards = this.store.boards();
-    const padLength = Math.max(3, String(boards.length).length);
+    const allBoards = this.store.boards();
+    const end = endIndex ?? allBoards.length - 1;
+    const boards = allBoards.slice(startIndex, end + 1);
+    const padLength = Math.max(3, String(allBoards.length).length);
     const ext = mimeType === 'image/jpeg' ? '.jpg' : '.png';
-    for (let index = 0; index < boards.length; index++) {
+    for (let i = 0; i < boards.length; i++) {
       if (abortSignal?.aborted) {
         throw new Error('Export canceled by user.');
       }
-      const board = boards[index];
-      const frameNum = String(index + 1).padStart(padLength, '0');
+      const board = boards[i];
+      const frameNum = String(startIndex + i + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}${ext}`;
       const dataUrl = await this.renderSingleBoard(
         board.canvasData,
@@ -111,7 +115,7 @@ export class ExportService {
         scale,
         mimeType,
       );
-      await onFrame({ name: fileName, dataUrl }, index + 1, boards.length);
+      await onFrame({ name: fileName, dataUrl }, i + 1, boards.length);
     }
   }
 
@@ -147,8 +151,11 @@ export class ExportService {
     onEncodingProgress?: (progress: number) => void,
     abortSignal?: AbortSignal,
   ): Promise<Uint8Array> {
-    const boards = this.store.boards();
+    const allBoards = this.store.boards();
     const audioTracks = this.store.audioTracks();
+    const startIndex = settings.startIndex;
+    const endIndex = settings.endIndex;
+    const boards = allBoards.slice(startIndex, endIndex + 1);
 
     if (!boards.length) {
       const message =
@@ -163,7 +170,6 @@ export class ExportService {
 
     onPhaseMessage?.('Rendering frames...');
     let concatText = '';
-    let lastFileName = '';
     const writtenFrames: string[] = [];
     const safePrefix = this.sanitizePrefix(settings.prefix);
 
@@ -184,33 +190,42 @@ export class ExportService {
 
         const duration = boards[current - 1]?.duration ?? 3;
         concatText += `file '${frame.name}'\n`;
-        concatText += `duration ${duration}\n`;
-        lastFileName = frame.name;
-
+        if (current < total) {
+          concatText += `duration ${duration}\n`;
+        }
         onFrameProgress?.(current, total, frame.name);
       },
       'image/jpeg',
       abortSignal,
+      startIndex,
+      endIndex,
     );
 
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');
-
-    if (lastFileName) {
-      concatText += `file '${lastFileName}'\n`;
-    }
 
     await ffmpeg.writeFile('concat.txt', concatText);
 
     const ffmpegArgs: string[] = ['-f', 'concat', '-safe', '0', '-i', 'concat.txt'];
     const writtenAudio: string[] = [];
 
-    if (audioTracks.length > 0) {
+    const timeOffset = allBoards
+      .slice(0, startIndex)
+      .reduce((sum, b) => sum + (b.duration ?? 3), 0);
+    const exportDuration = boards.reduce((sum, b) => sum + (b.duration ?? 3), 0);
+
+    const activeAudioTracks = audioTracks.filter((track) => {
+      const absoluteStartTime = track.startTime;
+      const trackEndTime = track.duration > 0 ? absoluteStartTime + track.duration : Infinity;
+      return trackEndTime > timeOffset && absoluteStartTime < timeOffset + exportDuration;
+    });
+
+    if (activeAudioTracks.length > 0) {
       onPhaseMessage?.('Processing audio...');
       let filterStr = '';
       let amixInputs = '';
 
-      for (let i = 0; i < audioTracks.length; i++) {
-        const track: AudioTrack = audioTracks[i];
+      for (let i = 0; i < activeAudioTracks.length; i++) {
+        const track: AudioTrack = activeAudioTracks[i];
 
         const response = await fetch(track.url);
         const blob = await response.blob();
@@ -258,22 +273,37 @@ export class ExportService {
 
         ffmpegArgs.push('-i', audioFileName);
 
-        const delayMs = Math.floor(track.startTime * 1000);
-        const trimStart = Math.max(0, track.trimStart);
-        const hasTrimStart = trimStart > 0;
-        const hasDuration = track.duration > 0;
+        const absoluteStartTime = track.startTime;
+        let trackTrimStart = Math.max(0, track.trimStart);
+        let trackDuration = track.duration;
+        let delayMs = 0;
+
+        if (absoluteStartTime >= timeOffset) {
+          delayMs = Math.floor((absoluteStartTime - timeOffset) * 1000);
+        } else {
+          // starts before the exported range
+          const overlap = timeOffset - absoluteStartTime;
+          trackTrimStart += overlap;
+          if (trackDuration > 0) {
+            trackDuration = Math.max(0, trackDuration - overlap);
+          }
+          // delayMs remains 0
+        }
+
+        const hasTrimStart = trackTrimStart > 0;
+        const hasDuration = trackDuration > 0;
 
         if (hasTrimStart || hasDuration) {
           let filterChain = `[${i + 1}:a]atrim=`;
 
           if (hasTrimStart) {
-            filterChain += `start=${trimStart}`;
+            filterChain += `start=${trackTrimStart}`;
           } else {
             filterChain += 'start=0';
           }
 
           if (hasDuration) {
-            filterChain += `:duration=${track.duration}`;
+            filterChain += `:duration=${trackDuration}`;
           }
 
           filterChain += `,asetpts=PTS-STARTPTS,adelay=${delayMs}|${delayMs}[a${i}];`;
@@ -287,7 +317,7 @@ export class ExportService {
 
       if (abortSignal?.aborted) throw new Error('Export canceled by user.');
 
-      filterStr += `${amixInputs}amix=inputs=${audioTracks.length}:normalize=0[aout]`;
+      filterStr += `${amixInputs}amix=inputs=${activeAudioTracks.length}:normalize=0[aout]`;
       ffmpegArgs.push('-filter_complex', filterStr);
       ffmpegArgs.push('-map', '0:v');
       ffmpegArgs.push('-map', '[aout]');
@@ -302,7 +332,8 @@ export class ExportService {
       'ultrafast',
       '-pix_fmt',
       'yuv420p',
-      '-shortest',
+      '-t',
+      String(exportDuration),
       'output.mp4',
     );
 
