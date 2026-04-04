@@ -132,10 +132,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             backgroundShapes: [...this.lc.backgroundShapes],
             snapshot,
           });
-          // Wait, preview is usually generated asynchronously. Let me just use the existing method if any, or call a specific preview generation.
-          // Wait, `updateCanvasData(this.currentBoardId, this.lc.getSnapshot())` just set the canvasData in the store, without passing previewUrl.
-          // So I can just omit updating preview Url here. `previewUrl` shouldn't be overridden if not passed.
-          // Let's undo my last change and fix it properly.
 
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
           this._canvasDirty = false;
