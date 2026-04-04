@@ -27,6 +27,9 @@ import { UndoRedoService } from '../../../services/undo-redo.service';
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
+  private readonly boardPreviewScale = 0.2;
+  private readonly onionPreviewScale = 0.4;
+  private readonly previewDebounceMs = 160;
   readonly onionSkinLayers = computed(() => {
     if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
       return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
@@ -148,6 +151,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
    * the pre-stroke state even after the user has switched away from the original board. */
   private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
+  private pendingPreviewBoardId: string | null = null;
+  private pendingPreviewSnapshot: Record<string, unknown> | null = null;
+  private previewTimeoutId: number | null = null;
+  private previewIdleId: number | null = null;
+  private colorParserCtx: CanvasRenderingContext2D | null = null;
+  private cachedBackgroundColor: string | null = null;
+  private cachedBackgroundRgb: { r: number; g: number; b: number } | null = null;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -172,6 +182,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
       // Only reload when switching boards or when the canvas data reference changes
       if (boardIdChanged) {
+        // Ensure any deferred preview for the outgoing board is committed before switching.
+        this.flushPendingPreviewRegeneration();
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
           this.persistCurrentBoardData(this.currentBoardId, true);
@@ -244,6 +256,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.clearTimer('tooltipDelay');
     this.clearTimer('tooltipCooldown');
+
+    this.clearPendingPreviewRegeneration();
   }
 
   private initializeCanvas(): void {
@@ -352,7 +366,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             });
 
             if (boardIdAtRecord) {
-              this.persistCurrentBoardData(boardIdAtRecord, true);
+              this.persistCurrentBoardData(boardIdAtRecord, true, { deferPreviews: true });
             }
           }
         }
@@ -516,8 +530,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return { previewUrl: '', onionPreviewUrl: '' };
     }
 
-    const fullSizeImage = this.lc.getImage({
-      scale: 1,
+    const onionImage = this.lc.getImage({
+      scale: this.onionPreviewScale,
       includeWatermark: false,
       rect: {
         x: 0,
@@ -528,12 +542,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     return {
-      previewUrl: this.lc.getImage({ scale: 0.2 }).toDataURL('image/png'),
-      onionPreviewUrl: this.createTransparentOnionPreview(fullSizeImage),
+      previewUrl: this.lc.getImage({ scale: this.boardPreviewScale }).toDataURL('image/png'),
+      onionPreviewUrl: this.createTransparentOnionPreview(onionImage),
     };
   }
 
-  private persistCurrentBoardData(boardId: string, includePreviews: boolean): void {
+  private persistCurrentBoardData(
+    boardId: string,
+    includePreviews: boolean,
+    options: { deferPreviews?: boolean } = {},
+  ): void {
     if (!this.lc) {
       return;
     }
@@ -542,6 +560,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lastLoadedCanvasData = normalizedSnapshot;
 
     if (includePreviews) {
+      if (options.deferPreviews) {
+        this.store.updateCanvasData(boardId, normalizedSnapshot);
+        this.schedulePreviewRegeneration(boardId, normalizedSnapshot);
+        return;
+      }
+
       const previews = this.createBoardPreviews();
       this.store.updateCanvasData(
         boardId,
@@ -553,6 +577,77 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     this.store.updateCanvasData(boardId, normalizedSnapshot);
+  }
+
+  private schedulePreviewRegeneration(boardId: string, snapshot: Record<string, unknown>): void {
+    if (!this.lc || boardId !== this.currentBoardId) {
+      return;
+    }
+
+    this.pendingPreviewBoardId = boardId;
+    this.pendingPreviewSnapshot = snapshot;
+
+    if (this.previewTimeoutId !== null) {
+      clearTimeout(this.previewTimeoutId);
+    }
+
+    this.previewTimeoutId = window.setTimeout(() => {
+      this.previewTimeoutId = null;
+      this.schedulePreviewRegenerationOnIdle();
+    }, this.previewDebounceMs);
+  }
+
+  private schedulePreviewRegenerationOnIdle(): void {
+    if (typeof window.requestIdleCallback === 'function') {
+      if (this.previewIdleId !== null) {
+        window.cancelIdleCallback(this.previewIdleId);
+      }
+      this.previewIdleId = window.requestIdleCallback(
+        () => {
+          this.previewIdleId = null;
+          this.flushPendingPreviewRegeneration();
+        },
+        { timeout: 300 },
+      );
+      return;
+    }
+
+    this.flushPendingPreviewRegeneration();
+  }
+
+  private flushPendingPreviewRegeneration(): void {
+    if (
+      !this.lc ||
+      !this.pendingPreviewBoardId ||
+      !this.pendingPreviewSnapshot ||
+      this.pendingPreviewBoardId !== this.currentBoardId
+    ) {
+      this.clearPendingPreviewRegeneration();
+      return;
+    }
+
+    const boardId = this.pendingPreviewBoardId;
+    const snapshot = this.pendingPreviewSnapshot;
+    const previews = this.createBoardPreviews();
+    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl, previews.onionPreviewUrl);
+
+    this.pendingPreviewBoardId = null;
+    this.pendingPreviewSnapshot = null;
+  }
+
+  private clearPendingPreviewRegeneration(): void {
+    if (this.previewTimeoutId !== null) {
+      clearTimeout(this.previewTimeoutId);
+      this.previewTimeoutId = null;
+    }
+
+    if (this.previewIdleId !== null && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(this.previewIdleId);
+      this.previewIdleId = null;
+    }
+
+    this.pendingPreviewBoardId = null;
+    this.pendingPreviewSnapshot = null;
   }
 
   private createTransparentOnionPreview(source: HTMLCanvasElement): string {
@@ -572,7 +667,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     ctx.drawImage(source, 0, 0);
 
-    const bgColor = this.parseColorToRgb(this.lc?.getColor('background') ?? '#ffffff');
+    const bgColor = this.getCachedBackgroundRgb(this.lc?.getColor('background') ?? '#ffffff');
     if (!bgColor) {
       return canvas.toDataURL('image/png');
     }
@@ -598,6 +693,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     return canvas.toDataURL('image/png');
   }
 
+  private getCachedBackgroundRgb(color: string): { r: number; g: number; b: number } | null {
+    if (this.cachedBackgroundColor === color) {
+      return this.cachedBackgroundRgb;
+    }
+
+    this.cachedBackgroundColor = color;
+    this.cachedBackgroundRgb = this.parseColorToRgb(color);
+    return this.cachedBackgroundRgb;
+  }
+
   private withoutViewportState(snapshot: Record<string, unknown>): Record<string, unknown> {
     const normalized = { ...snapshot };
     delete (normalized as { position?: unknown }).position;
@@ -606,10 +711,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
-    const parserCanvas = document.createElement('canvas');
-    parserCanvas.width = 1;
-    parserCanvas.height = 1;
-    const parserCtx = parserCanvas.getContext('2d');
+    let parserCtx = this.colorParserCtx;
+    if (!parserCtx) {
+      const parserCanvas = document.createElement('canvas');
+      parserCanvas.width = 1;
+      parserCanvas.height = 1;
+      parserCtx = parserCanvas.getContext('2d');
+      this.colorParserCtx = parserCtx;
+    }
+
     if (!parserCtx) {
       return null;
     }
