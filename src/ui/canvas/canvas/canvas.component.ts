@@ -498,7 +498,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
-    this.fitCanvasToContainer();
+    this.scheduleCanvasFit();
 
     this.lc.undoStack.length = 0;
     this.lc.redoStack.length = 0;

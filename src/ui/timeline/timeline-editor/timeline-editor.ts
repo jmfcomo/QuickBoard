@@ -110,7 +110,7 @@ export class TimelineEditor implements AfterViewInit {
     const container = this.scrollContainer?.nativeElement;
     if (!container) return;
     const scrollLeft = container.scrollLeft;
-    const containerWidth = container.clientWidth;
+    const containerWidth = this.containerWidth();
     const scrollRight = scrollLeft + containerWidth;
     const leftPadding = containerWidth * 0.2;
     const rightPadding = containerWidth * 0.2;
