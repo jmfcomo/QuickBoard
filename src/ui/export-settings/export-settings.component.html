@@ -7,7 +7,7 @@
           {{ selectedFormat() === 'video' ? 'Export MP4 Video' : 'Export PNG Sequence' }}
         </h3>
         <p class="subtitle">
-          {{ boardCount() }} frame{{ boardCount() !== 1 ? 's' : '' }} ready for export.
+          {{ boardCount() }} board{{ boardCount() !== 1 ? 's' : '' }} ready for export.
         </p>
       </header>
 
@@ -25,31 +25,37 @@
           </select>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Frames</span>
-          <span
-            ><input
+          <span class="summary-label">Boards</span>
+          <span class="range-inputs" [class.is-disabled]="selectedFormat() === 'video'">
+            <input
               class="text-input"
               type="number"
-              [value]="startRaw()"
+              [disabled]="selectedFormat() === 'video'"
+              [value]="selectedFormat() === 'video' ? '1' : startRaw()"
               (input)="onStartInput($event)"
               (blur)="onStartBlur()"
               min="1"
               [max]="boardCount()"
               step="1"
             />
-            <p class="hint">Starting frame: {{ startIndex() + 1 }}</p>
+            <p class="hint">
+              Starting board: {{ selectedFormat() === 'video' ? 1 : startIndex() + 1 }}
+            </p>
             <input
               class="text-input"
               type="number"
-              [value]="endRaw()"
+              [disabled]="selectedFormat() === 'video'"
+              [value]="selectedFormat() === 'video' ? boardCount() : endRaw()"
               (input)="onEndInput($event)"
               (blur)="onEndBlur()"
               min="1"
               [max]="boardCount()"
               step="1"
             />
-            <p class="hint">Ending frame: {{ endIndex() + 1 }}</p></span
-          >
+            <p class="hint">
+              Ending board: {{ selectedFormat() === 'video' ? boardCount() : endIndex() + 1 }}
+            </p>
+          </span>
         </div>
       </section>
 
