@@ -31,12 +31,24 @@ export interface AudioLaneMixer {
 interface AppState {
   boards: Board[];
   currentBoardId: string | null;
+  onionSkinEnabled: boolean;
   audioTracks: AudioTrack[];
   audioLaneCount: number;
   audioLaneMixers: AudioLaneMixer[];
   isPlaying: boolean;
   currentTime: number; // seconds
 }
+
+const normalizeCanvasData = (canvasData: Record<string, unknown>): Record<string, unknown> => {
+  if (!('position' in canvasData) && !('scale' in canvasData)) {
+    return canvasData;
+  }
+
+  const normalized = { ...canvasData };
+  delete (normalized as { position?: unknown }).position;
+  delete (normalized as { scale?: unknown }).scale;
+  return normalized;
+};
 
 const firstBoardId = crypto.randomUUID();
 
@@ -52,6 +64,7 @@ const initialState: AppState = {
     },
   ],
   currentBoardId: firstBoardId,
+  onionSkinEnabled: false,
   audioTracks: [],
   audioLaneCount: 1,
   audioLaneMixers: [{ volume: 1, muted: false }],
@@ -88,12 +101,21 @@ export const AppStore = signalStore(
       patchState(store, { boards });
     },
 
-    updateCanvasData(boardId: string, canvasData: Record<string, unknown>, previewUrl?: string) {
+    updateCanvasData(
+      boardId: string,
+      canvasData: Record<string, unknown>,
+      previewUrl?: string,
+    ) {
+      const normalizedCanvasData = normalizeCanvasData(canvasData);
       const boards = store
         .boards()
         .map((board) =>
           board.id === boardId
-            ? { ...board, canvasData, previewUrl: previewUrl ?? board.previewUrl }
+            ? {
+                ...board,
+                canvasData: normalizedCanvasData,
+                previewUrl: previewUrl ?? board.previewUrl,
+              }
             : board,
         );
       patchState(store, { boards });
@@ -119,6 +141,7 @@ export const AppStore = signalStore(
         {
           boards: store.boards(),
           currentBoardId: store.currentBoardId(),
+          onionSkinEnabled: store.onionSkinEnabled(),
           audioTracks: store.audioTracks(),
           audioLaneCount: store.audioLaneCount(),
           audioLaneMixers: store.audioLaneMixers(),
@@ -149,9 +172,22 @@ export const AppStore = signalStore(
                   : (laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1),
             }))
           : [];
+        const normalizedBoards = data.boards.map((board) => {
+          const partial = board as Partial<Board>;
+          return {
+            id: partial.id ?? crypto.randomUUID(),
+            canvasData: partial.canvasData ?? null,
+            scriptData: partial.scriptData ?? null,
+            previewUrl: partial.previewUrl ?? null,
+            backgroundColor: partial.backgroundColor ?? '#ffffff',
+            duration: partial.duration ?? 3,
+          };
+        });
+
         patchState(store, {
-          boards: data.boards,
+          boards: normalizedBoards,
           currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
+          onionSkinEnabled: Boolean((data as Partial<AppState>).onionSkinEnabled),
           audioTracks: normalizedTracks,
           audioLaneCount: laneCount,
           audioLaneMixers: laneMixers,
@@ -182,6 +218,14 @@ export const AppStore = signalStore(
 
     setCurrentTime(time: number) {
       patchState(store, { currentTime: time });
+    },
+
+    setOnionSkinEnabled(onionSkinEnabled: boolean) {
+      patchState(store, { onionSkinEnabled });
+    },
+
+    toggleOnionSkin() {
+      patchState(store, { onionSkinEnabled: !store.onionSkinEnabled() });
     },
 
     updateAudioUrl(trackId: string, url: string) {

@@ -93,7 +93,8 @@
 .playhead-head {
   position: absolute;
   top: 0;
-  left: -5px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 0;
   height: 0;
   border-left: 5px solid transparent;
@@ -118,7 +119,8 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 1px;
   background-color: var(--playhead);
   opacity: 0.7;

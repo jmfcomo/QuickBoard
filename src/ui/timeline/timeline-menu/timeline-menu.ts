@@ -31,6 +31,10 @@ export class TimelineMenu {
     this.playback.togglePlayback();
   }
 
+  toggleOnionSkin() {
+    this.store.toggleOnionSkin();
+  }
+
   goToStart() {
     this.playback.seek(0);
   }
