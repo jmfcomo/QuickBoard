@@ -159,7 +159,7 @@ export class ExportIpcService {
     }
     this._lastExportPath.set(dirPath);
 
-    this.exportTotal.set(100);
+    this.exportTotal.set(settings.endIndex - settings.startIndex + 1);
     this.exportFrameCount.set(settings.endIndex - settings.startIndex + 1);
     this.exportCurrent.set(0);
     this.exportFileName.set('');
@@ -170,35 +170,30 @@ export class ExportIpcService {
     this.abortController = new AbortController();
 
     try {
+      const frameCount = settings.endIndex - settings.startIndex + 1;
       const mp4Bytes = await this.exportService.exportVideoWithSettings(
         settings,
         (current, total, fileName) => {
-          // Frame rendering: 0–20%
-          this.exportCurrent.set(Math.round((current / total) * 20));
+          this.exportCurrent.set(current);
           this.exportFileName.set(fileName);
-          this.exportMessage.set('Rendering frames...');
+          this.exportMessage.set(`Rendering frames... (${current}/${total})`);
         },
         (message) => {
           this.exportMessage.set(message);
           this.exportFileName.set('');
-          if (message === 'Encoding video...') {
-            this.exportCurrent.set(20);
-          } else if (message === 'Processing audio...') {
-            this.exportCurrent.set(20);
+          if (message === 'Encoding video...' || message === 'Processing audio...') {
+            this.exportCurrent.set(frameCount);
           } else if (message === 'Saving file...') {
-            this.exportCurrent.set(96);
+            this.exportCurrent.set(frameCount);
           }
         },
         (progress) => {
-          // Encoding: 20–95%
-          this.exportCurrent.set(20 + Math.round(progress * 0.75));
-          this.exportMessage.set('Encoding video...');
+          this.exportMessage.set(`Encoding video... ${progress}%`);
         },
         this.abortController.signal,
       );
 
       const outputName = `${prefix}.mp4`;
-      this.exportCurrent.set(98);
       const result = await window.quickboard?.sendVideoFile({
         dirPath,
         name: outputName,
@@ -208,6 +203,8 @@ export class ExportIpcService {
       if (!result?.success) {
         throw new Error(result?.message ?? 'Failed to save video file.');
       }
+
+      this.exportCurrent.set(frameCount);
 
       this.exportCurrent.set(100);
       this.exportStatus.set('success');

@@ -2,8 +2,16 @@
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 48%),
-    radial-gradient(circle at 82% 84%, color-mix(in srgb, var(--focus-ring) 18%, transparent), transparent 42%),
+    radial-gradient(
+      circle at 20% 18%,
+      color-mix(in srgb, var(--accent) 22%, transparent),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 82% 84%,
+      color-mix(in srgb, var(--focus-ring) 18%, transparent),
+      transparent 42%
+    ),
     var(--overlay-dark);
   display: flex;
   align-items: center;
@@ -349,4 +357,16 @@
   .btn-export {
     width: 100%;
   }
+}
+
+.range-inputs.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.range-inputs.is-disabled .text-input {
+  background-color: var(--input-bg-disabled, #2a2a2e);
+  color: var(--text-muted);
+  border-color: var(--border-muted);
 }
