@@ -41,7 +41,31 @@
   }
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage>
-      <div #canvasContainer class="literally-canvas"></div>
+      <div class="canvas-board-stack">
+        <div #canvasContainer class="literally-canvas"></div>
+        @for (layer of onionSkinLayers(); track layer.id) {
+          <div
+            class="onion-skin-layer"
+            [class.previous]="layer.position === 'prev'"
+            [class.next]="layer.position === 'next'"
+            [style.left.px]="onionLayerRect().left"
+            [style.top.px]="onionLayerRect().top"
+            [style.width.px]="onionLayerRect().width"
+            [style.height.px]="onionLayerRect().height"
+          >
+            <img
+              [src]="layer.onionPreviewUrl"
+              [style.left.px]="onionImageRect().left"
+              [style.top.px]="onionImageRect().top"
+              [style.width.px]="onionImageRect().width"
+              [style.height.px]="onionImageRect().height"
+              alt=""
+              aria-hidden="true"
+              draggable="false"
+            />
+          </div>
+        }
+      </div>
     </div>
   </div>
 </div>

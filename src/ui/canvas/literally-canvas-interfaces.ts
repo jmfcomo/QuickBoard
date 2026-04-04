@@ -13,6 +13,13 @@ export interface LCTool {
 }
 
 export interface LCInstance {
+  canvas: HTMLCanvasElement;
+  backgroundCanvas: HTMLCanvasElement;
+  containerEl: HTMLElement;
+  backingScale: number;
+  scale: number;
+  position: { x: number; y: number };
+  getRenderScale(): number;
   undo(): void;
   redo(): void;
   undoStack: unknown[];
@@ -32,7 +39,12 @@ export interface LCInstance {
   saveShape(shape: unknown): void;
   on(event: string, handler: (data: unknown) => void): void;
   getSnapshot(): Record<string, unknown>;
-  getImage(opts?: { scale?: number }): HTMLCanvasElement;
+  getImage(opts?: {
+    scale?: number;
+    includeWatermark?: boolean;
+    scaleDownRetina?: boolean;
+    rect?: { x: number; y: number; width: number; height: number };
+  }): HTMLCanvasElement;
   loadSnapshot(snapshot: Record<string, unknown>): void;
   teardown(): void;
 }

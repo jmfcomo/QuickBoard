@@ -28,6 +28,69 @@ import { CanvasDataService } from '../../../services/canvas-data.service';
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
+  private readonly boardPreviewScale = 0.2;
+  private readonly previewDebounceMs = 160;
+  private readonly onionPreviewCache = signal<Record<string, string>>({});
+  readonly onionSkinLayers = computed(() => {
+    if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const boards = this.store.boards();
+    const currentBoardId = this.store.currentBoardId();
+    if (!currentBoardId || boards.length < 2) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
+    if (currentIndex === -1) {
+      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
+    }
+
+    const onionPreviewCache = this.onionPreviewCache();
+    const overlays: { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[] = [];
+    const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
+    const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
+    const previousOnionPreview = previousBoard ? onionPreviewCache[previousBoard.id] : undefined;
+    const nextOnionPreview = nextBoard ? onionPreviewCache[nextBoard.id] : undefined;
+
+    // For middle boards, render both neighbors together so onion skin does not pop in one side at a time.
+    if (previousBoard && nextBoard) {
+      if (!previousOnionPreview || !nextOnionPreview) {
+        return overlays;
+      }
+
+      overlays.push({
+        id: previousBoard.id,
+        onionPreviewUrl: previousOnionPreview,
+        position: 'prev',
+      });
+      overlays.push({
+        id: nextBoard.id,
+        onionPreviewUrl: nextOnionPreview,
+        position: 'next',
+      });
+      return overlays;
+    }
+
+    if (previousBoard && previousOnionPreview) {
+      overlays.push({
+        id: previousBoard.id,
+        onionPreviewUrl: previousOnionPreview,
+        position: 'prev',
+      });
+    }
+
+    if (nextBoard && nextOnionPreview) {
+      overlays.push({
+        id: nextBoard.id,
+        onionPreviewUrl: nextOnionPreview,
+        position: 'next',
+      });
+    }
+
+    return overlays;
+  });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
   private readonly toolSizeMap = signal<Record<string, number>>({
@@ -43,6 +106,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly strokeColor = signal<string>('#000000');
   readonly fillColor = signal<string>('#ffffff');
   readonly backgroundColor = signal<string>('#ffffff');
+  readonly onionLayerRect = signal({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
+  readonly onionImageRect = signal({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
 
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
@@ -83,7 +158,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private currentBoardId: string | null = null;
-  private updateCanvasTimeout: number | null = null;
   private initCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -102,6 +176,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
    * the pre-stroke state even after the user has switched away from the original board. */
   private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
   private _canvasDirty = false;
+  private pendingPreviewBoardId: string | null = null;
+  private pendingPreviewSnapshot: Record<string, unknown> | null = null;
+  private previewTimeoutId: number | null = null;
+  private previewIdleId: number | null = null;
+  private colorParserCtx: CanvasRenderingContext2D | null = null;
+  private cachedBackgroundColor: string | null = null;
+  private cachedBackgroundRgb: { r: number; g: number; b: number } | null = null;
 
   // Tooltip
   readonly tooltipText = signal('');
@@ -133,6 +214,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             snapshot,
           });
 
+        // Ensure any deferred preview for the outgoing board is committed before switching.
+        this.flushPendingPreviewRegeneration();
+        // Save current board data before switching
+        if (this.currentBoardId && this.lc) {
+          this.persistCurrentBoardData(this.currentBoardId, true);
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
           this._canvasDirty = false;
         }
@@ -140,6 +226,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       } else if (canvasDataChanged) {
         this.loadBoardData(selectedBoardId);
       }
+    });
+
+    effect(() => {
+      const onionSkinEnabled = this.store.onionSkinEnabled();
+      const currentBoardId = this.store.currentBoardId();
+      this.store.boards();
+
+      if (!onionSkinEnabled || !currentBoardId) {
+        return;
+      }
+
+      this.ensureAdjacentOnionPreviews(currentBoardId);
     });
   }
 
@@ -179,6 +277,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                 URL.revokeObjectURL(oldUrl);
               }
             }, 'image/png');
+            const previews = this.createBoardPreviews();
+            this.store.updateCanvasData(
+              firstBoard.id,
+              snapshot,
+              previews.previewUrl,
+            );
+            this.updateOnionPreviewForCurrentBoard(firstBoard.id);
           }
         }
       }, 0);
@@ -190,12 +295,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (this.initCanvasTimeout !== null) {
       clearTimeout(this.initCanvasTimeout);
       this.initCanvasTimeout = null;
-    }
-
-    // Clear the update timeout to prevent memory leaks and errors after component destruction
-    if (this.updateCanvasTimeout !== null) {
-      clearTimeout(this.updateCanvasTimeout);
-      this.updateCanvasTimeout = null;
     }
 
     // Clean up LiterallyCanvas instance and event listeners
@@ -223,6 +322,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.clearTimer('tooltipDelay');
     this.clearTimer('tooltipCooldown');
+
+    this.clearPendingPreviewRegeneration();
   }
 
   private initializeCanvas(): void {
@@ -262,6 +363,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       : null;
     if (initialCanvasData) {
       this.lc.loadSnapshot(initialCanvasData);
+    if (currentBoard?.canvasData) {
+      this.lc.loadSnapshot(this.withoutViewportState(currentBoard.canvasData));
     }
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
@@ -272,6 +375,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // ensuring LC sees post-reflow container dimensions.
     this.observeCanvasResize();
     window.addEventListener('resize', this.onWindowResize);
+    this.syncOnionLayerRect();
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
@@ -368,6 +472,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                 this._suppressLcHistory = false;
               },
             });
+
+            if (boardIdAtRecord) {
+              this.persistCurrentBoardData(boardIdAtRecord, true, { deferPreviews: true });
+            }
           }
         }
       }
@@ -433,6 +541,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               this._suppressLcHistory = false;
             },
           });
+
+          if (snapshotBoardId) {
+            this.persistCurrentBoardData(snapshotBoardId, true);
+          }
         }
       }
     };
@@ -490,6 +602,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         });
       }
       this.lastLoadedCanvasData = cache.snapshot;
+    if (board?.canvasData) {
+      this.lc.loadSnapshot(this.withoutViewportState(board.canvasData));
+      // Track the loaded data reference
+      this.lastLoadedCanvasData = board.canvasData;
     } else {
       this.lc.repaintLayer('main');
       this.lastLoadedCanvasData = null;
@@ -499,6 +615,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
     this.scheduleCanvasFit();
+    this.fitCanvasToContainer();
+    this.syncOnionLayerRect();
+
+    if (board && !board.previewUrl) {
+      this.persistCurrentBoardData(board.id, true);
+    }
+
+    this.updateOnionPreviewForCurrentBoard(boardId);
+    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
     this.lc.undoStack.length = 0;
     this.lc.redoStack.length = 0;
@@ -528,7 +653,372 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeRafId = window.requestAnimationFrame(() => {
       this.resizeRafId = null;
       this.fitCanvasToContainer();
+      this.syncOnionLayerRect();
     });
+  }
+
+  private createBoardPreviews(): { previewUrl: string } {
+    if (!this.lc) {
+      return { previewUrl: '' };
+    }
+
+    return {
+      previewUrl: this.lc.getImage({ scale: this.boardPreviewScale }).toDataURL('image/png'),
+    };
+  }
+
+  private updateOnionPreviewForCurrentBoard(boardId: string): void {
+    if (!this.lc || this.currentBoardId !== boardId) {
+      return;
+    }
+
+    // Onion skin previews are generated at full canvas resolution for precise animation alignment.
+    const onionImage = this.lc.getImage({
+      scale: 1,
+      includeWatermark: false,
+      rect: {
+        x: 0,
+        y: 0,
+        width: this.defaultCanvasSize.width,
+        height: this.defaultCanvasSize.height,
+      },
+    });
+
+    const onionPreviewUrl = this.createTransparentOnionPreview(onionImage);
+    this.onionPreviewCache.update((cache) => ({
+      ...cache,
+      [boardId]: onionPreviewUrl,
+    }));
+  }
+
+  private ensureAdjacentOnionPreviews(currentBoardId: string): void {
+    const boards = this.store.boards();
+    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const adjacentBoards = [
+      currentIndex > 0 ? boards[currentIndex - 1] : null,
+      currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null,
+    ].filter((board): board is NonNullable<typeof board> => Boolean(board));
+
+    if (adjacentBoards.length === 0) {
+      return;
+    }
+
+    const cache = this.onionPreviewCache();
+    const nextEntries: Record<string, string> = {};
+
+    for (const board of adjacentBoards) {
+      if (cache[board.id]) {
+        continue;
+      }
+
+      const preview = this.renderOnionPreviewForBoard(board.canvasData, board.backgroundColor);
+      if (preview) {
+        nextEntries[board.id] = preview;
+      }
+    }
+
+    if (Object.keys(nextEntries).length > 0) {
+      this.onionPreviewCache.update((existing) => ({
+        ...existing,
+        ...nextEntries,
+      }));
+    }
+  }
+
+  private renderOnionPreviewForBoard(
+    canvasData: Record<string, unknown> | null,
+    backgroundColor: string,
+  ): string | null {
+    const container = document.createElement('div');
+    container.style.cssText =
+      'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
+    document.body.appendChild(container);
+
+    let preview: string | null = null;
+    let lc: LCInstance | null = null;
+
+    try {
+      lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
+      lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+      if (canvasData) {
+        lc.loadSnapshot(this.withoutViewportState(canvasData));
+      } else {
+        lc.repaintLayer('main');
+      }
+      lc.setColor('background', backgroundColor || '#ffffff');
+
+      const onionImage = lc.getImage({
+        scale: 1,
+        includeWatermark: false,
+        rect: {
+          x: 0,
+          y: 0,
+          width: this.defaultCanvasSize.width,
+          height: this.defaultCanvasSize.height,
+        },
+      });
+
+      preview = this.createTransparentOnionPreview(onionImage, backgroundColor || '#ffffff');
+    } catch {
+      preview = null;
+    } finally {
+      try {
+        lc?.teardown();
+      } catch {
+        // Ignore teardown errors.
+      }
+      document.body.removeChild(container);
+    }
+
+    return preview;
+  }
+
+  private getOnionPreviewKeepIds(boardId: string): string[] {
+    const boards = this.store.boards();
+    const currentIndex = boards.findIndex((board) => board.id === boardId);
+    if (currentIndex === -1) {
+      return [boardId];
+    }
+
+    const ids = [boardId];
+    if (currentIndex > 0) {
+      ids.push(boards[currentIndex - 1].id);
+    }
+    if (currentIndex < boards.length - 1) {
+      ids.push(boards[currentIndex + 1].id);
+    }
+    return ids;
+  }
+
+  private pruneOnionPreviewCache(keepIds: string[]): void {
+    const keep = new Set(keepIds);
+    this.onionPreviewCache.update((cache) => {
+      const nextCache: Record<string, string> = {};
+      for (const [id, previewUrl] of Object.entries(cache)) {
+        if (keep.has(id)) {
+          nextCache[id] = previewUrl;
+        }
+      }
+      return nextCache;
+    });
+  }
+
+  private persistCurrentBoardData(
+    boardId: string,
+    includePreviews: boolean,
+    options: { deferPreviews?: boolean } = {},
+  ): void {
+    if (!this.lc) {
+      return;
+    }
+
+    const normalizedSnapshot = this.withoutViewportState(this.lc.getSnapshot());
+    this.lastLoadedCanvasData = normalizedSnapshot;
+
+    if (includePreviews) {
+      if (options.deferPreviews) {
+        this.store.updateCanvasData(boardId, normalizedSnapshot);
+        this.schedulePreviewRegeneration(boardId, normalizedSnapshot);
+        return;
+      }
+
+      const previews = this.createBoardPreviews();
+      this.store.updateCanvasData(boardId, normalizedSnapshot, previews.previewUrl);
+      this.updateOnionPreviewForCurrentBoard(boardId);
+      this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+      return;
+    }
+
+    this.store.updateCanvasData(boardId, normalizedSnapshot);
+  }
+
+  private schedulePreviewRegeneration(boardId: string, snapshot: Record<string, unknown>): void {
+    if (!this.lc || boardId !== this.currentBoardId) {
+      return;
+    }
+
+    this.pendingPreviewBoardId = boardId;
+    this.pendingPreviewSnapshot = snapshot;
+
+    if (this.previewTimeoutId !== null) {
+      clearTimeout(this.previewTimeoutId);
+    }
+
+    this.previewTimeoutId = window.setTimeout(() => {
+      this.previewTimeoutId = null;
+      this.schedulePreviewRegenerationOnIdle();
+    }, this.previewDebounceMs);
+  }
+
+  private schedulePreviewRegenerationOnIdle(): void {
+    if (typeof window.requestIdleCallback === 'function') {
+      if (this.previewIdleId !== null) {
+        window.cancelIdleCallback(this.previewIdleId);
+      }
+      this.previewIdleId = window.requestIdleCallback(
+        () => {
+          this.previewIdleId = null;
+          this.flushPendingPreviewRegeneration();
+        },
+        { timeout: 300 },
+      );
+      return;
+    }
+
+    this.flushPendingPreviewRegeneration();
+  }
+
+  private flushPendingPreviewRegeneration(): void {
+    if (
+      !this.lc ||
+      !this.pendingPreviewBoardId ||
+      !this.pendingPreviewSnapshot ||
+      this.pendingPreviewBoardId !== this.currentBoardId
+    ) {
+      this.clearPendingPreviewRegeneration();
+      return;
+    }
+
+    const boardId = this.pendingPreviewBoardId;
+    const snapshot = this.pendingPreviewSnapshot;
+    const previews = this.createBoardPreviews();
+    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl);
+    this.updateOnionPreviewForCurrentBoard(boardId);
+    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+
+    this.pendingPreviewBoardId = null;
+    this.pendingPreviewSnapshot = null;
+  }
+
+  private clearPendingPreviewRegeneration(): void {
+    if (this.previewTimeoutId !== null) {
+      clearTimeout(this.previewTimeoutId);
+      this.previewTimeoutId = null;
+    }
+
+    if (this.previewIdleId !== null && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(this.previewIdleId);
+      this.previewIdleId = null;
+    }
+
+    this.pendingPreviewBoardId = null;
+    this.pendingPreviewSnapshot = null;
+  }
+
+  private createTransparentOnionPreview(source: HTMLCanvasElement, backgroundColor?: string): string {
+    const width = source.width;
+    const height = source.height;
+    if (width <= 0 || height <= 0) {
+      return source.toDataURL('image/png');
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return source.toDataURL('image/png');
+    }
+
+    ctx.drawImage(source, 0, 0);
+
+    const bgColor = this.getCachedBackgroundRgb(
+      backgroundColor ?? this.lc?.getColor('background') ?? '#ffffff',
+    );
+    if (!bgColor) {
+      return canvas.toDataURL('image/png');
+    }
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const tolerance = 3;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      if (
+        Math.abs(r - bgColor.r) <= tolerance &&
+        Math.abs(g - bgColor.g) <= tolerance &&
+        Math.abs(b - bgColor.b) <= tolerance
+      ) {
+        data[i + 3] = 0;
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
+  private getCachedBackgroundRgb(color: string): { r: number; g: number; b: number } | null {
+    if (this.cachedBackgroundColor === color) {
+      return this.cachedBackgroundRgb;
+    }
+
+    this.cachedBackgroundColor = color;
+    this.cachedBackgroundRgb = this.parseColorToRgb(color);
+    return this.cachedBackgroundRgb;
+  }
+
+  private withoutViewportState(snapshot: Record<string, unknown>): Record<string, unknown> {
+    const normalized = { ...snapshot };
+    delete (normalized as { position?: unknown }).position;
+    delete (normalized as { scale?: unknown }).scale;
+    return normalized;
+  }
+
+  private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
+    let parserCtx = this.colorParserCtx;
+    if (!parserCtx) {
+      const parserCanvas = document.createElement('canvas');
+      parserCanvas.width = 1;
+      parserCanvas.height = 1;
+      parserCtx = parserCanvas.getContext('2d');
+      this.colorParserCtx = parserCtx;
+    }
+
+    if (!parserCtx) {
+      return null;
+    }
+
+    parserCtx.fillStyle = '#000000';
+    parserCtx.fillStyle = color;
+    const normalized = parserCtx.fillStyle;
+
+    if (typeof normalized !== 'string') {
+      return null;
+    }
+
+    if (normalized.startsWith('#')) {
+      const hex = normalized.slice(1);
+      if (hex.length === 3) {
+        const r = Number.parseInt(hex[0] + hex[0], 16);
+        const g = Number.parseInt(hex[1] + hex[1], 16);
+        const b = Number.parseInt(hex[2] + hex[2], 16);
+        return { r, g, b };
+      }
+      if (hex.length === 6) {
+        const r = Number.parseInt(hex.slice(0, 2), 16);
+        const g = Number.parseInt(hex.slice(2, 4), 16);
+        const b = Number.parseInt(hex.slice(4, 6), 16);
+        return { r, g, b };
+      }
+    }
+
+    const rgbMatch = normalized.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgbMatch) {
+      return {
+        r: Number.parseInt(rgbMatch[1], 10),
+        g: Number.parseInt(rgbMatch[2], 10),
+        b: Number.parseInt(rgbMatch[3], 10),
+      };
+    }
+
+    return null;
   }
 
   private fitCanvasToContainer(): void {
@@ -565,6 +1055,38 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     this.lc.setZoom(scale);
+  }
+
+  private syncOnionLayerRect(): void {
+    if (!this.lc) return;
+
+    const container = this.canvasContainer().nativeElement;
+    const liveCanvas = this.lc.canvas;
+    if (!container || !liveCanvas) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const liveCanvasRect = liveCanvas.getBoundingClientRect();
+
+    this.onionLayerRect.set({
+      left: liveCanvasRect.left - containerRect.left,
+      top: liveCanvasRect.top - containerRect.top,
+      width: liveCanvasRect.width,
+      height: liveCanvasRect.height,
+    });
+
+    const backingScale = this.lc.backingScale || 1;
+    const renderScale = this.lc.getRenderScale?.() || this.lc.scale * backingScale || backingScale;
+    const imageLeft = this.lc.position.x / backingScale;
+    const imageTop = this.lc.position.y / backingScale;
+    const imageWidth = (this.defaultCanvasSize.width * renderScale) / backingScale;
+    const imageHeight = (this.defaultCanvasSize.height * renderScale) / backingScale;
+
+    this.onionImageRect.set({
+      left: imageLeft,
+      top: imageTop,
+      width: imageWidth,
+      height: imageHeight,
+    });
   }
 
   public setTool(toolId: string): void {
@@ -648,6 +1170,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const after = lcRef.getSnapshot();
     this._lcUndoStackLength = lcRef.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (boardIdAtClear) {
+      this.persistCurrentBoardData(boardIdAtClear, true);
+    }
 
     const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
     const beforeBgShapes = JSON.stringify(
@@ -778,6 +1304,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.undo();
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (this.currentBoardId) {
+      this.persistCurrentBoardData(this.currentBoardId, true);
+    }
   }
 
   public redoStroke(): void {
@@ -797,6 +1327,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.redo();
     this._lcUndoStackLength = this.lc.undoStack.length;
     this._suppressLcHistory = false;
+
+    if (this.currentBoardId) {
+      this.persistCurrentBoardData(this.currentBoardId, true);
+    }
   }
 
   public hideTooltip(): void {
