@@ -115,13 +115,19 @@ export class ExportSettingsComponent {
   protected onConfirm(): void {
     const rawPrefix = this.prefix().trim();
     const safePrefix = rawPrefix.length > 0 ? rawPrefix : 'board';
+
+    // Always export whole project for video format
+    const isVideo = this.selectedFormat() === 'video';
+    const startIndex = isVideo ? 0 : this.startIndex();
+    const endIndex = isVideo ? this.boardCount() - 1 : this.endIndex();
+
     this.confirmExport.emit({
       format: this.selectedFormat(),
       resolution: this.selectedResolution(),
       prefix: safePrefix,
       dirPath: this.dirPath(),
-      startIndex: this.startIndex(),
-      endIndex: this.endIndex(),
+      startIndex,
+      endIndex,
     });
   }
 
