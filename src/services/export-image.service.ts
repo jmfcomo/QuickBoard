@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
 import { CanvasDataService } from './canvas-data.service';
 import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
+import { board } from '@econfig/appsettings.json';
 
 @Injectable({ providedIn: 'root' })
 export class ImageExportService {
@@ -48,23 +49,23 @@ export class ImageExportService {
       let lc: LCInstance | null = null;
       try {
         lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-        lc.setImageSize(1920, 1080);
+        lc.setImageSize(board.width, board.height);
         if (canvasData) {
           lc.loadSnapshot(canvasData);
         } else {
           lc.repaintLayer('main');
         }
-        lc.setColor('background', backgroundColor ?? '#ffffff');
+        lc.setColor('background', backgroundColor ?? board.defaultBackgroundColor);
         const dataUrl = lc.getImage({ scale }).toDataURL('image/png');
         resolve(dataUrl);
       } catch {
         // Fall back to a blank white frame on error
         const canvas = document.createElement('canvas');
-        canvas.width = Math.round(1920 * scale);
-        canvas.height = Math.round(1080 * scale);
+        canvas.width = Math.round(board.width * scale);
+        canvas.height = Math.round(board.height * scale);
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.fillStyle = backgroundColor ?? '#ffffff';
+          ctx.fillStyle = backgroundColor ?? board.defaultBackgroundColor;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         resolve(canvas.toDataURL('image/png'));
