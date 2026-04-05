@@ -10,132 +10,20 @@
   (colorToleranceChange)="setColorTolerance($event)"
 ></app-properties-bar>
 <div class="canvas-container">
-  <div class="tools-region">
-    <div class="tools-bar">
-      <button
-        class="tool-button tool-group-button"
-        [class.active]="isDrawToolActive()"
-        (pointerdown)="onToolGroupPointerDown($event, 'draw')"
-        (pointerup)="onToolGroupPointerUp('draw')"
-        (pointerleave)="onToolGroupPointerCancel('draw')"
-        (pointercancel)="onToolGroupPointerCancel('draw')"
-        (mouseenter)="showTooltip($event, selectedDrawToolOption().label)"
-        (mouseleave)="hideTooltip()"
-        [attr.aria-label]="selectedDrawToolOption().label"
-      >
-        {{ selectedDrawToolOption().icon }}
-        <span class="submenu-indicator" aria-hidden="true"></span>
-      </button>
-
-      <button
-        class="tool-button tool-group-button"
-        [class.active]="isShapeToolActive()"
-        (pointerdown)="onToolGroupPointerDown($event, 'shape')"
-        (pointerup)="onToolGroupPointerUp('shape')"
-        (pointerleave)="onToolGroupPointerCancel('shape')"
-        (pointercancel)="onToolGroupPointerCancel('shape')"
-        (mouseenter)="showTooltip($event, selectedShapeTool().label)"
-        (mouseleave)="hideTooltip()"
-        [attr.aria-label]="selectedShapeTool().label"
-      >
-        {{ selectedShapeTool().icon }}
-        <span class="submenu-indicator" aria-hidden="true"></span>
-      </button>
-
-      <button
-        class="tool-button tool-group-button"
-        [class.active]="isEraserToolActive()"
-        (pointerdown)="onToolGroupPointerDown($event, 'erase')"
-        (pointerup)="onToolGroupPointerUp('erase')"
-        (pointerleave)="onToolGroupPointerCancel('erase')"
-        (pointercancel)="onToolGroupPointerCancel('erase')"
-        (mouseenter)="showTooltip($event, selectedEraserToolOption().label)"
-        (mouseleave)="hideTooltip()"
-        [attr.aria-label]="selectedEraserToolOption().label"
-      >
-        {{ selectedEraserToolOption().icon }}
-        <span class="submenu-indicator" aria-hidden="true"></span>
-      </button>
-
-      @for (tool of tools; track tool.id) {
-        <button
-          class="tool-button"
-          [class.active]="activeTool() === tool.id"
-          (click)="setTool(tool.id)"
-          (mouseenter)="showTooltip($event, tool.label)"
-          (mouseleave)="hideTooltip()"
-          [attr.aria-label]="tool.label"
-        >
-          {{ tool.icon }}
-        </button>
-      }
-
-      <div class="separator"></div>
-      <button
-        (click)="requestClearCanvas()"
-        class="tool-button"
-        (mouseenter)="showTooltip($event, 'Clear Canvas')"
-        (mouseleave)="hideTooltip()"
-        aria-label="Clear Canvas"
-      >
-        🗑️
-      </button>
-    </div>
-
-    @if (openToolSubmenu()) {
-      <div
-        class="tool-group-submenu"
-        [style.top.px]="toolSubmenuTop()"
-        role="menu"
-        [attr.aria-label]="activeSubmenuLabel()"
-      >
-        @for (submenuTool of activeSubmenuTools(); track submenuTool.id) {
-          <button
-            class="tool-button"
-            [class.active]="activeSubmenuSelectedId() === submenuTool.id"
-            (click)="onActiveSubmenuSelect(submenuTool.id)"
-            (mouseenter)="showTooltip($event, submenuTool.label)"
-            (mouseleave)="hideTooltip()"
-            [attr.aria-label]="submenuTool.label"
-            role="menuitem"
-          >
-            {{ submenuTool.icon }}
-          </button>
-        }
-      </div>
-    }
-  </div>
-  @if (tooltipVisible()) {
-    <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
-      {{ tooltipText() }}
-    </div>
-  }
+  <app-tools-bar
+    [activeTool]="activeTool()"
+    (toolSelected)="setTool($event)"
+    (clearCanvasRequested)="requestClearCanvas()"
+  ></app-tools-bar>
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage>
       <div class="canvas-board-stack">
         <div #canvasContainer class="literally-canvas"></div>
-        @for (layer of onionSkinLayers(); track layer.id) {
-          <div
-            class="onion-skin-layer"
-            [class.previous]="layer.position === 'prev'"
-            [class.next]="layer.position === 'next'"
-            [style.left.px]="onionLayerRect().left"
-            [style.top.px]="onionLayerRect().top"
-            [style.width.px]="onionLayerRect().width"
-            [style.height.px]="onionLayerRect().height"
-          >
-            <img
-              [src]="layer.onionPreviewUrl"
-              [style.left.px]="onionImageRect().left"
-              [style.top.px]="onionImageRect().top"
-              [style.width.px]="onionImageRect().width"
-              [style.height.px]="onionImageRect().height"
-              alt=""
-              aria-hidden="true"
-              draggable="false"
-            />
-          </div>
-        }
+        <app-onion-skin-overlay
+          [layers]="onionSkinLayers()"
+          [layerRect]="onionLayerRect()"
+          [imageRect]="onionImageRect()"
+        ></app-onion-skin-overlay>
       </div>
     </div>
   </div>

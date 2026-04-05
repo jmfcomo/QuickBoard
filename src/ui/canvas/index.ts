@@ -1,5 +1,7 @@
 // Component
 export { CanvasComponent } from './canvas/canvas.component';
+export { OnionSkinOverlayComponent } from './onion-skin';
+export { ToolsBarComponent } from './tools-bar';
 
 // Properties bar
 export type { ColorPicker } from './properties-bar/properties-bar.component';
@@ -12,6 +14,10 @@ export type {
   LiterallyCanvasTool,
   LiterallyCanvas,
 } from './literally-canvas-interfaces';
+
+export type { OnionOverlayRect, OnionSkinLayer } from './onion-skin';
+
+export { OnionSkinService } from './onion-skin';
 
 // Tools
 export { Brush, BucketFill, ObjectEraser } from './tools';

@@ -13,6 +13,9 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
+import { OnionSkinOverlayComponent } from '../onion-skin/onion-skin-overlay.component';
+import { OnionSkinService } from '../onion-skin/onion-skin.service';
+import { ToolsBarComponent } from '../tools-bar/tools-bar.component';
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
@@ -20,11 +23,9 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 
-type ToolGroupKey = 'draw' | 'shape' | 'erase';
-
 @Component({
   selector: 'app-canvas',
-  imports: [PropertiesBarComponent],
+  imports: [PropertiesBarComponent, OnionSkinOverlayComponent, ToolsBarComponent],
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
@@ -32,102 +33,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   private readonly boardPreviewScale = 0.2;
   private readonly previewDebounceMs = 160;
-  private readonly onionPreviewCache = signal<Record<string, string>>({});
-  readonly onionSkinLayers = computed(() => {
-    if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
-
-    const boards = this.store.boards();
-    const currentBoardId = this.store.currentBoardId();
-    if (!currentBoardId || boards.length < 2) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
-
-    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
-    if (currentIndex === -1) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
-
-    const onionPreviewCache = this.onionPreviewCache();
-    const overlays: { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[] = [];
-    const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
-    const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
-    const previousOnionPreview = previousBoard ? onionPreviewCache[previousBoard.id] : undefined;
-    const nextOnionPreview = nextBoard ? onionPreviewCache[nextBoard.id] : undefined;
-
-    // For middle boards, render both neighbors together so onion skin does not pop in one side at a time.
-    if (previousBoard && nextBoard) {
-      if (!previousOnionPreview || !nextOnionPreview) {
-        return overlays;
-      }
-
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
-      return overlays;
-    }
-
-    if (previousBoard && previousOnionPreview) {
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
-    }
-
-    if (nextBoard && nextOnionPreview) {
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
-    }
-
-    return overlays;
-  });
+  readonly onionSkinLayers = inject(OnionSkinService).onionSkinLayers;
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
-  readonly selectedDrawTool = signal<'pencil' | 'brush'>('pencil');
-  readonly selectedShape = signal<'rectangle' | 'circle' | 'polygon'>('rectangle');
-  readonly selectedEraserTool = signal<'eraser' | 'object-eraser'>('eraser');
-  readonly openToolSubmenu = signal<ToolGroupKey | null>(null);
-  readonly toolSubmenuTop = signal(0);
-  readonly activeSubmenuTools = computed(() => {
-    const group = this.openToolSubmenu();
-    if (group === 'draw') return this.drawTools;
-    if (group === 'shape') return this.shapeTools;
-    if (group === 'erase') return this.eraseTools;
-    return [] as readonly { id: string; label: string; icon: string }[];
-  });
-  readonly activeSubmenuLabel = computed(() => {
-    const group = this.openToolSubmenu();
-    if (group === 'draw') return 'Draw tools';
-    if (group === 'shape') return 'Shape tools';
-    if (group === 'erase') return 'Eraser tools';
-    return '';
-  });
-  readonly activeSubmenuSelectedId = computed(() => {
-    const group = this.openToolSubmenu();
-    if (group === 'draw') return this.selectedDrawTool();
-    if (group === 'shape') return this.selectedShape();
-    if (group === 'erase') return this.selectedEraserTool();
-    return '';
-  });
-  readonly isDrawToolActive = computed(() => this.isDrawTool(this.activeTool()));
-  readonly isEraserToolActive = computed(() => this.isEraserTool(this.activeTool()));
-  readonly isShapeToolActive = computed(() => {
-    const toolId = this.activeTool();
-    return this.isShapeTool(toolId);
-  });
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -155,35 +64,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     height: 0,
   });
 
-  readonly tools = [
-    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
-  ];
-  readonly drawTools = [
-    { id: 'pencil', label: 'Pencil', icon: '✏️' },
-    { id: 'brush', label: 'Brush', icon: '🖌️' },
-  ] as const;
-  readonly shapeTools = [
-    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
-    { id: 'circle', label: 'Circle', icon: '⚪' },
-    { id: 'polygon', label: 'Polygon', icon: '📐' },
-  ] as const;
-  readonly eraseTools = [
-    { id: 'eraser', label: 'Eraser', icon: '🧽' },
-    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
-  ] as const;
-  readonly selectedShapeTool = computed(() => {
-    const current = this.selectedShape();
-    return this.shapeTools.find((tool) => tool.id === current) ?? this.shapeTools[0];
-  });
-  readonly selectedDrawToolOption = computed(() => {
-    const current = this.selectedDrawTool();
-    return this.drawTools.find((tool) => tool.id === current) ?? this.drawTools[0];
-  });
-  readonly selectedEraserToolOption = computed(() => {
-    const current = this.selectedEraserTool();
-    return this.eraseTools.find((tool) => tool.id === current) ?? this.eraseTools[0];
-  });
-
   readonly colorPickers = [
     {
       label: 'Stroke',
@@ -206,6 +86,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly store = inject(AppStore);
+  private readonly onionSkin = inject(OnionSkinService);
   private readonly el = inject(ElementRef);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly canvasDataService = inject(CanvasDataService);
@@ -236,24 +117,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private pendingPreviewSnapshot: Record<string, unknown> | null = null;
   private previewTimeoutId: number | null = null;
   private previewIdleId: number | null = null;
-  private colorParserCtx: CanvasRenderingContext2D | null = null;
-  private cachedBackgroundColor: string | null = null;
-  private cachedBackgroundRgb: { r: number; g: number; b: number } | null = null;
-
-  // Tooltip
-  readonly tooltipText = signal('');
-  readonly tooltipVisible = signal(false);
-  readonly tooltipTop = signal(0);
-  readonly tooltipLeft = signal(0);
   readonly showClearCanvasConfirm = signal(false);
-  private tooltipDelay: number | null = null;
-  private tooltipCooldown: number | null = null;
-  private tooltipWarm = false;
-  private toolGroupHoldTimer: number | null = null;
-  private activePointerGroup: ToolGroupKey | null = null;
-  private groupHoldTriggered = false;
-  private readonly onDocumentPointerDown = (event: PointerEvent) =>
-    this.handleDocumentPointerDown(event);
 
   constructor() {
     effect(() => {
@@ -290,22 +154,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    effect(() => {
-      const onionSkinEnabled = this.store.onionSkinEnabled();
-      const currentBoardId = this.store.currentBoardId();
-      this.store.boards();
-
-      if (!onionSkinEnabled || !currentBoardId) {
-        return;
-      }
-
-      this.ensureAdjacentOnionPreviews(currentBoardId);
-    });
   }
 
   ngAfterViewInit() {
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
-      window.addEventListener('pointerdown', this.onDocumentPointerDown, true);
       this.initCanvasTimeout = window.setTimeout(() => {
         this.initializeCanvas();
         // Ensure preview is generated for the first board if missing
@@ -370,15 +222,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.onWindowResize);
-      window.removeEventListener('pointerdown', this.onDocumentPointerDown, true);
     }
 
     // Clear tool instances to release references
     this.toolInstances.clear();
-
-    this.clearTimer('tooltipDelay');
-    this.clearTimer('tooltipCooldown');
-    this.clearToolGroupHoldTimer();
 
     this.clearPendingPreviewRegeneration();
   }
@@ -680,8 +527,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.persistCurrentBoardData(board.id, true);
     }
 
-    this.updateOnionPreviewForCurrentBoard(boardId);
-    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+    this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
+    this.onionSkin.pruneToCurrentAndNeighbors(boardId);
 
     this.lc.undoStack.length = 0;
     this.lc.redoStack.length = 0;
@@ -725,147 +572,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     };
   }
 
-  private updateOnionPreviewForCurrentBoard(boardId: string): void {
-    if (!this.lc || this.currentBoardId !== boardId) {
-      return;
-    }
-
-    // Onion skin previews are generated at full canvas resolution for precise animation alignment.
-    const onionImage = this.lc.getImage({
-      scale: 1,
-      includeWatermark: false,
-      rect: {
-        x: 0,
-        y: 0,
-        width: this.defaultCanvasSize.width,
-        height: this.defaultCanvasSize.height,
-      },
-    });
-
-    const onionPreviewUrl = this.createTransparentOnionPreview(onionImage);
-    this.onionPreviewCache.update((cache) => ({
-      ...cache,
-      [boardId]: onionPreviewUrl,
-    }));
-  }
-
-  private ensureAdjacentOnionPreviews(currentBoardId: string): void {
-    const boards = this.store.boards();
-    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
-    if (currentIndex === -1) {
-      return;
-    }
-
-    const adjacentBoards = [
-      currentIndex > 0 ? boards[currentIndex - 1] : null,
-      currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null,
-    ].filter((board): board is NonNullable<typeof board> => Boolean(board));
-
-    if (adjacentBoards.length === 0) {
-      return;
-    }
-
-    const cache = this.onionPreviewCache();
-    const nextEntries: Record<string, string> = {};
-
-    for (const board of adjacentBoards) {
-      if (cache[board.id]) {
-        continue;
-      }
-
-      const canvasData = this.canvasDataService.getCanvasData(board.id);
-      const preview = this.renderOnionPreviewForBoard(canvasData, board.backgroundColor);
-      if (preview) {
-        nextEntries[board.id] = preview;
-      }
-    }
-
-    if (Object.keys(nextEntries).length > 0) {
-      this.onionPreviewCache.update((existing) => ({
-        ...existing,
-        ...nextEntries,
-      }));
-    }
-  }
-
-  private renderOnionPreviewForBoard(
-    canvasData: Record<string, unknown> | null,
-    backgroundColor: string,
-  ): string | null {
-    const container = document.createElement('div');
-    container.style.cssText =
-      'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
-    document.body.appendChild(container);
-
-    let preview: string | null = null;
-    let lc: LCInstance | null = null;
-
-    try {
-      lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-      lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
-      if (canvasData) {
-        lc.loadSnapshot(this.withoutViewportState(canvasData));
-      } else {
-        lc.repaintLayer('main');
-      }
-      lc.setColor('background', backgroundColor || '#ffffff');
-
-      const onionImage = lc.getImage({
-        scale: 1,
-        includeWatermark: false,
-        rect: {
-          x: 0,
-          y: 0,
-          width: this.defaultCanvasSize.width,
-          height: this.defaultCanvasSize.height,
-        },
-      });
-
-      preview = this.createTransparentOnionPreview(onionImage, backgroundColor || '#ffffff');
-    } catch {
-      preview = null;
-    } finally {
-      try {
-        lc?.teardown();
-      } catch {
-        // Ignore teardown errors.
-      }
-      document.body.removeChild(container);
-    }
-
-    return preview;
-  }
-
-  private getOnionPreviewKeepIds(boardId: string): string[] {
-    const boards = this.store.boards();
-    const currentIndex = boards.findIndex((board) => board.id === boardId);
-    if (currentIndex === -1) {
-      return [boardId];
-    }
-
-    const ids = [boardId];
-    if (currentIndex > 0) {
-      ids.push(boards[currentIndex - 1].id);
-    }
-    if (currentIndex < boards.length - 1) {
-      ids.push(boards[currentIndex + 1].id);
-    }
-    return ids;
-  }
-
-  private pruneOnionPreviewCache(keepIds: string[]): void {
-    const keep = new Set(keepIds);
-    this.onionPreviewCache.update((cache) => {
-      const nextCache: Record<string, string> = {};
-      for (const [id, previewUrl] of Object.entries(cache)) {
-        if (keep.has(id)) {
-          nextCache[id] = previewUrl;
-        }
-      }
-      return nextCache;
-    });
-  }
-
   private persistCurrentBoardData(
     boardId: string,
     includePreviews: boolean,
@@ -888,8 +594,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       const previews = this.createBoardPreviews();
       this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
       if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
-      this.updateOnionPreviewForCurrentBoard(boardId);
-      this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+      this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
+      this.onionSkin.pruneToCurrentAndNeighbors(boardId);
       return;
     }
 
@@ -948,8 +654,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const previews = this.createBoardPreviews();
     this.canvasDataService.setCanvasData(boardId, snapshot);
     if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
-    this.updateOnionPreviewForCurrentBoard(boardId);
-    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+    this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
+    this.onionSkin.pruneToCurrentAndNeighbors(boardId);
 
     this.pendingPreviewBoardId = null;
     this.pendingPreviewSnapshot = null;
@@ -970,119 +676,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.pendingPreviewSnapshot = null;
   }
 
-  private createTransparentOnionPreview(
-    source: HTMLCanvasElement,
-    backgroundColor?: string,
-  ): string {
-    const width = source.width;
-    const height = source.height;
-    if (width <= 0 || height <= 0) {
-      return source.toDataURL('image/png');
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return source.toDataURL('image/png');
-    }
-
-    ctx.drawImage(source, 0, 0);
-
-    const bgColor = this.getCachedBackgroundRgb(
-      backgroundColor ?? this.lc?.getColor('background') ?? '#ffffff',
-    );
-    if (!bgColor) {
-      return canvas.toDataURL('image/png');
-    }
-
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    const tolerance = 3;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      if (
-        Math.abs(r - bgColor.r) <= tolerance &&
-        Math.abs(g - bgColor.g) <= tolerance &&
-        Math.abs(b - bgColor.b) <= tolerance
-      ) {
-        data[i + 3] = 0;
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-    return canvas.toDataURL('image/png');
-  }
-
-  private getCachedBackgroundRgb(color: string): { r: number; g: number; b: number } | null {
-    if (this.cachedBackgroundColor === color) {
-      return this.cachedBackgroundRgb;
-    }
-
-    this.cachedBackgroundColor = color;
-    this.cachedBackgroundRgb = this.parseColorToRgb(color);
-    return this.cachedBackgroundRgb;
-  }
-
   private withoutViewportState(snapshot: Record<string, unknown>): Record<string, unknown> {
     const normalized = { ...snapshot };
     delete (normalized as { position?: unknown }).position;
     delete (normalized as { scale?: unknown }).scale;
     return normalized;
-  }
-
-  private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
-    let parserCtx = this.colorParserCtx;
-    if (!parserCtx) {
-      const parserCanvas = document.createElement('canvas');
-      parserCanvas.width = 1;
-      parserCanvas.height = 1;
-      parserCtx = parserCanvas.getContext('2d');
-      this.colorParserCtx = parserCtx;
-    }
-
-    if (!parserCtx) {
-      return null;
-    }
-
-    parserCtx.fillStyle = '#000000';
-    parserCtx.fillStyle = color;
-    const normalized = parserCtx.fillStyle;
-
-    if (typeof normalized !== 'string') {
-      return null;
-    }
-
-    if (normalized.startsWith('#')) {
-      const hex = normalized.slice(1);
-      if (hex.length === 3) {
-        const r = Number.parseInt(hex[0] + hex[0], 16);
-        const g = Number.parseInt(hex[1] + hex[1], 16);
-        const b = Number.parseInt(hex[2] + hex[2], 16);
-        return { r, g, b };
-      }
-      if (hex.length === 6) {
-        const r = Number.parseInt(hex.slice(0, 2), 16);
-        const g = Number.parseInt(hex.slice(2, 4), 16);
-        const b = Number.parseInt(hex.slice(4, 6), 16);
-        return { r, g, b };
-      }
-    }
-
-    const rgbMatch = normalized.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-    if (rgbMatch) {
-      return {
-        r: Number.parseInt(rgbMatch[1], 10),
-        g: Number.parseInt(rgbMatch[2], 10),
-        b: Number.parseInt(rgbMatch[3], 10),
-      };
-    }
-
-    return null;
   }
 
   private fitCanvasToContainer(): void {
@@ -1156,18 +754,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   public setTool(toolId: string): void {
     if (!this.lc || !this.toolInstances.has(toolId)) return;
 
-    if (this.isDrawTool(toolId)) {
-      this.selectedDrawTool.set(toolId);
-    }
-
-    if (this.isShapeTool(toolId)) {
-      this.selectedShape.set(toolId);
-    }
-
-    if (this.isEraserTool(toolId)) {
-      this.selectedEraserTool.set(toolId);
-    }
-
     const tool = this.toolInstances.get(toolId);
     if (tool) {
       if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
@@ -1178,86 +764,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       }
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
-    }
-  }
-
-  public onToolGroupPointerDown(event: PointerEvent, group: ToolGroupKey): void {
-    if (event.button !== 0) {
-      return;
-    }
-
-    this.hideTooltip();
-    this.activePointerGroup = group;
-    this.groupHoldTriggered = false;
-
-    const button = event.currentTarget as HTMLElement | null;
-    if (button) {
-      this.toolSubmenuTop.set(button.offsetTop);
-    }
-
-    this.clearToolGroupHoldTimer();
-    this.toolGroupHoldTimer = window.setTimeout(() => {
-      if (this.activePointerGroup !== group) {
-        return;
-      }
-
-      this.groupHoldTriggered = true;
-      this.openToolSubmenu.set(group);
-    }, 300);
-  }
-
-  public onToolGroupPointerUp(group: ToolGroupKey): void {
-    if (this.activePointerGroup !== group) {
-      return;
-    }
-
-    this.activePointerGroup = null;
-    const wasHold = this.groupHoldTriggered;
-    this.clearToolGroupHoldTimer();
-    this.groupHoldTriggered = false;
-
-    if (wasHold) {
-      return;
-    }
-
-    this.closeToolSubmenu();
-    this.setTool(this.getSelectedToolForGroup(group));
-  }
-
-  public onToolGroupPointerCancel(group: ToolGroupKey): void {
-    if (this.activePointerGroup !== group) {
-      return;
-    }
-
-    this.activePointerGroup = null;
-    this.groupHoldTriggered = false;
-    this.clearToolGroupHoldTimer();
-  }
-
-  public onActiveSubmenuSelect(toolId: string): void {
-    const group = this.openToolSubmenu();
-    if (!group) {
-      return;
-    }
-
-    if (group === 'draw' && this.isDrawTool(toolId)) {
-      this.selectedDrawTool.set(toolId);
-      this.closeToolSubmenu();
-      this.setTool(toolId);
-      return;
-    }
-
-    if (group === 'shape' && this.isShapeTool(toolId)) {
-      this.selectedShape.set(toolId);
-      this.closeToolSubmenu();
-      this.setTool(toolId);
-      return;
-    }
-
-    if (group === 'erase' && this.isEraserTool(toolId)) {
-      this.selectedEraserTool.set(toolId);
-      this.closeToolSubmenu();
-      this.setTool(toolId);
     }
   }
 
@@ -1298,7 +804,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public requestClearCanvas(): void {
-    this.hideTooltip();
     this.showClearCanvasConfirm.set(true);
   }
 
@@ -1425,24 +930,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public showTooltip(event: MouseEvent, label: string): void {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.tooltipText.set(label);
-    this.tooltipTop.set(rect.top + rect.height / 2);
-    this.tooltipLeft.set(rect.right + 8);
-    this.clearTimer('tooltipCooldown');
-
-    if (this.tooltipWarm) {
-      this.tooltipVisible.set(true);
-    } else {
-      this.tooltipDelay = window.setTimeout(() => {
-        this.tooltipVisible.set(true);
-        this.tooltipWarm = true;
-        this.tooltipDelay = null;
-      }, 500);
-    }
-  }
-
   public undoStroke(): void {
     if (!this.lc) {
       return;
@@ -1489,71 +976,4 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public hideTooltip(): void {
-    this.clearTimer('tooltipDelay');
-    this.tooltipVisible.set(false);
-    this.tooltipCooldown = window.setTimeout(() => {
-      this.tooltipWarm = false;
-      this.tooltipCooldown = null;
-    }, 400);
-  }
-
-  private clearTimer(key: 'tooltipDelay' | 'tooltipCooldown'): void {
-    if (this[key] !== null) {
-      clearTimeout(this[key]!);
-      this[key] = null;
-    }
-  }
-
-  private handleDocumentPointerDown(event: PointerEvent): void {
-    if (!this.openToolSubmenu()) {
-      return;
-    }
-
-    const target = event.target as HTMLElement | null;
-    if (!target) {
-      return;
-    }
-
-    if (target.closest('.tool-group-button') || target.closest('.tool-group-submenu')) {
-      return;
-    }
-
-    this.closeToolSubmenu();
-  }
-
-  private isDrawTool(toolId: string): toolId is 'pencil' | 'brush' {
-    return toolId === 'pencil' || toolId === 'brush';
-  }
-
-  private isEraserTool(toolId: string): toolId is 'eraser' | 'object-eraser' {
-    return toolId === 'eraser' || toolId === 'object-eraser';
-  }
-
-  private isShapeTool(toolId: string): toolId is 'rectangle' | 'circle' | 'polygon' {
-    return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
-  }
-
-  private getSelectedToolForGroup(group: ToolGroupKey): string {
-    if (group === 'draw') {
-      return this.selectedDrawTool();
-    }
-
-    if (group === 'shape') {
-      return this.selectedShape();
-    }
-
-    return this.selectedEraserTool();
-  }
-
-  private closeToolSubmenu(): void {
-    this.openToolSubmenu.set(null);
-  }
-
-  private clearToolGroupHoldTimer(): void {
-    if (this.toolGroupHoldTimer !== null) {
-      clearTimeout(this.toolGroupHoldTimer);
-      this.toolGroupHoldTimer = null;
-    }
-  }
 }
