@@ -6,25 +6,9 @@ import { OnionSkinLayer } from './onion-skin.types';
 
 @Injectable({ providedIn: 'root' })
 export class OnionSkinService {
-  private readonly fallbackCanvasSize = { width: 1920, height: 1080 };
+  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
   private readonly store = inject(AppStore);
   private readonly canvasDataService = inject(CanvasDataService);
-  private readonly canvasSize = computed(() => {
-    const board = this.store.appSettings?.()?.board;
-    const width = board?.width;
-    const height = board?.height;
-
-    return {
-      width:
-        typeof width === 'number' && Number.isFinite(width) && width > 0
-          ? width
-          : this.fallbackCanvasSize.width,
-      height:
-        typeof height === 'number' && Number.isFinite(height) && height > 0
-          ? height
-          : this.fallbackCanvasSize.height,
-    };
-  });
   private readonly onionPreviewCache = signal<Record<string, string>>({});
   private colorParserCtx: CanvasRenderingContext2D | null = null;
   private cachedBackgroundColor: string | null = null;
