@@ -1,7 +1,6 @@
 const { BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
-const appSettings = require('./config/appSettings');
 
 let _app = null;
 
@@ -32,11 +31,11 @@ function toBufferFromIpc(value) {
 
 async function exportRequest(win) {
   const defaultDirPath = _app.getPath('documents');
-  win.webContents.send(appSettings.ipcExport['request-export'], { defaultDirPath });
+  win.webContents.send('quickboard:request-export', { defaultDirPath });
 }
 
 function registerIpcHandlers() {
-  ipcMain.handle(appSettings.ipcExport['save-video-file'], async (_event, payload) => {
+  ipcMain.handle('quickboard:save-video-file', async (_event, payload) => {
     if (!payload || typeof payload.dirPath !== 'string' || typeof payload.name !== 'string') {
       return { success: false, message: 'Invalid payload' };
     }
@@ -59,7 +58,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle(appSettings.ipcExport['pick-export-dir'], async (event) => {
+  ipcMain.handle('quickboard:pick-export-dir', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return null;
     const documentsDir = _app.getPath('documents');
@@ -72,7 +71,7 @@ function registerIpcHandlers() {
     return filePaths[0];
   });
 
-  ipcMain.handle(appSettings.ipcExport['png-export-frame'], async (_event, payload) => {
+  ipcMain.handle('quickboard:png-export-frame', async (_event, payload) => {
     if (
       !payload ||
       typeof payload.dirPath !== 'string' ||
