@@ -12,6 +12,51 @@
 <div class="canvas-container">
   <div class="tools-region">
     <div class="tools-bar">
+      <button
+        class="tool-button tool-group-button"
+        [class.active]="isDrawToolActive()"
+        (pointerdown)="onToolGroupPointerDown($event, 'draw')"
+        (pointerup)="onToolGroupPointerUp('draw')"
+        (pointerleave)="onToolGroupPointerCancel('draw')"
+        (pointercancel)="onToolGroupPointerCancel('draw')"
+        (mouseenter)="showTooltip($event, selectedDrawToolOption().label)"
+        (mouseleave)="hideTooltip()"
+        [attr.aria-label]="selectedDrawToolOption().label"
+      >
+        {{ selectedDrawToolOption().icon }}
+        <span class="submenu-indicator" aria-hidden="true"></span>
+      </button>
+
+      <button
+        class="tool-button tool-group-button"
+        [class.active]="isShapeToolActive()"
+        (pointerdown)="onToolGroupPointerDown($event, 'shape')"
+        (pointerup)="onToolGroupPointerUp('shape')"
+        (pointerleave)="onToolGroupPointerCancel('shape')"
+        (pointercancel)="onToolGroupPointerCancel('shape')"
+        (mouseenter)="showTooltip($event, selectedShapeTool().label)"
+        (mouseleave)="hideTooltip()"
+        [attr.aria-label]="selectedShapeTool().label"
+      >
+        {{ selectedShapeTool().icon }}
+        <span class="submenu-indicator" aria-hidden="true"></span>
+      </button>
+
+      <button
+        class="tool-button tool-group-button"
+        [class.active]="isEraserToolActive()"
+        (pointerdown)="onToolGroupPointerDown($event, 'erase')"
+        (pointerup)="onToolGroupPointerUp('erase')"
+        (pointerleave)="onToolGroupPointerCancel('erase')"
+        (pointercancel)="onToolGroupPointerCancel('erase')"
+        (mouseenter)="showTooltip($event, selectedEraserToolOption().label)"
+        (mouseleave)="hideTooltip()"
+        [attr.aria-label]="selectedEraserToolOption().label"
+      >
+        {{ selectedEraserToolOption().icon }}
+        <span class="submenu-indicator" aria-hidden="true"></span>
+      </button>
+
       @for (tool of tools; track tool.id) {
         <button
           class="tool-button"
@@ -23,23 +68,6 @@
         >
           {{ tool.icon }}
         </button>
-
-        @if (tool.id === 'brush') {
-          <button
-            class="tool-button shape-tool-button"
-            [class.active]="isShapeToolActive()"
-            (pointerdown)="onShapeButtonPointerDown($event)"
-            (pointerup)="onShapeButtonPointerUp()"
-            (pointerleave)="onShapeButtonPointerCancel()"
-            (pointercancel)="onShapeButtonPointerCancel()"
-            (mouseenter)="showTooltip($event, selectedShapeTool().label)"
-            (mouseleave)="hideTooltip()"
-            [attr.aria-label]="selectedShapeTool().label"
-          >
-            {{ selectedShapeTool().icon }}
-            <span class="submenu-indicator" aria-hidden="true"></span>
-          </button>
-        }
       }
 
       <div class="separator"></div>
@@ -54,19 +82,24 @@
       </button>
     </div>
 
-    @if (showShapeSubmenu()) {
-      <div class="shape-submenu" [style.top.px]="shapeSubmenuTop()" role="menu" aria-label="Shape tools">
-        @for (shapeTool of shapeTools; track shapeTool.id) {
+    @if (openToolSubmenu()) {
+      <div
+        class="tool-group-submenu"
+        [style.top.px]="toolSubmenuTop()"
+        role="menu"
+        [attr.aria-label]="activeSubmenuLabel()"
+      >
+        @for (submenuTool of activeSubmenuTools(); track submenuTool.id) {
           <button
             class="tool-button"
-            [class.active]="selectedShape() === shapeTool.id"
-            (click)="onShapeSubmenuSelect(shapeTool.id)"
-            (mouseenter)="showTooltip($event, shapeTool.label)"
+            [class.active]="activeSubmenuSelectedId() === submenuTool.id"
+            (click)="onActiveSubmenuSelect(submenuTool.id)"
+            (mouseenter)="showTooltip($event, submenuTool.label)"
             (mouseleave)="hideTooltip()"
-            [attr.aria-label]="shapeTool.label"
+            [attr.aria-label]="submenuTool.label"
             role="menuitem"
           >
-            {{ shapeTool.icon }}
+            {{ submenuTool.icon }}
           </button>
         }
       </div>

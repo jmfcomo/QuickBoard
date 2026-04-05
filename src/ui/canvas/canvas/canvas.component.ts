@@ -20,6 +20,8 @@ import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 
+type ToolGroupKey = 'draw' | 'shape' | 'erase';
+
 @Component({
   selector: 'app-canvas',
   imports: [PropertiesBarComponent],
@@ -91,14 +93,40 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     return overlays;
   });
+
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
+  readonly selectedDrawTool = signal<'pencil' | 'brush'>('pencil');
   readonly selectedShape = signal<'rectangle' | 'circle' | 'polygon'>('rectangle');
-  readonly showShapeSubmenu = signal(false);
-  readonly shapeSubmenuTop = signal(0);
+  readonly selectedEraserTool = signal<'eraser' | 'object-eraser'>('eraser');
+  readonly openToolSubmenu = signal<ToolGroupKey | null>(null);
+  readonly toolSubmenuTop = signal(0);
+  readonly activeSubmenuTools = computed(() => {
+    const group = this.openToolSubmenu();
+    if (group === 'draw') return this.drawTools;
+    if (group === 'shape') return this.shapeTools;
+    if (group === 'erase') return this.eraseTools;
+    return [] as readonly { id: string; label: string; icon: string }[];
+  });
+  readonly activeSubmenuLabel = computed(() => {
+    const group = this.openToolSubmenu();
+    if (group === 'draw') return 'Draw tools';
+    if (group === 'shape') return 'Shape tools';
+    if (group === 'erase') return 'Eraser tools';
+    return '';
+  });
+  readonly activeSubmenuSelectedId = computed(() => {
+    const group = this.openToolSubmenu();
+    if (group === 'draw') return this.selectedDrawTool();
+    if (group === 'shape') return this.selectedShape();
+    if (group === 'erase') return this.selectedEraserTool();
+    return '';
+  });
+  readonly isDrawToolActive = computed(() => this.isDrawTool(this.activeTool()));
+  readonly isEraserToolActive = computed(() => this.isEraserTool(this.activeTool()));
   readonly isShapeToolActive = computed(() => {
     const toolId = this.activeTool();
-    return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
+    return this.isShapeTool(toolId);
   });
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
@@ -128,20 +156,32 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly tools = [
-    { id: 'pencil', label: 'Pencil', icon: '✏️' },
-    { id: 'brush', label: 'Brush', icon: '🖌️' },
-    { id: 'eraser', label: 'Eraser', icon: '🧽' },
-    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
     { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
   ];
+  readonly drawTools = [
+    { id: 'pencil', label: 'Pencil', icon: '✏️' },
+    { id: 'brush', label: 'Brush', icon: '🖌️' },
+  ] as const;
   readonly shapeTools = [
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
     { id: 'circle', label: 'Circle', icon: '⚪' },
     { id: 'polygon', label: 'Polygon', icon: '📐' },
   ] as const;
+  readonly eraseTools = [
+    { id: 'eraser', label: 'Eraser', icon: '🧽' },
+    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
+  ] as const;
   readonly selectedShapeTool = computed(() => {
     const current = this.selectedShape();
     return this.shapeTools.find((tool) => tool.id === current) ?? this.shapeTools[0];
+  });
+  readonly selectedDrawToolOption = computed(() => {
+    const current = this.selectedDrawTool();
+    return this.drawTools.find((tool) => tool.id === current) ?? this.drawTools[0];
+  });
+  readonly selectedEraserToolOption = computed(() => {
+    const current = this.selectedEraserTool();
+    return this.eraseTools.find((tool) => tool.id === current) ?? this.eraseTools[0];
   });
 
   readonly colorPickers = [
@@ -209,9 +249,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private tooltipDelay: number | null = null;
   private tooltipCooldown: number | null = null;
   private tooltipWarm = false;
-  private shapeHoldTimer: number | null = null;
-  private shapePointerDown = false;
-  private shapeHoldTriggered = false;
+  private toolGroupHoldTimer: number | null = null;
+  private activePointerGroup: ToolGroupKey | null = null;
+  private groupHoldTriggered = false;
   private readonly onDocumentPointerDown = (event: PointerEvent) =>
     this.handleDocumentPointerDown(event);
 
@@ -338,7 +378,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.clearTimer('tooltipDelay');
     this.clearTimer('tooltipCooldown');
-    this.clearShapeHoldTimer();
+    this.clearToolGroupHoldTimer();
 
     this.clearPendingPreviewRegeneration();
   }
@@ -1116,8 +1156,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   public setTool(toolId: string): void {
     if (!this.lc || !this.toolInstances.has(toolId)) return;
 
+    if (this.isDrawTool(toolId)) {
+      this.selectedDrawTool.set(toolId);
+    }
+
     if (this.isShapeTool(toolId)) {
       this.selectedShape.set(toolId);
+    }
+
+    if (this.isEraserTool(toolId)) {
+      this.selectedEraserTool.set(toolId);
     }
 
     const tool = this.toolInstances.get(toolId);
@@ -1133,59 +1181,84 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public onShapeButtonPointerDown(event: PointerEvent): void {
+  public onToolGroupPointerDown(event: PointerEvent, group: ToolGroupKey): void {
     if (event.button !== 0) {
       return;
     }
 
     this.hideTooltip();
-    this.shapePointerDown = true;
-    this.shapeHoldTriggered = false;
+    this.activePointerGroup = group;
+    this.groupHoldTriggered = false;
 
     const button = event.currentTarget as HTMLElement | null;
     if (button) {
-      this.shapeSubmenuTop.set(button.offsetTop);
+      this.toolSubmenuTop.set(button.offsetTop);
     }
 
-    this.clearShapeHoldTimer();
-    this.shapeHoldTimer = window.setTimeout(() => {
-      if (!this.shapePointerDown) {
+    this.clearToolGroupHoldTimer();
+    this.toolGroupHoldTimer = window.setTimeout(() => {
+      if (this.activePointerGroup !== group) {
         return;
       }
 
-      this.shapeHoldTriggered = true;
-      this.showShapeSubmenu.set(true);
+      this.groupHoldTriggered = true;
+      this.openToolSubmenu.set(group);
     }, 300);
   }
 
-  public onShapeButtonPointerUp(): void {
-    if (!this.shapePointerDown) {
+  public onToolGroupPointerUp(group: ToolGroupKey): void {
+    if (this.activePointerGroup !== group) {
       return;
     }
 
-    this.shapePointerDown = false;
-    const wasHold = this.shapeHoldTriggered;
-    this.clearShapeHoldTimer();
-    this.shapeHoldTriggered = false;
+    this.activePointerGroup = null;
+    const wasHold = this.groupHoldTriggered;
+    this.clearToolGroupHoldTimer();
+    this.groupHoldTriggered = false;
 
     if (wasHold) {
       return;
     }
 
-    this.closeShapeSubmenu();
-    this.setTool(this.selectedShape());
+    this.closeToolSubmenu();
+    this.setTool(this.getSelectedToolForGroup(group));
   }
 
-  public onShapeButtonPointerCancel(): void {
-    this.shapePointerDown = false;
-    this.shapeHoldTriggered = false;
-    this.clearShapeHoldTimer();
+  public onToolGroupPointerCancel(group: ToolGroupKey): void {
+    if (this.activePointerGroup !== group) {
+      return;
+    }
+
+    this.activePointerGroup = null;
+    this.groupHoldTriggered = false;
+    this.clearToolGroupHoldTimer();
   }
 
-  public onShapeSubmenuSelect(toolId: 'rectangle' | 'circle' | 'polygon'): void {
-    this.selectedShape.set(toolId);
-    this.closeShapeSubmenu();
-    this.setTool(toolId);
+  public onActiveSubmenuSelect(toolId: string): void {
+    const group = this.openToolSubmenu();
+    if (!group) {
+      return;
+    }
+
+    if (group === 'draw' && this.isDrawTool(toolId)) {
+      this.selectedDrawTool.set(toolId);
+      this.closeToolSubmenu();
+      this.setTool(toolId);
+      return;
+    }
+
+    if (group === 'shape' && this.isShapeTool(toolId)) {
+      this.selectedShape.set(toolId);
+      this.closeToolSubmenu();
+      this.setTool(toolId);
+      return;
+    }
+
+    if (group === 'erase' && this.isEraserTool(toolId)) {
+      this.selectedEraserTool.set(toolId);
+      this.closeToolSubmenu();
+      this.setTool(toolId);
+    }
   }
 
   public setBrushSpacing(spacing: number): void {
@@ -1433,7 +1506,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   private handleDocumentPointerDown(event: PointerEvent): void {
-    if (!this.showShapeSubmenu()) {
+    if (!this.openToolSubmenu()) {
       return;
     }
 
@@ -1442,25 +1515,45 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    if (target.closest('.shape-tool-button') || target.closest('.shape-submenu')) {
+    if (target.closest('.tool-group-button') || target.closest('.tool-group-submenu')) {
       return;
     }
 
-    this.closeShapeSubmenu();
+    this.closeToolSubmenu();
+  }
+
+  private isDrawTool(toolId: string): toolId is 'pencil' | 'brush' {
+    return toolId === 'pencil' || toolId === 'brush';
+  }
+
+  private isEraserTool(toolId: string): toolId is 'eraser' | 'object-eraser' {
+    return toolId === 'eraser' || toolId === 'object-eraser';
   }
 
   private isShapeTool(toolId: string): toolId is 'rectangle' | 'circle' | 'polygon' {
     return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
   }
 
-  private closeShapeSubmenu(): void {
-    this.showShapeSubmenu.set(false);
+  private getSelectedToolForGroup(group: ToolGroupKey): string {
+    if (group === 'draw') {
+      return this.selectedDrawTool();
+    }
+
+    if (group === 'shape') {
+      return this.selectedShape();
+    }
+
+    return this.selectedEraserTool();
   }
 
-  private clearShapeHoldTimer(): void {
-    if (this.shapeHoldTimer !== null) {
-      clearTimeout(this.shapeHoldTimer);
-      this.shapeHoldTimer = null;
+  private closeToolSubmenu(): void {
+    this.openToolSubmenu.set(null);
+  }
+
+  private clearToolGroupHoldTimer(): void {
+    if (this.toolGroupHoldTimer !== null) {
+      clearTimeout(this.toolGroupHoldTimer);
+      this.toolGroupHoldTimer = null;
     }
   }
 }

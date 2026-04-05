@@ -51,7 +51,7 @@
   margin-left: 0;
 }
 
-.shape-submenu {
+.tool-group-submenu {
   position: absolute;
   left: calc(100% + 6px);
   display: flex;
@@ -81,7 +81,7 @@
   height: 36px;
 }
 
-.shape-tool-button {
+.tool-group-button {
   position: relative;
 }
 
@@ -101,7 +101,7 @@
   background-color: var(--bg-hover);
 }
 
-.shape-tool-button:hover .submenu-indicator {
+.tool-group-button:hover .submenu-indicator {
   border-bottom-color: color-mix(in srgb, var(--text-default) 88%, var(--accent-border));
 }
 
@@ -110,7 +110,7 @@
   border-color: var(--border-active);
 }
 
-.shape-tool-button.active .submenu-indicator {
+.tool-group-button.active .submenu-indicator {
   border-bottom-color: color-mix(in srgb, var(--text-on-accent) 80%, var(--accent-light));
 }
 
