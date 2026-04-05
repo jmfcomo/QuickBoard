@@ -3,10 +3,11 @@ import { AppStore } from '../../../data/store/app.store';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { LCInstance } from '../literally-canvas-interfaces';
 import { OnionSkinLayer } from './onion-skin.types';
+import { appSettings } from 'src/settings-loader';
 
 @Injectable({ providedIn: 'root' })
 export class OnionSkinService {
-  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
+  private readonly defaultCanvasSize = { width: appSettings.board.width, height: appSettings.board.height };
   private readonly store = inject(AppStore);
   private readonly canvasDataService = inject(CanvasDataService);
   private readonly onionPreviewCache = signal<Record<string, string>>({});

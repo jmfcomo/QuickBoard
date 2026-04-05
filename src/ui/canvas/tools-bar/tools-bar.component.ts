@@ -140,6 +140,7 @@ export class ToolsBarComponent implements OnDestroy {
     }
 
     this.hideTooltip();
+    this.closeToolSubmenu();
     this.activePointerGroup = group;
     this.groupHoldTriggered = false;
 
@@ -185,6 +186,17 @@ export class ToolsBarComponent implements OnDestroy {
     this.activePointerGroup = null;
     this.groupHoldTriggered = false;
     this.clearToolGroupHoldTimer();
+  }
+
+  public onToolGroupClick(group: ToolGroupKey): void {
+    // If a submenu is open, don't interfere—this click is the end of a press-and-hold interaction.
+    // The user will click on a submenu item, not the button again.
+    if (this.openToolSubmenu()) {
+      return;
+    }
+
+    this.hideTooltip();
+    this.toolSelected.emit(this.getSelectedToolForGroup(group));
   }
 
   public onActiveSubmenuSelect(toolId: string): void {
@@ -296,6 +308,7 @@ export class ToolsBarComponent implements OnDestroy {
 
   private closeToolSubmenu(): void {
     this.openToolSubmenu.set(null);
+    this.hideTooltip();
   }
 
   private clearToolGroupHoldTimer(): void {

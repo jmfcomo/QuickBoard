@@ -5,6 +5,7 @@
     tabindex="0"
     (click)="cancelRequested.emit()"
     (keydown.enter)="cancelRequested.emit()"
+    (keydown.space)="$event.preventDefault(); cancelRequested.emit()"
     (keydown.escape)="cancelRequested.emit()"
   >
     <div
