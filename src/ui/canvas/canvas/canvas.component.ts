@@ -159,6 +159,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private currentBoardId: string | null = null;
   private initCanvasTimeout: number | null = null;
+  private updateCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private resizeRafId: number | null = null;
@@ -213,6 +214,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             backgroundShapes: [...this.lc.backgroundShapes],
             snapshot,
           });
+        }
 
         // Ensure any deferred preview for the outgoing board is committed before switching.
         this.flushPendingPreviewRegeneration();
@@ -277,13 +279,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                 URL.revokeObjectURL(oldUrl);
               }
             }, 'image/png');
-            const previews = this.createBoardPreviews();
-            this.store.updateCanvasData(
-              firstBoard.id,
-              snapshot,
-              previews.previewUrl,
-            );
-            this.updateOnionPreviewForCurrentBoard(firstBoard.id);
           }
         }
       }, 0);
@@ -291,7 +286,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clear the initialization timeout to prevent it from executing after destruction
     if (this.initCanvasTimeout !== null) {
       clearTimeout(this.initCanvasTimeout);
       this.initCanvasTimeout = null;
@@ -363,8 +357,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       : null;
     if (initialCanvasData) {
       this.lc.loadSnapshot(initialCanvasData);
-    if (currentBoard?.canvasData) {
-      this.lc.loadSnapshot(this.withoutViewportState(currentBoard.canvasData));
     }
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
@@ -602,10 +594,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         });
       }
       this.lastLoadedCanvasData = cache.snapshot;
-    if (board?.canvasData) {
-      this.lc.loadSnapshot(this.withoutViewportState(board.canvasData));
-      // Track the loaded data reference
-      this.lastLoadedCanvasData = board.canvasData;
     } else {
       this.lc.repaintLayer('main');
       this.lastLoadedCanvasData = null;
@@ -615,8 +603,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
     this.scheduleCanvasFit();
-    this.fitCanvasToContainer();
-    this.syncOnionLayerRect();
 
     if (board && !board.previewUrl) {
       this.persistCurrentBoardData(board.id, true);
@@ -715,7 +701,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         continue;
       }
 
-      const preview = this.renderOnionPreviewForBoard(board.canvasData, board.backgroundColor);
+      const canvasData = this.canvasDataService.getCanvasData(board.id);
+      const preview = this.renderOnionPreviewForBoard(canvasData, board.backgroundColor);
       if (preview) {
         nextEntries[board.id] = preview;
       }
@@ -821,19 +808,20 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     if (includePreviews) {
       if (options.deferPreviews) {
-        this.store.updateCanvasData(boardId, normalizedSnapshot);
+        this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
         this.schedulePreviewRegeneration(boardId, normalizedSnapshot);
         return;
       }
 
       const previews = this.createBoardPreviews();
-      this.store.updateCanvasData(boardId, normalizedSnapshot, previews.previewUrl);
+      this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
+      if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
       this.updateOnionPreviewForCurrentBoard(boardId);
       this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
       return;
     }
 
-    this.store.updateCanvasData(boardId, normalizedSnapshot);
+    this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
   }
 
   private schedulePreviewRegeneration(boardId: string, snapshot: Record<string, unknown>): void {
@@ -886,7 +874,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardId = this.pendingPreviewBoardId;
     const snapshot = this.pendingPreviewSnapshot;
     const previews = this.createBoardPreviews();
-    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl);
+    this.canvasDataService.setCanvasData(boardId, snapshot);
+    if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
     this.updateOnionPreviewForCurrentBoard(boardId);
     this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
@@ -909,7 +898,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.pendingPreviewSnapshot = null;
   }
 
-  private createTransparentOnionPreview(source: HTMLCanvasElement, backgroundColor?: string): string {
+  private createTransparentOnionPreview(
+    source: HTMLCanvasElement,
+    backgroundColor?: string,
+  ): string {
     const width = source.width;
     const height = source.height;
     if (width <= 0 || height <= 0) {

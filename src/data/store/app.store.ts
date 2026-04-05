@@ -40,17 +40,6 @@ interface AppState {
   currentTime: number; // seconds
 }
 
-const normalizeCanvasData = (canvasData: Record<string, unknown>): Record<string, unknown> => {
-  if (!('position' in canvasData) && !('scale' in canvasData)) {
-    return canvasData;
-  }
-
-  const normalized = { ...canvasData };
-  delete (normalized as { position?: unknown }).position;
-  delete (normalized as { scale?: unknown }).scale;
-  return normalized;
-};
-
 const firstBoardId = crypto.randomUUID();
 
 const initialState: AppState = {
@@ -139,28 +128,13 @@ export const AppStore = signalStore(
               canvasData: canvasDataService.getCanvasData(b.id),
             })),
             currentBoardId: store.currentBoardId(),
+            onionSkinEnabled: store.onionSkinEnabled(),
             audioTracks: store.audioTracks(),
             audioLaneCount: store.audioLaneCount(),
             audioLaneMixers: store.audioLaneMixers(),
           },
           null,
           2,
-    updateCanvasData(
-      boardId: string,
-      canvasData: Record<string, unknown>,
-      previewUrl?: string,
-    ) {
-      const normalizedCanvasData = normalizeCanvasData(canvasData);
-      const boards = store
-        .boards()
-        .map((board) =>
-          board.id === boardId
-            ? {
-                ...board,
-                canvasData: normalizedCanvasData,
-                previewUrl: previewUrl ?? board.previewUrl,
-              }
-            : board,
         );
       },
 
@@ -214,20 +188,6 @@ export const AppStore = signalStore(
             const { canvasData, ...rest } = b;
             return rest;
           });
-    exportAsJson(): string {
-      return JSON.stringify(
-        {
-          boards: store.boards(),
-          currentBoardId: store.currentBoardId(),
-          onionSkinEnabled: store.onionSkinEnabled(),
-          audioTracks: store.audioTracks(),
-          audioLaneCount: store.audioLaneCount(),
-          audioLaneMixers: store.audioLaneMixers(),
-        },
-        null,
-        2,
-      );
-    },
 
           const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
           const defaultMixers = Array.from({ length: laneCount }, () => ({
@@ -249,6 +209,7 @@ export const AppStore = signalStore(
           patchState(store, {
             boards: cleanedBoards as Board[],
             currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
+            onionSkinEnabled: Boolean((data as Partial<AppState>).onionSkinEnabled),
             audioTracks: normalizedTracks,
             audioLaneCount: laneCount,
             audioLaneMixers: laneMixers,
@@ -258,46 +219,6 @@ export const AppStore = signalStore(
           throw new Error('Invalid JSON format or structure');
         }
       },
-        const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
-        const defaultMixers = Array.from({ length: laneCount }, () => ({
-          volume: 1,
-          muted: false,
-        }));
-        const laneMixers = Array.isArray(data.audioLaneMixers) ? data.audioLaneMixers : defaultMixers;
-        const normalizedTracks = Array.isArray(data.audioTracks)
-          ? data.audioTracks.map((track) => ({
-              ...track,
-              volume:
-                typeof (track as Partial<AudioTrack>).volume === 'number'
-                  ? (track as AudioTrack).volume
-                  : (laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1),
-            }))
-          : [];
-        const normalizedBoards = data.boards.map((board) => {
-          const partial = board as Partial<Board>;
-          return {
-            id: partial.id ?? crypto.randomUUID(),
-            canvasData: partial.canvasData ?? null,
-            scriptData: partial.scriptData ?? null,
-            previewUrl: partial.previewUrl ?? null,
-            backgroundColor: partial.backgroundColor ?? '#ffffff',
-            duration: partial.duration ?? 3,
-          };
-        });
-
-        patchState(store, {
-          boards: normalizedBoards,
-          currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
-          onionSkinEnabled: Boolean((data as Partial<AppState>).onionSkinEnabled),
-          audioTracks: normalizedTracks,
-          audioLaneCount: laneCount,
-          audioLaneMixers: laneMixers,
-        });
-      } catch (error) {
-        console.error('Failed to load JSON:', error);
-        throw new Error('Invalid JSON format or structure');
-      }
-    },
 
       updateBoardDuration(boardId: string, duration: number) {
         const boards = store
@@ -326,19 +247,14 @@ export const AppStore = signalStore(
           audioTracks: state.audioTracks.map((t) => (t.id === trackId ? { ...t, url } : t)),
         }));
       },
-    setOnionSkinEnabled(onionSkinEnabled: boolean) {
-      patchState(store, { onionSkinEnabled });
-    },
 
-    toggleOnionSkin() {
-      patchState(store, { onionSkinEnabled: !store.onionSkinEnabled() });
-    },
+      setOnionSkinEnabled(onionSkinEnabled: boolean) {
+        patchState(store, { onionSkinEnabled });
+      },
 
-    updateAudioUrl(trackId: string, url: string) {
-      patchState(store, (state) => ({
-        audioTracks: state.audioTracks.map((t) => (t.id === trackId ? { ...t, url } : t)),
-      }));
-    },
+      toggleOnionSkin() {
+        patchState(store, { onionSkinEnabled: !store.onionSkinEnabled() });
+      },
 
       addAudioTrack(track: AudioTrack) {
         patchState(store, (state) => ({
