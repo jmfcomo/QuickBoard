@@ -1,6 +1,7 @@
 const { Menu, nativeTheme, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const appSettings = require('./config/appsettings');
 
 let aboutWin = null;
 
@@ -109,7 +110,7 @@ function buildMenu(app, win, hooks = {}) {
             checked: nativeTheme.themeSource === 'dark',
             click: () => {
               nativeTheme.themeSource = 'dark';
-              win.webContents.send('quickboard:theme-changed', 'dark');
+              win.webContents.send(appSettings.ipcMenu['theme-changed'], 'dark');
             },
           },
         ],
@@ -134,14 +135,14 @@ function buildMenu(app, win, hooks = {}) {
         label: 'Undo',
         accelerator: 'CmdOrCtrl+Z',
         click: () => {
-          win.webContents.send('quickboard:undo');
+          win.webContents.send(appSettings.ipcMenu['undo']);
         },
       },
       {
         label: 'Redo',
         accelerator: 'CmdOrCtrl+Shift+Z',
         click: () => {
-          win.webContents.send('quickboard:redo');
+          win.webContents.send(appSettings.ipcMenu['redo']);
         },
       },
     ],
@@ -183,7 +184,7 @@ function registerThemeListener(app, win, hooks = {}) {
   const handler = () => {
     buildMenu(app, win, hooks);
     try {
-      win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
+      win.webContents.send(appSettings.ipcMenu['theme-changed'], nativeTheme.themeSource);
     } catch (err) {}
   };
 

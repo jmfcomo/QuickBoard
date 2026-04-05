@@ -38,7 +38,7 @@ function getArgvFilePath() {
 function createWindow() {
   const iconPath =
     process.platform === 'linux'
-      ? path.join(__dirname, 'branding', 'QuickBoard_icon_Linux.png')
+      ? path.join(__dirname, 'branding', appSettings.linuxIcon)
       : undefined;
 
   const win = new BrowserWindow({
@@ -50,7 +50,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  const { buildMenu } = require('./src/electron/menu');
+  const { buildMenu } = require(appSettings.buildMenu);
   const hooks = {
     onSave: fileio.requestSaveFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
@@ -59,7 +59,7 @@ function createWindow() {
 
   buildMenu(app, win, hooks);
 
-  win.loadURL('app://localhost/index.html');
+  win.loadURL(appSettings.appURL);
 
   // After the renderer is ready, open any file that was passed at launch.
   win.webContents.once('did-finish-load', () => {
@@ -71,27 +71,27 @@ function createWindow() {
   });
 }
 
-const fileio = require('./src/electron/fileio');
-const exportModule = require('./src/electron/export');
+const fileio = require(appSettings.files.fileio);
+const exportModule = require(appSettings.files.export);
 fileio.registerIpcHandlers();
 exportModule.registerIpcHandlers();
 
-ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
+ipcMain.handle(appSettings.ipcChannels['theme-source'], () => nativeTheme.themeSource);
 
 app.whenReady().then(async () => {
   const mimeTypes = {
-    '.html': 'text/html',
-    '.js': 'application/javascript',
-    '.css': 'text/css',
-    '.wasm': 'application/wasm',
-    '.png': 'image/png',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon',
-    '.json': 'application/json',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.ttf': 'font/ttf',
-    '.mp3': 'audio/mpeg',
+    '.html': appSettings.mimeTypes['.html'],
+    '.js': appSettings.mimeTypes['.js'],
+    '.css': appSettings.mimeTypes['.css'],
+    '.wasm': appSettings.mimeTypes['.wasm'],
+    '.png': appSettings.mimeTypes['.png'],
+    '.svg': appSettings.mimeTypes['.svg'],
+    '.ico': appSettings.mimeTypes['.ico'],
+    '.json': appSettings.mimeTypes['.json'],
+    '.woff': appSettings.mimeTypes['.woff'],
+    '.woff2': appSettings.mimeTypes['.woff2'],
+    '.ttf': appSettings.mimeTypes['.ttf'],
+    '.mp3': appSettings.mimeTypes['.mp3'],
   };
 
   const securityHeaders = {
@@ -121,7 +121,7 @@ app.whenReady().then(async () => {
       try {
         data = await fs.readFile(path.join(distRoot, 'index.html'));
         return new Response(data, {
-          headers: { 'Content-Type': 'text/html', ...securityHeaders },
+          headers: { 'Content-Type': appSettings.mimeTypes['.html'], ...securityHeaders },
         });
       } catch {
         return new Response('Not Found', { status: 404 });

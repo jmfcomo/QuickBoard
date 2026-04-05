@@ -1,6 +1,7 @@
 const { dialog, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
+const appSettings = require('./config/appsettings.json');
 
 let _app = null;
 let lastUsedDir = null;
@@ -46,7 +47,7 @@ async function requestSaveFromRenderer(win) {
     await saveSettings();
   } catch {}
 
-  win.webContents.send('quickboard:request-save', { filePath });
+  win.webContents.send(appSettings.ipcChannels['request-save'], { filePath });
 }
 
 async function loadBoardIntoRenderer(win) {
@@ -73,7 +74,7 @@ async function loadBoardIntoRenderer(win) {
       await saveSettings();
     } catch {}
 
-    win.webContents.send('quickboard:load-data', { filePath, content, isBinary: true });
+    win.webContents.send(appSettings.ipcChannels['load-board'], { filePath, content, isBinary: true });
   } catch (err) {
     console.error('Failed to load file:', err);
     const message = err && err.message ? err.message : String(err);
@@ -81,13 +82,13 @@ async function loadBoardIntoRenderer(win) {
       dialog.showErrorBox('Load Failed', `Failed to load file:\n${message}`);
     } catch (e) {}
     try {
-      win.webContents.send('quickboard:load-result', { filePath, success: false, message });
+      win.webContents.send(appSettings.ipcChannels['load-result'], { filePath, success: false, message });
     } catch (e) {}
   }
 }
 
 function registerIpcHandlers() {
-  ipcMain.on('quickboard:save-data', async (event, payload) => {
+  ipcMain.on(appSettings.ipcChannels['save-data'], async (event, payload) => {
     if (!payload || !payload.filePath || typeof payload.data !== 'string') return;
 
     try {
@@ -101,7 +102,7 @@ function registerIpcHandlers() {
     try {
       await fs.writeFile(payload.filePath, payload.data, 'utf-8');
       try {
-        event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
+        event.sender.send(appSettings.ipcChannels['save-result'], { filePath: payload.filePath, success: true });
       } catch (e) {}
     } catch (err) {
       console.error('Failed to save file:', err);
@@ -110,7 +111,7 @@ function registerIpcHandlers() {
         dialog.showErrorBox('Save Failed', `Failed to save file:\n${message}`);
       } catch (e) {}
       try {
-        event.sender.send('quickboard:save-result', {
+        event.sender.send(appSettings.ipcChannels['save-result'], {
           filePath: payload.filePath,
           success: false,
           message,
@@ -119,7 +120,7 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.on('quickboard:save-binary', async (event, payload) => {
+  ipcMain.on(appSettings.ipcChannels['save-binary'], async (event, payload) => {
     if (!payload || !payload.filePath || !(payload.data instanceof Uint8Array)) return;
 
     try {
@@ -133,7 +134,7 @@ function registerIpcHandlers() {
     try {
       await fs.writeFile(payload.filePath, Buffer.from(payload.data));
       try {
-        event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
+        event.sender.send(appSettings.ipcChannels['save-result'], { filePath: payload.filePath, success: true });
       } catch (e) {}
     } catch (err) {
       console.error('Failed to save binary file:', err);
@@ -142,7 +143,7 @@ function registerIpcHandlers() {
         dialog.showErrorBox('Save Failed', `Failed to save file:\n${message}`);
       } catch (e) {}
       try {
-        event.sender.send('quickboard:save-result', {
+        event.sender.send(appSettings.ipcChannels['save-result'], {
           filePath: payload.filePath,
           success: false,
           message,
@@ -162,7 +163,7 @@ async function loadBoardFromPath(win, filePath) {
       await saveSettings();
     } catch {}
 
-    win.webContents.send('quickboard:load-data', { filePath, content, isBinary: true });
+    win.webContents.send(appSettings.ipcChannels['load-data'], { filePath, content, isBinary: true });
   } catch (err) {
     console.error('Failed to load file from path:', err);
     const message = err && err.message ? err.message : String(err);
