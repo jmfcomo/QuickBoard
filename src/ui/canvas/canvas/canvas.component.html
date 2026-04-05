@@ -23,21 +23,24 @@
         >
           {{ tool.icon }}
         </button>
-      }
 
-      <button
-        class="tool-button shape-tool-button"
-        [class.active]="isShapeToolActive()"
-        (pointerdown)="onShapeButtonPointerDown($event)"
-        (pointerup)="onShapeButtonPointerUp()"
-        (pointerleave)="onShapeButtonPointerCancel()"
-        (pointercancel)="onShapeButtonPointerCancel()"
-        (mouseenter)="showTooltip($event, selectedShapeTool().label)"
-        (mouseleave)="hideTooltip()"
-        [attr.aria-label]="selectedShapeTool().label"
-      >
-        {{ selectedShapeTool().icon }}
-      </button>
+        @if (tool.id === 'brush') {
+          <button
+            class="tool-button shape-tool-button"
+            [class.active]="isShapeToolActive()"
+            (pointerdown)="onShapeButtonPointerDown($event)"
+            (pointerup)="onShapeButtonPointerUp()"
+            (pointerleave)="onShapeButtonPointerCancel()"
+            (pointercancel)="onShapeButtonPointerCancel()"
+            (mouseenter)="showTooltip($event, selectedShapeTool().label)"
+            (mouseleave)="hideTooltip()"
+            [attr.aria-label]="selectedShapeTool().label"
+          >
+            {{ selectedShapeTool().icon }}
+            <span class="submenu-indicator" aria-hidden="true"></span>
+          </button>
+        }
+      }
 
       <div class="separator"></div>
       <button
@@ -58,6 +61,8 @@
             class="tool-button"
             [class.active]="selectedShape() === shapeTool.id"
             (click)="onShapeSubmenuSelect(shapeTool.id)"
+            (mouseenter)="showTooltip($event, shapeTool.label)"
+            (mouseleave)="hideTooltip()"
             [attr.aria-label]="shapeTool.label"
             role="menuitem"
           >

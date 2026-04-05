@@ -81,13 +81,37 @@
   height: 36px;
 }
 
+.shape-tool-button {
+  position: relative;
+}
+
+.submenu-indicator {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 6px 6px;
+  border-color: transparent transparent color-mix(in srgb, var(--text-muted) 78%, var(--bg-panel)) transparent;
+  pointer-events: none;
+}
+
 .tool-button:hover {
   background-color: var(--bg-hover);
+}
+
+.shape-tool-button:hover .submenu-indicator {
+  border-bottom-color: color-mix(in srgb, var(--text-default) 88%, var(--accent-border));
 }
 
 .tool-button.active {
   background-color: var(--bg-active);
   border-color: var(--border-active);
+}
+
+.shape-tool-button.active .submenu-indicator {
+  border-bottom-color: color-mix(in srgb, var(--text-on-accent) 80%, var(--accent-light));
 }
 
 .separator {
