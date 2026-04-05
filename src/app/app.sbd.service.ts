@@ -31,6 +31,31 @@ export class SbdService {
         },
       );
     }
+    if (Array.isArray(rawJson.boards)) {
+      rawJson.boards = await Promise.all(
+        rawJson.boards.map(async (board: { id: string; previewUrl?: string }) => {
+          let previewExtUrl: string | null = null;
+          if (board.previewUrl?.startsWith('blob:')) {
+            try {
+              const res = await fetch(board.previewUrl);
+              const blob = await res.blob();
+              const arrayBuffer = await blob.arrayBuffer();
+              const path = `previews/${board.id}.png`;
+              zip.file(path, arrayBuffer);
+              previewExtUrl = path;
+            } catch (e) {
+              console.error('Failed to save preview', e);
+            }
+          } else {
+            previewExtUrl = board.previewUrl ?? null;
+          }
+          return {
+            ...board,
+            previewUrl: previewExtUrl,
+          };
+        }),
+      );
+    }
     zip.file('project.json', JSON.stringify(rawJson, null, 2));
 
     for (const [id, { buffer, fileName }] of audioBuffers) {
@@ -61,6 +86,24 @@ export class SbdService {
     const projectJson = await projectFile.async('string');
     const projectData = JSON.parse(projectJson);
 
+    // Extract previews and convert to Blob URLs
+    if (Array.isArray(projectData.boards)) {
+      await Promise.all(
+        projectData.boards.map(async (board: { id: string; previewUrl?: string }) => {
+          if (board.previewUrl && board.previewUrl.startsWith('previews/')) {
+            const previewFile = zip.file(board.previewUrl);
+            if (previewFile) {
+              const arrayBuffer = await previewFile.async('arraybuffer');
+              const blob = new Blob([arrayBuffer], { type: 'image/png' });
+              board.previewUrl = URL.createObjectURL(blob);
+            } else {
+              board.previewUrl = undefined;
+            }
+          }
+        }),
+      );
+    }
+
     // Extract each audio file into a Blob keyed by track id.
     const audioTracks: { id: string; url: string }[] = Array.isArray(projectData.audioTracks)
       ? projectData.audioTracks
@@ -79,7 +122,7 @@ export class SbdService {
     );
 
     // Restore store state then reload Tone.js players from the extracted blobs.
-    this.store.loadFromJson(projectJson);
+    this.store.loadFromJson(JSON.stringify(projectData));
     await this.audio.loadFromSavedTracks(this.store.audioTracks(), blobMap);
   }
 }

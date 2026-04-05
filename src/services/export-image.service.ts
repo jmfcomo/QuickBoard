@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
+import { CanvasDataService } from './canvas-data.service';
 import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 
 @Injectable({ providedIn: 'root' })
 export class ImageExportService {
   readonly store = inject(AppStore);
+  readonly canvasDataService = inject(CanvasDataService);
 
   async renderBoardsAtScale(
     scale: number,
@@ -20,7 +22,11 @@ export class ImageExportService {
       const frameNum = String(index + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}.png`;
 
-      const dataUrl = await this.renderSingleBoard(board.canvasData, board.backgroundColor, scale);
+      const dataUrl = await this.renderSingleBoard(
+        this.canvasDataService.getCanvasData(board.id),
+        board.backgroundColor,
+        scale,
+      );
       frames.push({ name: fileName, dataUrl });
       onProgress?.(index + 1, boards.length, fileName);
     }
@@ -88,7 +94,11 @@ export class ImageExportService {
       const board = boards[index];
       const frameNum = String(index + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}.png`;
-      const dataUrl = await this.renderSingleBoard(board.canvasData, board.backgroundColor, scale);
+      const dataUrl = await this.renderSingleBoard(
+        this.canvasDataService.getCanvasData(board.id),
+        board.backgroundColor,
+        scale,
+      );
       await onFrame({ name: fileName, dataUrl }, index + 1, boards.length);
     }
   }

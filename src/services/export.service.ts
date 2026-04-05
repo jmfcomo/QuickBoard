@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
+import { CanvasDataService } from './canvas-data.service';
 import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -9,6 +10,7 @@ import type { AudioTrack } from '../data';
 @Injectable({ providedIn: 'root' })
 export class ExportService {
   readonly store = inject(AppStore);
+  readonly canvasDataService = inject(CanvasDataService);
 
   readonly isExporting = signal(false);
   readonly exportProgress = signal(0);
@@ -30,7 +32,7 @@ export class ExportService {
       const frameNum = String(index + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}.png`;
 
-      const dataUrl = await this.renderSingleBoard(board.canvasData, board.backgroundColor, scale);
+      const dataUrl = await this.renderSingleBoard(this.canvasDataService.getCanvasData(board.id), board.backgroundColor, scale);
       frames.push({ name: fileName, dataUrl });
       onProgress?.(index + 1, boards.length, fileName);
     }
@@ -110,7 +112,7 @@ export class ExportService {
       const frameNum = String(startIndex + i + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}${ext}`;
       const dataUrl = await this.renderSingleBoard(
-        board.canvasData,
+        this.canvasDataService.getCanvasData(board.id),
         board.backgroundColor,
         scale,
         mimeType,

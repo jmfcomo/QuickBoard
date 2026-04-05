@@ -66,6 +66,9 @@ export interface LiterallyCanvas {
     Ellipse: LiterallyCanvasTool;
   };
   createShape(type: string, args: Record<string, unknown>): unknown;
+  JSONToShape(shape: Record<string, unknown>): unknown;
+  snapshotJSONToShapes(shapes: Record<string, unknown>[]): unknown[];
+  shapeToJSON(shape: unknown): Record<string, unknown>;
 }
 
 declare global {

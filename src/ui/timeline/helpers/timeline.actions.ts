@@ -1,11 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { AppStore, Board } from '../../../data/store/app.store';
 import { UndoRedoService } from '../../../services/undo-redo.service';
+import { CanvasDataService } from '../../../services/canvas-data.service';
 
 @Injectable({ providedIn: 'root' })
 export class TimelineActions {
   private readonly store = inject(AppStore);
   private readonly undoRedo = inject(UndoRedoService);
+  private readonly canvasDataService = inject(CanvasDataService);
 
   addBoard(): string {
     const prevBoardId = this.store.currentBoardId();
@@ -46,6 +48,7 @@ export class TimelineActions {
     const boardIndex = boards.findIndex((b) => b.id === boardId);
     if (boardIndex < 0) return;
     const boardSnapshot = { ...boards[boardIndex] };
+    const canvasDataSnapshot = this.canvasDataService.getCanvasData(boardId);
     const wasCurrentBoard = this.store.currentBoardId() === boardId;
     const prevCurrentId = this.store.currentBoardId();
 
@@ -62,6 +65,12 @@ export class TimelineActions {
 
     this.undoRedo.record({
       undo: () => {
+        if (canvasDataSnapshot) {
+          this.canvasDataService.setCanvasData(
+            boardSnapshot.id,
+            JSON.parse(JSON.stringify(canvasDataSnapshot)),
+          );
+        }
         this.store.restoreBoard(boardSnapshot, boardIndex);
         if (wasCurrentBoard) {
           this.store.setCurrentBoard(boardSnapshot.id);
@@ -128,18 +137,24 @@ export class TimelineActions {
     if (boardIndex < 0) return undefined;
 
     const source = boards[boardIndex];
+    const sourceCanvasData = this.canvasDataService.getCanvasData(boardId);
     const newBoard: Board = {
       id: crypto.randomUUID(),
-      canvasData: source.canvasData
-        ? (JSON.parse(JSON.stringify(source.canvasData)) as Record<string, unknown>)
-        : null,
       scriptData: source.scriptData
         ? (JSON.parse(JSON.stringify(source.scriptData)) as NonNullable<Board['scriptData']>)
         : null,
-      previewUrl: source.previewUrl,
+      // Clear blob URLs on duplication to avoid shared reference issues and double revocation
+      previewUrl: source.previewUrl?.startsWith('blob:') ? null : source.previewUrl,
       backgroundColor: source.backgroundColor,
       duration: source.duration,
     };
+
+    if (sourceCanvasData) {
+      this.canvasDataService.setCanvasData(
+        newBoard.id,
+        JSON.parse(JSON.stringify(sourceCanvasData)),
+      );
+    }
 
     const insertIndex = boardIndex + 1;
     this.store.restoreBoard(newBoard, insertIndex);
@@ -151,6 +166,12 @@ export class TimelineActions {
         this.store.setCurrentBoard(boardId);
       },
       redo: () => {
+        if (sourceCanvasData) {
+          this.canvasDataService.setCanvasData(
+            newBoard.id,
+            JSON.parse(JSON.stringify(sourceCanvasData)),
+          );
+        }
         this.store.restoreBoard(newBoard, insertIndex);
         this.store.setCurrentBoard(newBoard.id);
       },

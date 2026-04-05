@@ -18,6 +18,7 @@ import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
+import { CanvasDataService } from '../../../services/canvas-data.service';
 
 @Component({
   selector: 'app-canvas',
@@ -152,11 +153,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly store = inject(AppStore);
   private readonly el = inject(ElementRef);
   private readonly undoRedo = inject(UndoRedoService);
+  private readonly canvasDataService = inject(CanvasDataService);
   private lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private currentBoardId: string | null = null;
   private initCanvasTimeout: number | null = null;
+  private updateCanvasTimeout: number | null = null;
   private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private resizeRafId: number | null = null;
@@ -173,6 +176,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
    * the pre-stroke state even after the user has switched away from the original board. */
   private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
+  private _canvasDirty = false;
   private pendingPreviewBoardId: string | null = null;
   private pendingPreviewSnapshot: Record<string, unknown> | null = null;
   private previewTimeoutId: number | null = null;
@@ -194,22 +198,31 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   constructor() {
     effect(() => {
       const selectedBoardId = this.store.currentBoardId();
-      const boards = this.store.boards();
 
       if (!this.lc || !selectedBoardId) return;
 
-      const currentBoard = boards.find((b) => b.id === selectedBoardId);
       const boardIdChanged = selectedBoardId !== this.currentBoardId;
-      const canvasDataChanged = currentBoard?.canvasData !== this.lastLoadedCanvasData;
+      const currentBoardData = this.canvasDataService.getCanvasData(selectedBoardId);
+      const canvasDataChanged = currentBoardData !== this.lastLoadedCanvasData;
 
       // Only reload when switching boards or when the canvas data reference changes
       if (boardIdChanged) {
+        if (this.currentBoardId && this.lc && this._canvasDirty) {
+          const snapshot = this.lc.getSnapshot();
+          this.canvasDataService.setCanvasData(this.currentBoardId, {
+            shapes: [...this.lc.shapes],
+            backgroundShapes: [...this.lc.backgroundShapes],
+            snapshot,
+          });
+        }
+
         // Ensure any deferred preview for the outgoing board is committed before switching.
         this.flushPendingPreviewRegeneration();
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
           this.persistCurrentBoardData(this.currentBoardId, true);
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
+          this._canvasDirty = false;
         }
         this.loadBoardData(selectedBoardId);
       } else if (canvasDataChanged) {
@@ -243,15 +256,29 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             // Render background color
             this.lc.setColor('background', firstBoard.backgroundColor ?? '#ffffff');
             this.lc.repaintLayer('main');
-            // Save preview
+
+            const boardId = firstBoard.id;
             const snapshot = this.lc.getSnapshot();
-            const previews = this.createBoardPreviews();
-            this.store.updateCanvasData(
-              firstBoard.id,
+            const shapes = [...this.lc.shapes];
+            const backgroundShapes = [...this.lc.backgroundShapes];
+
+            // Update CanvasDataService immediately
+            this.canvasDataService.setCanvasData(boardId, {
+              shapes,
+              backgroundShapes,
               snapshot,
-              previews.previewUrl,
-            );
-            this.updateOnionPreviewForCurrentBoard(firstBoard.id);
+            });
+
+            // Save preview as a Blob URL to keep base64 data off the V8 heap
+            this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
+              if (!this.lc || !blob) return;
+              const newUrl = URL.createObjectURL(blob);
+              const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
+              this.store.updateBoardPreview(boardId, newUrl);
+              if (oldUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(oldUrl);
+              }
+            }, 'image/png');
           }
         }
       }, 0);
@@ -259,7 +286,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clear the initialization timeout to prevent it from executing after destruction
     if (this.initCanvasTimeout !== null) {
       clearTimeout(this.initCanvasTimeout);
       this.initCanvasTimeout = null;
@@ -326,8 +352,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
 
-    if (currentBoard?.canvasData) {
-      this.lc.loadSnapshot(this.withoutViewportState(currentBoard.canvasData));
+    const initialCanvasData = currentBoard
+      ? this.canvasDataService.getCanvasData(currentBoard.id)
+      : null;
+    if (initialCanvasData) {
+      this.lc.loadSnapshot(initialCanvasData);
     }
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
@@ -342,6 +371,43 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.lc.on('drawingChange', () => {
       if (this.lc) {
+        this._canvasDirty = true;
+        // Debounce the canvas data update to avoid excessive store updates
+        if (this.updateCanvasTimeout !== null) {
+          clearTimeout(this.updateCanvasTimeout);
+        }
+        this.updateCanvasTimeout = window.setTimeout(() => {
+          if (this.lc && this.currentBoardId) {
+            const boardId = this.currentBoardId;
+            const snapshot = this.lc.getSnapshot();
+            const shapes = [...this.lc.shapes];
+            const backgroundShapes = [...this.lc.backgroundShapes];
+
+            this.lastLoadedCanvasData = snapshot;
+            this._canvasDirty = false;
+
+            // Update CanvasDataService immediately
+            this.canvasDataService.setCanvasData(boardId, {
+              shapes,
+              backgroundShapes,
+              snapshot,
+            });
+
+            this.lc.getImage({ scale: 0.2 }).toBlob((blob) => {
+              if (!this.lc || this.currentBoardId !== boardId || !blob) return;
+
+              const newUrl = URL.createObjectURL(blob);
+              const oldUrl = this.store.boards().find((b) => b.id === boardId)?.previewUrl;
+
+              this.store.updateBoardPreview(boardId, newUrl);
+              if (oldUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(oldUrl);
+              }
+            }, 'image/png');
+          }
+          this.updateCanvasTimeout = null;
+        }, 300);
+
         // Record a history entry for new user strokes (stack grew and we're
         // not in the middle of an undo/redo replay or snapshot load).
         if (!this._suppressLcHistory) {
@@ -362,7 +428,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                   // Cross-board: update the store with the pre-stroke canvas state
                   // then switch to that board — the canvas effect will load it.
                   if (beforeSnapshot) {
-                    this.store.updateCanvasData(boardIdAtRecord, beforeSnapshot);
+                    this.canvasDataService.setCanvasData(boardIdAtRecord, beforeSnapshot);
                   }
                   this.store.setCurrentBoard(boardIdAtRecord);
                   return;
@@ -382,7 +448,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
                 if (!boardIdAtRecord) return;
                 if (this.currentBoardId !== boardIdAtRecord) {
                   // Cross-board: restore the post-stroke snapshot and switch boards.
-                  this.store.updateCanvasData(boardIdAtRecord, afterSnapshot);
+                  this.canvasDataService.setCanvasData(boardIdAtRecord, afterSnapshot);
                   this.store.setCurrentBoard(boardIdAtRecord);
                   return;
                 }
@@ -444,7 +510,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               const currentBoardId = this.store.currentBoardId();
               if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
                 // Cross-board: update store with the pre-erase snapshot and switch boards.
-                this.store.updateCanvasData(snapshotBoardId, before);
+                this.canvasDataService.setCanvasData(snapshotBoardId, before);
                 this.store.setCurrentBoard(snapshotBoardId);
                 return;
               }
@@ -457,7 +523,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
               const currentBoardId = this.store.currentBoardId();
               if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
                 // Cross-board: update store with the post-erase snapshot and switch boards.
-                this.store.updateCanvasData(snapshotBoardId, after);
+                this.canvasDataService.setCanvasData(snapshotBoardId, after);
                 this.store.setCurrentBoard(snapshotBoardId);
                 return;
               }
@@ -501,6 +567,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const board = boards.find((b) => b.id === boardId);
 
     this.currentBoardId = boardId;
+    this._canvasDirty = false;
 
     this._suppressLcHistory = true;
     this._lcUndoStackLength = 0;
@@ -510,10 +577,23 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc.backgroundShapes = [];
 
     // Load new board data
-    if (board?.canvasData) {
-      this.lc.loadSnapshot(this.withoutViewportState(board.canvasData));
-      // Track the loaded data reference
-      this.lastLoadedCanvasData = board.canvasData;
+    const cache = board ? this.canvasDataService.getBoardCache(board.id) : null;
+    if (board && cache) {
+      if (cache.shapes && cache.backgroundShapes) {
+        this.lc.shapes = [...cache.shapes];
+        this.lc.backgroundShapes = [...cache.backgroundShapes];
+        this.lc.repaintLayer('main');
+        this.lc.repaintLayer('background');
+      } else {
+        this.lc.loadSnapshot(cache.snapshot);
+        // Cache immediately so subsequent loads are instant
+        this.canvasDataService.setCanvasData(board.id, {
+          shapes: [...this.lc.shapes],
+          backgroundShapes: [...this.lc.backgroundShapes],
+          snapshot: cache.snapshot,
+        });
+      }
+      this.lastLoadedCanvasData = cache.snapshot;
     } else {
       this.lc.repaintLayer('main');
       this.lastLoadedCanvasData = null;
@@ -522,8 +602,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
-    this.fitCanvasToContainer();
-    this.syncOnionLayerRect();
+    this.scheduleCanvasFit();
 
     if (board && !board.previewUrl) {
       this.persistCurrentBoardData(board.id, true);
@@ -532,7 +611,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.updateOnionPreviewForCurrentBoard(boardId);
     this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
-    this._lcUndoStackLength = this.lc.undoStack.length;
+    this.lc.undoStack.length = 0;
+    this.lc.redoStack.length = 0;
+    this._lcUndoStackLength = 0;
     this._suppressLcHistory = false;
   }
 
@@ -620,7 +701,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         continue;
       }
 
-      const preview = this.renderOnionPreviewForBoard(board.canvasData, board.backgroundColor);
+      const canvasData = this.canvasDataService.getCanvasData(board.id);
+      const preview = this.renderOnionPreviewForBoard(canvasData, board.backgroundColor);
       if (preview) {
         nextEntries[board.id] = preview;
       }
@@ -726,19 +808,20 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     if (includePreviews) {
       if (options.deferPreviews) {
-        this.store.updateCanvasData(boardId, normalizedSnapshot);
+        this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
         this.schedulePreviewRegeneration(boardId, normalizedSnapshot);
         return;
       }
 
       const previews = this.createBoardPreviews();
-      this.store.updateCanvasData(boardId, normalizedSnapshot, previews.previewUrl);
+      this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
+      if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
       this.updateOnionPreviewForCurrentBoard(boardId);
       this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
       return;
     }
 
-    this.store.updateCanvasData(boardId, normalizedSnapshot);
+    this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
   }
 
   private schedulePreviewRegeneration(boardId: string, snapshot: Record<string, unknown>): void {
@@ -791,7 +874,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const boardId = this.pendingPreviewBoardId;
     const snapshot = this.pendingPreviewSnapshot;
     const previews = this.createBoardPreviews();
-    this.store.updateCanvasData(boardId, snapshot, previews.previewUrl);
+    this.canvasDataService.setCanvasData(boardId, snapshot);
+    if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
     this.updateOnionPreviewForCurrentBoard(boardId);
     this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
 
@@ -814,7 +898,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.pendingPreviewSnapshot = null;
   }
 
-  private createTransparentOnionPreview(source: HTMLCanvasElement, backgroundColor?: string): string {
+  private createTransparentOnionPreview(
+    source: HTMLCanvasElement,
+    backgroundColor?: string,
+  ): string {
     const width = source.width;
     const height = source.height;
     if (width <= 0 || height <= 0) {
@@ -1095,7 +1182,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         undo: () => {
           if (!boardIdAtClear) return;
           if (this.currentBoardId !== boardIdAtClear) {
-            this.store.updateCanvasData(boardIdAtClear, before);
+            this.canvasDataService.setCanvasData(boardIdAtClear, before);
             this.store.setCurrentBoard(boardIdAtClear);
             return;
           }
@@ -1107,7 +1194,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         redo: () => {
           if (!boardIdAtClear) return;
           if (this.currentBoardId !== boardIdAtClear) {
-            this.store.updateCanvasData(boardIdAtClear, after);
+            this.canvasDataService.setCanvasData(boardIdAtClear, after);
             this.store.setCurrentBoard(boardIdAtClear);
             return;
           }

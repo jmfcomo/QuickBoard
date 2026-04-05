@@ -10,7 +10,7 @@ export interface UndoReservation {
   cancel(): void;
 }
 
-const MAX_HISTORY = 200;
+const MAX_HISTORY = 50;
 
 @Injectable({ providedIn: 'root' })
 export class UndoRedoService {
