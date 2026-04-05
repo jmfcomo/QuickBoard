@@ -93,18 +93,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
-  readonly selectedShape = signal<'rectangle' | 'circle'>('rectangle');
+  readonly selectedShape = signal<'rectangle' | 'circle' | 'polygon'>('rectangle');
   readonly showShapeSubmenu = signal(false);
   readonly shapeSubmenuTop = signal(0);
   readonly isShapeToolActive = computed(() => {
     const toolId = this.activeTool();
-    return toolId === 'rectangle' || toolId === 'circle';
+    return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
   });
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
     rectangle: 5,
     circle: 5,
+    polygon: 5,
     eraser: 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
@@ -136,6 +137,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly shapeTools = [
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
     { id: 'circle', label: 'Circle', icon: '⚪' },
+    { id: 'polygon', label: 'Polygon', icon: '📐' },
   ] as const;
   readonly selectedShapeTool = computed(() => {
     const current = this.selectedShape();
@@ -500,6 +502,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('brush', new Brush(this.lc));
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('circle', new LC.tools.Ellipse(this.lc));
+    // Use the built-in LC polygon tool when available.
+    const shapeTools = LC.tools as {
+      Polygon?: new (lc: LCInstance) => LCTool;
+      Triangle?: new (lc: LCInstance) => LCTool;
+    };
+    const PolygonTool = shapeTools.Polygon ?? shapeTools.Triangle;
+    if (PolygonTool) {
+      this.toolInstances.set('polygon', new PolygonTool(this.lc));
+    }
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
     // ObjectEraser bypasses LC's undo stack (directly mutates lc.shapes), so
@@ -1171,7 +1182,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.clearShapeHoldTimer();
   }
 
-  public onShapeSubmenuSelect(toolId: 'rectangle' | 'circle'): void {
+  public onShapeSubmenuSelect(toolId: 'rectangle' | 'circle' | 'polygon'): void {
     this.selectedShape.set(toolId);
     this.closeShapeSubmenu();
     this.setTool(toolId);
@@ -1438,8 +1449,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.closeShapeSubmenu();
   }
 
-  private isShapeTool(toolId: string): toolId is 'rectangle' | 'circle' {
-    return toolId === 'rectangle' || toolId === 'circle';
+  private isShapeTool(toolId: string): toolId is 'rectangle' | 'circle' | 'polygon' {
+    return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
   }
 
   private closeShapeSubmenu(): void {
