@@ -17,6 +17,7 @@ import { PropertiesBarComponent } from '../properties-bar/properties-bar.compone
 import { OnionSkinOverlayComponent } from '../onion-skin/onion-skin-overlay.component';
 import { OnionSkinService } from '../onion-skin/onion-skin.service';
 import { ToolsBarComponent } from '../tools-bar/tools-bar.component';
+import { CanvasUndoRedoService } from '../undo-redo/canvas-undo-redo.service';
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
@@ -94,6 +95,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly store = inject(AppStore);
   private readonly onionSkin = inject(OnionSkinService);
+  private readonly canvasUndoRedo = inject(CanvasUndoRedoService);
   private readonly el = inject(ElementRef);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly canvasDataService = inject(CanvasDataService);
@@ -108,17 +110,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
-  /** Set to true while we are programmatically calling lc.undo()/redo() so that
-   * the drawingChange listener doesn't create a duplicate history entry. */
-  private _suppressLcHistory = false;
-  /** Tracks the last-known LC undoStack length so we can distinguish a new
-   * user stroke (stack grew) from an undo/redo replay or snapshot load. */
-  private _lcUndoStackLength = 0;
-  /** Snapshot captured when an ObjectEraser stroke begins, for snapshot-based undo. */
-  private _snapshotBeforeObjectErase: Record<string, unknown> | null = null;
-  /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
-   * the pre-stroke state even after the user has switched away from the original board. */
-  private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
   private _canvasDirty = false;
   private pendingPreviewBoardId: string | null = null;
   private pendingPreviewSnapshot: Record<string, unknown> | null = null;
@@ -258,8 +249,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     container.addEventListener(
       'mousedown',
       () => {
-        if (!this._suppressLcHistory && this.lc) {
-          this._lcSnapshotBeforeStroke = this.lc.getSnapshot();
+        if (this.lc) {
+          this.canvasUndoRedo.markStrokeStart(this.lc);
         }
       },
       { capture: true },
@@ -325,68 +316,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           this.updateCanvasTimeout = null;
         }, 300);
 
-        // Record a history entry for new user strokes (stack grew and we're
-        // not in the middle of an undo/redo replay or snapshot load).
-        if (!this._suppressLcHistory) {
-          const currentLen = this.lc.undoStack.length;
-          if (currentLen > this._lcUndoStackLength) {
-            this._lcUndoStackLength = currentLen;
-            const lcRef = this.lc;
-            const boardIdAtRecord = this.currentBoardId;
-            // Capture before/after snapshots so undo/redo works even after the user
-            // has switched to a different board (cross-board undo support).
-            const beforeSnapshot = this._lcSnapshotBeforeStroke;
-            const afterSnapshot = lcRef.getSnapshot();
-            this._lcSnapshotBeforeStroke = null;
-            this.undoRedo.record({
-              undo: () => {
-                if (!boardIdAtRecord) return;
-                if (this.currentBoardId !== boardIdAtRecord) {
-                  // Cross-board: update the store with the pre-stroke canvas state
-                  // then switch to that board — the canvas effect will load it.
-                  if (beforeSnapshot) {
-                    this.canvasDataService.setCanvasData(boardIdAtRecord, beforeSnapshot);
-                  }
-                  this.store.setCurrentBoard(boardIdAtRecord);
-                  return;
-                }
-                // Same board: prefer LC native undo; fall back to snapshot restore.
-                this._suppressLcHistory = true;
-                if (lcRef.undoStack.length > 0) {
-                  this._lcUndoStackLength--;
-                  lcRef.undo();
-                } else if (beforeSnapshot) {
-                  lcRef.loadSnapshot(beforeSnapshot);
-                  this._lcUndoStackLength = lcRef.undoStack.length;
-                }
-                this._suppressLcHistory = false;
-              },
-              redo: () => {
-                if (!boardIdAtRecord) return;
-                if (this.currentBoardId !== boardIdAtRecord) {
-                  // Cross-board: restore the post-stroke snapshot and switch boards.
-                  this.canvasDataService.setCanvasData(boardIdAtRecord, afterSnapshot);
-                  this.store.setCurrentBoard(boardIdAtRecord);
-                  return;
-                }
-                // Same board: prefer LC native redo; fall back to snapshot restore.
-                this._suppressLcHistory = true;
-                if (lcRef.redoStack.length > 0) {
-                  this._lcUndoStackLength++;
-                  lcRef.redo();
-                } else {
-                  lcRef.loadSnapshot(afterSnapshot);
-                  this._lcUndoStackLength = lcRef.undoStack.length;
-                }
-                this._suppressLcHistory = false;
-              },
-            });
-
-            if (boardIdAtRecord) {
-              this.persistCurrentBoardData(boardIdAtRecord, true, { deferPreviews: true });
-            }
-          }
-        }
+        this.canvasUndoRedo.onDrawingChange(this.lc, this.currentBoardId, (id, include, options) =>
+          this.persistCurrentBoardData(id, include, options),
+        );
       }
     });
 
@@ -407,65 +339,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
-    // ObjectEraser bypasses LC's undo stack (directly mutates lc.shapes), so
-    // we wrap begin/end to capture a before/after snapshot and record it ourselves.
-    const objectEraser = new ObjectEraser(this.lc);
-    const origBegin = objectEraser.begin!.bind(objectEraser);
-    const origEnd = objectEraser.end!.bind(objectEraser);
-    objectEraser.begin = (x, y, lc) => {
-      if (!this._suppressLcHistory) {
-        this._snapshotBeforeObjectErase = lc.getSnapshot();
-      }
-      origBegin(x, y, lc);
-    };
-    objectEraser.end = (x, y, lc) => {
-      origEnd(x, y, lc);
-      if (!this._suppressLcHistory && this._snapshotBeforeObjectErase !== null) {
-        const before = this._snapshotBeforeObjectErase;
-        this._snapshotBeforeObjectErase = null;
-        const after = lc.getSnapshot();
-        // Only record if something was actually removed
-        if (
-          JSON.stringify((before as { shapes?: unknown }).shapes) !==
-          JSON.stringify((after as { shapes?: unknown }).shapes)
-        ) {
-          const lcRef = lc;
-          const snapshotBoardId = this.store.currentBoardId();
-          this.undoRedo.record({
-            undo: () => {
-              const currentBoardId = this.store.currentBoardId();
-              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
-                // Cross-board: update store with the pre-erase snapshot and switch boards.
-                this.canvasDataService.setCanvasData(snapshotBoardId, before);
-                this.store.setCurrentBoard(snapshotBoardId);
-                return;
-              }
-              this._suppressLcHistory = true;
-              lcRef.loadSnapshot(before);
-              this._lcUndoStackLength = lcRef.undoStack.length;
-              this._suppressLcHistory = false;
-            },
-            redo: () => {
-              const currentBoardId = this.store.currentBoardId();
-              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
-                // Cross-board: update store with the post-erase snapshot and switch boards.
-                this.canvasDataService.setCanvasData(snapshotBoardId, after);
-                this.store.setCurrentBoard(snapshotBoardId);
-                return;
-              }
-              this._suppressLcHistory = true;
-              lcRef.loadSnapshot(after);
-              this._lcUndoStackLength = lcRef.undoStack.length;
-              this._suppressLcHistory = false;
-            },
-          });
-
-          if (snapshotBoardId) {
-            this.persistCurrentBoardData(snapshotBoardId, true);
-          }
-        }
-      }
-    };
+    const objectEraser = this.canvasUndoRedo.instrumentObjectEraser(
+      new ObjectEraser(this.lc),
+      (id, include, options) => this.persistCurrentBoardData(id, include, options),
+    );
     this.toolInstances.set('object-eraser', objectEraser);
 
     const brushTool = this.toolInstances.get('brush') as Brush | undefined;
@@ -495,8 +372,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.currentBoardId = boardId;
     this._canvasDirty = false;
 
-    this._suppressLcHistory = true;
-    this._lcUndoStackLength = 0;
+    this.canvasUndoRedo.beginBoardLoad();
 
     // Clear canvas
     this.lc.shapes = [];
@@ -537,10 +413,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
     this.onionSkin.pruneToCurrentAndNeighbors(boardId);
 
-    this.lc.undoStack.length = 0;
-    this.lc.redoStack.length = 0;
-    this._lcUndoStackLength = 0;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.finishBoardLoad(this.lc);
   }
 
   private observeCanvasResize(): void {
@@ -828,64 +701,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const lcRef = this.lc;
     const boardIdAtClear = this.currentBoardId;
-    const before = lcRef.getSnapshot();
-
-    this._suppressLcHistory = true;
-
-    // Clear all shapes
-    lcRef.shapes = [];
-    lcRef.backgroundShapes = [];
-    lcRef.repaintLayer('main');
-
-    // Trigger clear event
-    lcRef.trigger('clear');
-
+    const before = this.canvasUndoRedo.prepareClear(lcRef);
     const after = lcRef.getSnapshot();
-    this._lcUndoStackLength = lcRef.undoStack.length;
-    this._suppressLcHistory = false;
 
     if (boardIdAtClear) {
       this.persistCurrentBoardData(boardIdAtClear, true);
     }
 
-    const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
-    const beforeBgShapes = JSON.stringify(
-      (before as { backgroundShapes?: unknown }).backgroundShapes ?? [],
-    );
-    const afterShapes = JSON.stringify((after as { shapes?: unknown }).shapes ?? []);
-    const afterBgShapes = JSON.stringify(
-      (after as { backgroundShapes?: unknown }).backgroundShapes ?? [],
-    );
-
-    // Only record a history entry when clear actually removes something.
-    if (beforeShapes !== afterShapes || beforeBgShapes !== afterBgShapes) {
-      this.undoRedo.record({
-        undo: () => {
-          if (!boardIdAtClear) return;
-          if (this.currentBoardId !== boardIdAtClear) {
-            this.canvasDataService.setCanvasData(boardIdAtClear, before);
-            this.store.setCurrentBoard(boardIdAtClear);
-            return;
-          }
-          this._suppressLcHistory = true;
-          lcRef.loadSnapshot(before);
-          this._lcUndoStackLength = lcRef.undoStack.length;
-          this._suppressLcHistory = false;
-        },
-        redo: () => {
-          if (!boardIdAtClear) return;
-          if (this.currentBoardId !== boardIdAtClear) {
-            this.canvasDataService.setCanvasData(boardIdAtClear, after);
-            this.store.setCurrentBoard(boardIdAtClear);
-            return;
-          }
-          this._suppressLcHistory = true;
-          lcRef.loadSnapshot(after);
-          this._lcUndoStackLength = lcRef.undoStack.length;
-          this._suppressLcHistory = false;
-        },
-      });
-    }
+    this.canvasUndoRedo.recordClear(lcRef, before, after, boardIdAtClear);
 
     this.showClearCanvasConfirm.set(false);
   }
@@ -947,18 +770,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Only attempt undo when LC has something to undo, and keep our
-    // internal undo stack length in sync with LC's undo stack.
-    if (this.lc.undoStack.length === 0) {
-      // Ensure we don't drift if external code changed LC directly.
-      this._lcUndoStackLength = this.lc.undoStack.length;
-      return;
-    }
-
-    this._suppressLcHistory = true;
-    this.lc.undo();
-    this._lcUndoStackLength = this.lc.undoStack.length;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.undoStroke(this.lc);
 
     if (this.currentBoardId) {
       this.persistCurrentBoardData(this.currentBoardId, true);
@@ -970,18 +782,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Only attempt redo when LC has something to redo, and keep our
-    // internal undo stack length in sync with LC's undo stack.
-    if (this.lc.redoStack.length === 0) {
-      // Ensure we don't drift if external code changed LC directly.
-      this._lcUndoStackLength = this.lc.undoStack.length;
-      return;
-    }
-
-    this._suppressLcHistory = true;
-    this.lc.redo();
-    this._lcUndoStackLength = this.lc.undoStack.length;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.redoStroke(this.lc);
 
     if (this.currentBoardId) {
       this.persistCurrentBoardData(this.currentBoardId, true);

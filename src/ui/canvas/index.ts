@@ -19,6 +19,7 @@ export type {
 export type { OnionOverlayRect, OnionSkinLayer } from './onion-skin';
 
 export { OnionSkinService } from './onion-skin';
+export { CanvasUndoRedoService } from './undo-redo';
 
 // Tools
 export { Brush, BucketFill, ObjectEraser } from './tools';
