@@ -19,6 +19,7 @@ import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
+import appSettings from '@econfig/appsettings.json';
 
 @Component({
   selector: 'app-canvas',
@@ -92,7 +93,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     return overlays;
   });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
-  readonly activeTool = signal<string>(window.quickboard?.getAppSettings?.()?.canvas?.defaultTool ?? 'pencil');
+  readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -103,9 +104,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
   readonly brushSpacing = signal<number>(45);
   readonly colorTolerance = signal<number>(16);
-  readonly strokeColor = signal<string>(window.quickboard?.getAppSettings?.()?.canvas?.defaultStrokeColor ?? '#000000');
-  readonly fillColor = signal<string>(window.quickboard?.getAppSettings?.()?.canvas?.defaultFillColor ?? '#ffffff');
-  readonly backgroundColor = signal<string>(window.quickboard?.getAppSettings?.()?.canvas?.defaultBkgdColor ?? '#ffffff');
+  readonly strokeColor = signal<string>(appSettings.canvas.defaultStrokeColor ?? '#000000');
+  readonly fillColor = signal<string>(appSettings.canvas.defaultFillColor ?? '#ffffff');
+  readonly backgroundColor = signal<string>(appSettings.canvas.defaultBkgdColor ?? '#ffffff');
   readonly onionLayerRect = signal({
     left: 0,
     top: 0,
@@ -134,19 +135,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       label: 'Stroke',
       signal: this.strokeColor,
       setter: this.setStrokeColor.bind(this),
-      quickColors: ['transparent', window.quickboard?.getAppSettings?.()?.canvas?.defaultStrokeColor ?? '#000000'],
+      quickColors: ['transparent', appSettings.canvas.defaultStrokeColor ?? '#000000'],
     },
     {
       label: 'Fill',
       signal: this.fillColor,
       setter: this.setFillColor.bind(this),
-      quickColors: ['transparent', window.quickboard?.getAppSettings?.()?.canvas?.defaultFillColor ?? '#ffffff'],
+      quickColors: ['transparent', appSettings.canvas.defaultFillColor ?? '#ffffff'],
     },
     {
       label: 'BG',
       signal: this.backgroundColor,
       setter: this.setBackgroundColor.bind(this),
-      quickColors: ['transparent', window.quickboard?.getAppSettings?.()?.canvas?.defaultBkgdColor ?? '#ffffff'],
+      quickColors: ['transparent', appSettings.canvas.defaultBkgdColor ?? '#ffffff'],
     },
   ];
 
@@ -555,7 +556,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     // Activate the default tool
-    this.setTool(window.quickboard?.getAppSettings?.()?.canvas?.defaultTool ?? 'pencil');
+    this.setTool(appSettings.canvas.defaultTool ?? 'pencil');
   }
 
   private loadBoardData(boardId: string) {

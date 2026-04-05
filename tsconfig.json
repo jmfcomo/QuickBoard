@@ -13,7 +13,13 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": ".",                       // Base directory for resolving non-relative paths
+    "paths": {                                // Define path aliases
+      "@econfig/*": ["src/electron/config/*"]  // Alias, maps to electron config file
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -29,5 +35,5 @@
     {
       "path": "./tsconfig.spec.json"
     }
-  ]
+  ],
 }
