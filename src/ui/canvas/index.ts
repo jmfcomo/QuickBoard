@@ -1,5 +1,6 @@
 // Component
 export { CanvasComponent } from './canvas/canvas.component';
+export { ClearCanvasConfirmComponent } from './clear-canvas-confirm';
 export { OnionSkinOverlayComponent } from './onion-skin';
 export { ToolsBarComponent } from './tools-bar';
 

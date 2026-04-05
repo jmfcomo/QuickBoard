@@ -1,0 +1,1 @@
+export { ClearCanvasConfirmComponent } from './clear-canvas-confirm.component';

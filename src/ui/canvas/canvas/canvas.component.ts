@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
+import { ClearCanvasConfirmComponent } from '../clear-canvas-confirm';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
 import { OnionSkinOverlayComponent } from '../onion-skin/onion-skin-overlay.component';
 import { OnionSkinService } from '../onion-skin/onion-skin.service';
@@ -26,7 +27,12 @@ import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-canvas',
-  imports: [PropertiesBarComponent, OnionSkinOverlayComponent, ToolsBarComponent],
+  imports: [
+    ClearCanvasConfirmComponent,
+    PropertiesBarComponent,
+    OnionSkinOverlayComponent,
+    ToolsBarComponent,
+  ],
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
