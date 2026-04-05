@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { appSettings } from 'src/settings-loader';
 
 @Injectable({ providedIn: 'root' })
 export class WindowScalingService {
@@ -6,7 +7,7 @@ export class WindowScalingService {
   private readonly minScriptWidth = 120;
   private readonly editorsGap = 8;
   private readonly defaultToolbarWidth = 52;
-  private readonly canvasAspectRatio = 1920 / 1080;
+  private readonly canvasAspectRatio = appSettings.board.width / appSettings.board.height;
 
   init(host: HTMLElement): () => void {
     const onWindowResize = () => this.clampEditorsHeightToBounds(host);

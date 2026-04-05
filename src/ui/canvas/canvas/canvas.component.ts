@@ -19,7 +19,7 @@ import { BucketFill } from '../tools/bucketfill';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-canvas',
@@ -28,7 +28,7 @@ import appSettings from '@econfig/appsettings.json';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
-  private readonly defaultCanvasSize = { width: 1920, height: 1080 };
+  private readonly defaultCanvasSize = { width: appSettings.board.width, height: appSettings.board.height };
   private readonly boardPreviewScale = 0.2;
   private readonly previewDebounceMs = 160;
   private readonly onionPreviewCache = signal<Record<string, string>>({});
@@ -106,7 +106,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly colorTolerance = signal<number>(16);
   readonly strokeColor = signal<string>(appSettings.canvas.defaultStrokeColor ?? '#000000');
   readonly fillColor = signal<string>(appSettings.canvas.defaultFillColor ?? '#ffffff');
-  readonly backgroundColor = signal<string>(appSettings.canvas.defaultBkgdColor ?? '#ffffff');
+  readonly backgroundColor = signal<string>(appSettings.board.defaultBackgroundColor ?? '#ffffff');
   readonly onionLayerRect = signal({
     left: 0,
     top: 0,
@@ -147,7 +147,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       label: 'BG',
       signal: this.backgroundColor,
       setter: this.setBackgroundColor.bind(this),
-      quickColors: ['transparent', appSettings.canvas.defaultBkgdColor ?? '#ffffff'],
+      quickColors: ['transparent', appSettings.board.defaultBackgroundColor ?? '#ffffff'],
     },
   ];
 
@@ -1135,8 +1135,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public requestClearCanvas(): void {
+    const showWarning = appSettings.export.showClearCanvasWarning;
     this.hideTooltip();
-    this.showClearCanvasConfirm.set(true);
+    if(showWarning) {
+      this.showClearCanvasConfirm.set(true);
+    } else {
+      this.confirmClearCanvas();
+    }
   }
 
   public cancelClearCanvas(): void {
