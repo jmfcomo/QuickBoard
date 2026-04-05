@@ -15,7 +15,7 @@ let pendingFilePath = null;
 
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
-  if (filePath.toLowerCase().endsWith('.sbd')) {
+  if (filePath.toLowerCase().endsWith(appSettings.suffix)) {
     const win = BrowserWindow.getAllWindows()[0];
     if (win && win.webContents) {
       if (win.webContents.isLoading()) {
@@ -59,7 +59,7 @@ function createWindow() {
 
   buildMenu(app, win, hooks);
 
-  win.loadURL('app://localhost/index.html');
+  win.loadURL(appSettings.appURL);
 
   // After the renderer is ready, open any file that was passed at launch.
   win.webContents.once('did-finish-load', () => {

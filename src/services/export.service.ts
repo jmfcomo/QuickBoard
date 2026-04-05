@@ -6,6 +6,7 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
 import type { AudioTrack } from '../data';
+import { appSettings } from 'src/settings-loader';
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
@@ -55,23 +56,23 @@ export class ExportService {
       let lc: LCInstance | null = null;
       try {
         lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-        lc.setImageSize(1920, 1080);
+        lc.setImageSize(appSettings.board.width, appSettings.board.height);
         if (canvasData) {
           lc.loadSnapshot(canvasData);
         } else {
           lc.repaintLayer('main');
         }
-        lc.setColor('background', backgroundColor ?? '#ffffff');
+        lc.setColor('background', backgroundColor ?? appSettings.board.defaultBackgroundColor);
         const dataUrl = lc.getImage({ scale }).toDataURL(mimeType, 0.9);
         resolve(dataUrl);
       } catch {
         // Fall back to a blank white frame on error
         const canvas = document.createElement('canvas');
-        canvas.width = Math.round(1920 * scale);
-        canvas.height = Math.round(1080 * scale);
+        canvas.width = Math.round(appSettings.board.width * scale);
+        canvas.height = Math.round(appSettings.board.height * scale);
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.fillStyle = backgroundColor ?? '#ffffff';
+          ctx.fillStyle = backgroundColor ?? appSettings.board.defaultBackgroundColor;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
         resolve(canvas.toDataURL(mimeType, 0.9));
