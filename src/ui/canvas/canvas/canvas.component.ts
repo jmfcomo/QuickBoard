@@ -93,6 +93,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>('pencil');
+  readonly selectedShape = signal<'rectangle' | 'circle'>('rectangle');
+  readonly showShapeSubmenu = signal(false);
+  readonly shapeSubmenuTop = signal(0);
+  readonly isShapeToolActive = computed(() => {
+    const toolId = this.activeTool();
+    return toolId === 'rectangle' || toolId === 'circle';
+  });
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -122,12 +129,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly tools = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
-    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
-    { id: 'circle', label: 'Circle', icon: '⚪' },
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
     { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
     { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
   ];
+  readonly shapeTools = [
+    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
+    { id: 'circle', label: 'Circle', icon: '⚪' },
+  ] as const;
+  readonly selectedShapeTool = computed(() => {
+    const current = this.selectedShape();
+    return this.shapeTools.find((tool) => tool.id === current) ?? this.shapeTools[0];
+  });
 
   readonly colorPickers = [
     {
@@ -194,6 +207,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private tooltipDelay: number | null = null;
   private tooltipCooldown: number | null = null;
   private tooltipWarm = false;
+  private shapeHoldTimer: number | null = null;
+  private shapePointerDown = false;
+  private shapeHoldTriggered = false;
+  private readonly onDocumentPointerDown = (event: PointerEvent) =>
+    this.handleDocumentPointerDown(event);
 
   constructor() {
     effect(() => {
@@ -245,6 +263,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
+      window.addEventListener('pointerdown', this.onDocumentPointerDown, true);
       this.initCanvasTimeout = window.setTimeout(() => {
         this.initializeCanvas();
         // Ensure preview is generated for the first board if missing
@@ -309,6 +328,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.onWindowResize);
+      window.removeEventListener('pointerdown', this.onDocumentPointerDown, true);
     }
 
     // Clear tool instances to release references
@@ -316,6 +336,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.clearTimer('tooltipDelay');
     this.clearTimer('tooltipCooldown');
+    this.clearShapeHoldTimer();
 
     this.clearPendingPreviewRegeneration();
   }
@@ -1084,6 +1105,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   public setTool(toolId: string): void {
     if (!this.lc || !this.toolInstances.has(toolId)) return;
 
+    if (this.isShapeTool(toolId)) {
+      this.selectedShape.set(toolId);
+    }
+
     const tool = this.toolInstances.get(toolId);
     if (tool) {
       if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
@@ -1095,6 +1120,61 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
     }
+  }
+
+  public onShapeButtonPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    this.hideTooltip();
+    this.shapePointerDown = true;
+    this.shapeHoldTriggered = false;
+
+    const button = event.currentTarget as HTMLElement | null;
+    if (button) {
+      this.shapeSubmenuTop.set(button.offsetTop);
+    }
+
+    this.clearShapeHoldTimer();
+    this.shapeHoldTimer = window.setTimeout(() => {
+      if (!this.shapePointerDown) {
+        return;
+      }
+
+      this.shapeHoldTriggered = true;
+      this.showShapeSubmenu.set(true);
+    }, 300);
+  }
+
+  public onShapeButtonPointerUp(): void {
+    if (!this.shapePointerDown) {
+      return;
+    }
+
+    this.shapePointerDown = false;
+    const wasHold = this.shapeHoldTriggered;
+    this.clearShapeHoldTimer();
+    this.shapeHoldTriggered = false;
+
+    if (wasHold) {
+      return;
+    }
+
+    this.closeShapeSubmenu();
+    this.setTool(this.selectedShape());
+  }
+
+  public onShapeButtonPointerCancel(): void {
+    this.shapePointerDown = false;
+    this.shapeHoldTriggered = false;
+    this.clearShapeHoldTimer();
+  }
+
+  public onShapeSubmenuSelect(toolId: 'rectangle' | 'circle'): void {
+    this.selectedShape.set(toolId);
+    this.closeShapeSubmenu();
+    this.setTool(toolId);
   }
 
   public setBrushSpacing(spacing: number): void {
@@ -1338,6 +1418,38 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (this[key] !== null) {
       clearTimeout(this[key]!);
       this[key] = null;
+    }
+  }
+
+  private handleDocumentPointerDown(event: PointerEvent): void {
+    if (!this.showShapeSubmenu()) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    if (target.closest('.shape-tool-button') || target.closest('.shape-submenu')) {
+      return;
+    }
+
+    this.closeShapeSubmenu();
+  }
+
+  private isShapeTool(toolId: string): toolId is 'rectangle' | 'circle' {
+    return toolId === 'rectangle' || toolId === 'circle';
+  }
+
+  private closeShapeSubmenu(): void {
+    this.showShapeSubmenu.set(false);
+  }
+
+  private clearShapeHoldTimer(): void {
+    if (this.shapeHoldTimer !== null) {
+      clearTimeout(this.shapeHoldTimer);
+      this.shapeHoldTimer = null;
     }
   }
 }
