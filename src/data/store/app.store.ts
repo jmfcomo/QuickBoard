@@ -3,6 +3,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 import { CanvasDataService } from '../../services/canvas-data.service';
+import appSettings from '@econfig/appsettings.json';
 
 export interface Board {
   id: string;
@@ -48,15 +49,15 @@ const initialState: AppState = {
       id: firstBoardId,
       scriptData: null,
       previewUrl: null,
-      backgroundColor: '#ffffff',
-      duration: 3,
+      backgroundColor: appSettings.board.defaultBackgroundColor,
+      duration: appSettings.board.defaultDuration,
     },
   ],
   currentBoardId: firstBoardId,
   onionSkinEnabled: false,
   audioTracks: [],
-  audioLaneCount: 1,
-  audioLaneMixers: [{ volume: 1, muted: false }],
+  audioLaneCount: appSettings.audio.defaultLaneCount,
+  audioLaneMixers: [{ volume: appSettings.audio.defaultVolume, muted: false }],
   isPlaying: false,
   currentTime: 0,
 };
@@ -73,8 +74,8 @@ export const AppStore = signalStore(
 
       addBoard() {
         const currentBoard = store.boards().find((board) => board.id === store.currentBoardId());
-        const backgroundColor = currentBoard?.backgroundColor ?? '#ffffff';
-        const duration = currentBoard?.duration ?? 3;
+        const backgroundColor = currentBoard?.backgroundColor ?? appSettings.board.defaultBackgroundColor;
+        const duration = currentBoard?.duration ?? appSettings.board.defaultDuration;
         const newBoard: Board = {
           id: crypto.randomUUID(),
           scriptData: null,
@@ -288,7 +289,7 @@ export const AppStore = signalStore(
         if (store.audioLaneCount() < 4) {
           patchState(store, {
             audioLaneCount: store.audioLaneCount() + 1,
-            audioLaneMixers: [...store.audioLaneMixers(), { volume: 1, muted: false }],
+            audioLaneMixers: [...store.audioLaneMixers(), { volume: appSettings.audio.defaultVolume, muted: false }],
           });
         }
       },

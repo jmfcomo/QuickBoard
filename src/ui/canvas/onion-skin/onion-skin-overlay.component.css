@@ -1,0 +1,25 @@
+:host {
+  display: contents;
+}
+
+.onion-skin-layer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.5;
+  overflow: hidden;
+}
+
+.onion-skin-layer img {
+  position: absolute;
+  display: block;
+  user-select: none;
+}
+
+.onion-skin-layer.previous img {
+  filter: brightness(0) invert(1) sepia(1) saturate(10000%) hue-rotate(285deg);
+}
+
+.onion-skin-layer.next img {
+  filter: brightness(0) invert(1) sepia(1) saturate(10000%) hue-rotate(50deg);
+}
