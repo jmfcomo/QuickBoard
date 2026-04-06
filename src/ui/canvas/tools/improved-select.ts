@@ -99,6 +99,43 @@ function ptToLocal(gx: number, gy: number, shape: Record<string, unknown>) {
   return { lx: dx * cos - dy * sin + sw / 2, ly: dx * sin + dy * cos + sh / 2, sw, sh };
 }
 
+type ImageHandleMode =
+  | 'rotate'
+  | 'tl'
+  | 'tr'
+  | 'bl'
+  | 'br'
+  | 'crop-t'
+  | 'crop-b'
+  | 'crop-l'
+  | 'crop-r'
+  | 'move'
+  | null;
+
+function resolveAccentColor(): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  return raw || '#c97fff';
+}
+
+function resolveAccentBorderColor(): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-border').trim();
+  return raw || resolveAccentColor();
+}
+
+function getResizeCursorForAngle(angleRad: number): string {
+  const deg = ((((angleRad * 180) / Math.PI) % 180) + 180) % 180;
+  if (deg < 22.5 || deg >= 157.5) return 'ew-resize';
+  if (deg < 67.5) return 'nwse-resize';
+  if (deg < 112.5) return 'ns-resize';
+  return 'nesw-resize';
+}
+
+function getRotateCursor(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24"><path d="M16 4 A12 12 0 0 1 26.83 7.17" stroke="%23333" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="26,2 30,8 24,6" fill="%23333"/><path d="M16 28 A12 12 0 0 1 5.17 24.83" stroke="%23333" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="6,26 2,32 8,30" fill="%23333"/></svg>`;
+  const encoded = encodeURIComponent(svg);
+  return `url('data:image/svg+xml;utf8,${encoded}') 12 12, auto`;
+}
+
 export function registerImprovedSelectShapes(LC: Record<string, unknown>): void {
   if (
     !LC ||
@@ -287,22 +324,26 @@ export function registerImprovedSelectShapes(LC: Record<string, unknown>): void 
         ctx.fillStyle = overlayShape['overrideBg'] as string;
         ctx.fillRect(-w / 2, -h / 2, w, h);
       } else {
-        ctx.strokeStyle = '#0066cc';
+        const accent = resolveAccentColor();
+        const accentBorder = resolveAccentBorderColor();
+
+        ctx.strokeStyle = accentBorder;
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 5]);
         ctx.strokeRect(-w / 2, -h / 2, w, h);
         ctx.setLineDash([]);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#0066cc';
+        ctx.fillStyle = accent;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
 
         const drawHandle = (x: number, y: number, isCrop = false) => {
           ctx.beginPath();
           if (isCrop) {
-            ctx.fillRect(x - 4, y - 4, 8, 8);
-            ctx.strokeRect(x - 4, y - 4, 8, 8);
+            ctx.fillRect(x - 6, y - 6, 12, 12);
+            ctx.strokeRect(x - 6, y - 6, 12, 12);
           } else {
-            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.arc(x, y, 7, 0, 2 * Math.PI);
             ctx.fill();
             ctx.stroke();
           }
@@ -344,8 +385,11 @@ export class ImprovedSelectShape implements LCTool {
   private initialScale = 1;
   private initialRotation = 0;
   private initialCrop = { x: 0, y: 0, w: 0, h: 0 };
-  private dragMode: string | null = null;
+  private dragMode: ImageHandleMode = null;
   private didDrag = false;
+  private readonly handlePad = 18;
+  private readonly onCanvasPointerMove = (event: PointerEvent) =>
+    this.updateCursorFromPointer(event);
 
   constructor(private readonly lc: LCInstance) {
     this.selectCanvas.style.backgroundColor = 'transparent';
@@ -369,18 +413,34 @@ export class ImprovedSelectShape implements LCTool {
       if (typeof unsub1 === 'function') (unsub1 as () => void)();
       if (typeof unsub2 === 'function') (unsub2 as () => void)();
       if (typeof unsub3 === 'function') (unsub3 as () => void)();
+      lc.canvas.removeEventListener('pointermove', this.onCanvasPointerMove);
     };
+    lc.canvas.addEventListener('pointermove', this.onCanvasPointerMove);
+    this.setCursor('default');
     this._drawSelectCanvas(lc);
   }
 
   willBecomeInactive(lc: LCInstance): void {
     if (this._selectShapeUnsubscribe) this._selectShapeUnsubscribe();
+    lc.canvas.removeEventListener('pointermove', this.onCanvasPointerMove);
+    this.setCursor('default');
     lc.setShapesInProgress([]);
     this.selectedShape = null;
   }
 
   didBecomeInactive(): void {
     // Empty
+  }
+
+  public clearSelection(lc: LCInstance): void {
+    if (this.selectedShape) {
+      this.selectedShape = null;
+      this.dragMode = null;
+      this.setCursor('default');
+      lc.trigger('shapeSelected', { selectedShape: null });
+      lc.setShapesInProgress([]);
+      lc.repaintLayer('main');
+    }
   }
 
   private onDown(e: { x: number; y: number }, lc: LCInstance): void {
@@ -401,21 +461,16 @@ export class ImprovedSelectShape implements LCTool {
         (this.selectedShape['scale'] as number);
       const { lx, ly } = ptToLocal(e.x, e.y, this.selectedShape);
 
-      const pad = 15;
-
-      this.dragMode = null;
-      if (Math.abs(lx - sw / 2) < pad && Math.abs(ly + 25) < pad) this.dragMode = 'rotate';
-      else if (Math.abs(lx) < pad && Math.abs(ly) < pad) this.dragMode = 'tl';
-      else if (Math.abs(lx - sw) < pad && Math.abs(ly) < pad) this.dragMode = 'tr';
-      else if (Math.abs(lx) < pad && Math.abs(ly - sh) < pad) this.dragMode = 'bl';
-      else if (Math.abs(lx - sw) < pad && Math.abs(ly - sh) < pad) this.dragMode = 'br';
-      else if (Math.abs(lx - sw / 2) < pad && Math.abs(ly) < pad) this.dragMode = 'crop-t';
-      else if (Math.abs(lx - sw / 2) < pad && Math.abs(ly - sh) < pad) this.dragMode = 'crop-b';
-      else if (Math.abs(lx) < pad && Math.abs(ly - sh / 2) < pad) this.dragMode = 'crop-l';
-      else if (Math.abs(lx - sw) < pad && Math.abs(ly - sh / 2) < pad) this.dragMode = 'crop-r';
+      this.dragMode = this.getImageHandleMode(lx, ly, sw, sh);
 
       if (this.dragMode) {
         this.saveInitialState();
+        this.setCursor(this.getCursorForMode(this.dragMode, this.selectedShape));
+        if (this.dragMode === 'move') {
+          const cx = (this.selectedShape['x'] as number) + sw / 2;
+          const cy = (this.selectedShape['y'] as number) + sh / 2;
+          this.dragOffset = { x: e.x - cx, y: e.y - cy };
+        }
         return;
       }
     }
@@ -448,9 +503,11 @@ export class ImprovedSelectShape implements LCTool {
         this.dragOffset = { x: e.x - cx, y: e.y - cy };
       }
       this.dragMode = 'move';
+      this.setCursor(this.getCursorForMode('move', this.selectedShape));
       this.updateSelectionOverlay(lc);
     } else {
       this.selectedShape = null;
+      this.setCursor('default');
       lc.trigger('shapeSelected', { selectedShape: null });
       lc.setShapesInProgress([]);
       lc.repaintLayer('main');
@@ -459,17 +516,7 @@ export class ImprovedSelectShape implements LCTool {
 
   private saveInitialState(): void {
     if (!this.selectedShape) return;
-    let x = 0,
-      y = 0;
-    if (typeof this.selectedShape['getBoundingRect'] === 'function') {
-      const br = (this.selectedShape['getBoundingRect'] as () => { x: number; y: number })();
-      x = br.x;
-      y = br.y;
-    } else if (this.selectedShape['x'] !== undefined) {
-      x = this.selectedShape['x'] as number;
-      y = this.selectedShape['y'] as number;
-    }
-    this.initialPosition = { x, y };
+    this.initialPosition = this.getShapePosition(this.selectedShape);
     this.initialScale = (this.selectedShape['scale'] as number) || 1;
     this.initialRotation = (this.selectedShape['rotation'] as number) || 0;
     this.initialCrop = {
@@ -530,6 +577,7 @@ export class ImprovedSelectShape implements LCTool {
           ((this.selectedShape['cropHeight'] as number) ||
             (this.selectedShape['image'] as HTMLImageElement).height) *
           (this.selectedShape['scale'] as number);
+
         this.selectedShape['x'] = e.x - this.dragOffset.x - sw / 2;
         this.selectedShape['y'] = e.y - this.dragOffset.y - sh / 2;
       } else {
@@ -671,14 +719,7 @@ export class ImprovedSelectShape implements LCTool {
     if (this.didDrag && this.selectedShape) {
       this.didDrag = false;
 
-      let finalPosition = {
-        x: this.selectedShape['x'] as number,
-        y: this.selectedShape['y'] as number,
-      };
-      if (typeof this.selectedShape['getBoundingRect'] === 'function') {
-        const br = (this.selectedShape['getBoundingRect'] as () => { x: number; y: number })();
-        finalPosition = { x: br.x, y: br.y };
-      }
+      const finalPosition = this.getShapePosition(this.selectedShape);
       const finalScale = (this.selectedShape['scale'] as number) || 1;
       const finalRot = (this.selectedShape['rotation'] as number) || 0;
       const finalCrop = {
@@ -737,6 +778,122 @@ export class ImprovedSelectShape implements LCTool {
       lc.repaintLayer('main');
       this._drawSelectCanvas(lc);
     }
+
+    this.dragMode = null;
+    this.setCursor(
+      this.getCursorForMode(this.getHoverModeAtPoint(_, this.selectedShape), this.selectedShape),
+    );
+  }
+
+  private getImageHandleMode(lx: number, ly: number, sw: number, sh: number): ImageHandleMode {
+    const pad = this.handlePad;
+    if (Math.abs(lx - sw / 2) < pad && Math.abs(ly + 25) < pad) return 'rotate';
+    if (Math.abs(lx) < pad && Math.abs(ly) < pad) return 'tl';
+    if (Math.abs(lx - sw) < pad && Math.abs(ly) < pad) return 'tr';
+    if (Math.abs(lx) < pad && Math.abs(ly - sh) < pad) return 'bl';
+    if (Math.abs(lx - sw) < pad && Math.abs(ly - sh) < pad) return 'br';
+    if (Math.abs(lx - sw / 2) < pad && Math.abs(ly) < pad) return 'crop-t';
+    if (Math.abs(lx - sw / 2) < pad && Math.abs(ly - sh) < pad) return 'crop-b';
+    if (Math.abs(lx) < pad && Math.abs(ly - sh / 2) < pad) return 'crop-l';
+    if (Math.abs(lx - sw) < pad && Math.abs(ly - sh / 2) < pad) return 'crop-r';
+    if (lx >= 0 && lx <= sw && ly >= 0 && ly <= sh) return 'move';
+    return null;
+  }
+
+  private getHoverModeAtPoint(
+    point: { x: number; y: number },
+    shape: Record<string, unknown> | null,
+  ): ImageHandleMode {
+    if (!shape || shape['className'] !== 'Image' || !shape['image']) {
+      return null;
+    }
+
+    const { lx, ly, sw, sh } = ptToLocal(point.x, point.y, shape);
+    return this.getImageHandleMode(lx, ly, sw, sh);
+  }
+
+  private getCursorForMode(mode: ImageHandleMode, shape: Record<string, unknown> | null): string {
+    if (!mode) return 'default';
+    const rotation = shape ? (shape['rotation'] as number) || 0 : 0;
+
+    if (mode === 'move') {
+      return this.dragMode === 'move' ? 'grabbing' : 'grab';
+    }
+
+    if (mode === 'rotate') {
+      return getRotateCursor();
+    }
+
+    if (mode === 'crop-l' || mode === 'crop-r') {
+      return getResizeCursorForAngle(rotation);
+    }
+
+    if (mode === 'crop-t' || mode === 'crop-b') {
+      return getResizeCursorForAngle(rotation + Math.PI / 2);
+    }
+
+    if (mode === 'tl' || mode === 'br') {
+      return getResizeCursorForAngle(rotation + Math.PI / 4);
+    }
+
+    if (mode === 'tr' || mode === 'bl') {
+      return getResizeCursorForAngle(rotation - Math.PI / 4);
+    }
+
+    return 'default';
+  }
+
+  private updateCursorFromPointer(event: PointerEvent): void {
+    if (this.dragMode) {
+      this.setCursor(this.getCursorForMode(this.dragMode, this.selectedShape));
+      return;
+    }
+
+    const point = this.pointerEventToDrawingPoint(event);
+    const mode = this.getHoverModeAtPoint(point, this.selectedShape);
+    this.setCursor(this.getCursorForMode(mode, this.selectedShape));
+  }
+
+  private pointerEventToDrawingPoint(event: PointerEvent): { x: number; y: number } {
+    const activeLc = this.lc as unknown as Record<string, unknown>;
+
+    if (typeof activeLc['clientCoordsToDrawingCoords'] === 'function') {
+      return (
+        activeLc['clientCoordsToDrawingCoords'] as (
+          x: number,
+          y: number,
+        ) => { x: number; y: number }
+      )(event.clientX, event.clientY);
+    }
+
+    const rect = this.lc.canvas.getBoundingClientRect();
+    const x =
+      (event.clientX - rect.left - this.lc.position.x / (this.lc.backingScale || 1)) /
+      this.lc.scale;
+    const y =
+      (event.clientY - rect.top - this.lc.position.y / (this.lc.backingScale || 1)) / this.lc.scale;
+    return { x, y };
+  }
+
+  private setCursor(cursor: string): void {
+    this.lc.canvas.style.cursor = cursor;
+  }
+
+  private getShapePosition(shape: Record<string, unknown>): { x: number; y: number } {
+    // Image shapes store top-left directly in x/y; using rotated bounding-box coords causes jump.
+    if (shape['className'] === 'Image' || (shape['x'] !== undefined && shape['y'] !== undefined)) {
+      return {
+        x: (shape['x'] as number) || 0,
+        y: (shape['y'] as number) || 0,
+      };
+    }
+
+    if (typeof shape['getBoundingRect'] === 'function') {
+      const br = (shape['getBoundingRect'] as () => { x: number; y: number })();
+      return { x: br.x, y: br.y };
+    }
+
+    return { x: 0, y: 0 };
   }
 
   private _drawSelectCanvas(lc: LCInstance): void {

@@ -2,6 +2,26 @@
   <div class="tools-bar">
     <button
       class="tool-button tool-group-button"
+      [class.active]="isEditToolActive()"
+      type="button"
+      (click)="onToolGroupClick('edit')"
+      (pointerdown)="onToolGroupPointerDown($event, 'edit')"
+      (pointerup)="onToolGroupPointerUp('edit')"
+      (pointerleave)="onToolGroupPointerCancel('edit')"
+      (pointercancel)="onToolGroupPointerCancel('edit')"
+      (contextmenu)="onToolGroupContextMenu($event, 'edit')"
+      (mouseenter)="showTooltip($event, selectedEditToolOption().label)"
+      (mouseleave)="hideTooltip()"
+      [attr.aria-label]="selectedEditToolOption().label"
+    >
+      {{ selectedEditToolOption().icon }}
+      <span class="submenu-indicator" aria-hidden="true"></span>
+    </button>
+
+    <div class="separator"></div>
+
+    <button
+      class="tool-button tool-group-button"
       [class.active]="isDrawToolActive()"
       type="button"
       (click)="onToolGroupClick('draw')"

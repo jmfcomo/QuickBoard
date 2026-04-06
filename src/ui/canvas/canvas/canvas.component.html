@@ -13,6 +13,7 @@
   <app-tools-bar
     [activeTool]="activeTool()"
     (toolSelected)="setTool($event)"
+    (imageSelected)="handleImageFile($event)"
     (clearCanvasRequested)="requestClearCanvas()"
   ></app-tools-bar>
   <div class="canvas-right">

@@ -76,7 +76,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly tools = [
-    { id: 'select', label: 'Select', icon: '👆' },
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
@@ -405,6 +404,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.canvasUndoRedo.beginBoardLoad();
 
+    const selectTool = this.toolInstances.get('select') as ImprovedSelectShape;
+    if (selectTool && typeof selectTool.clearSelection === 'function') {
+      selectTool.clearSelection(this.lc);
+    }
+
     // Clear canvas
     this.lc.shapes = [];
     this.lc.backgroundShapes = [];
@@ -714,13 +718,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.handleImageFile(input.files[0]);
-    }
-  }
-
   public onDragOver(event: DragEvent): void {
     event.preventDefault();
   }
@@ -735,7 +732,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  private handleImageFile(file: File): void {
+  public handleImageFile(file: File): void {
     if (!this.lc) return;
 
     const reader = new FileReader();
