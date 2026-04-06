@@ -160,6 +160,20 @@ export class ToolsBarComponent implements OnDestroy {
     }, 300);
   }
 
+  public onToolGroupContextMenu(event: MouseEvent, group: ToolGroupKey): void {
+    event.preventDefault();
+
+    this.hideTooltip();
+    this.closeToolSubmenu();
+
+    const button = event.currentTarget as HTMLElement | null;
+    if (button) {
+      this.toolSubmenuTop.set(button.offsetTop);
+    }
+
+    this.openToolSubmenu.set(group);
+  }
+
   public onToolGroupPointerUp(group: ToolGroupKey): void {
     if (this.activePointerGroup !== group) {
       return;
