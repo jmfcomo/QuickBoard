@@ -12,6 +12,27 @@ const MIME_TYPES: Record<string, string> = {
   m4a: 'audio/mp4',
 };
 
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  avif: 'image/avif',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+};
+
+const IMAGE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/svg+xml': 'svg',
+};
+
 @Injectable({ providedIn: 'root' })
 export class SbdService {
   private readonly store = inject(AppStore);
@@ -68,7 +89,7 @@ export class SbdService {
                           const blob = await res.blob();
                           const arrayBuf = await blob.arrayBuffer();
                           const imageId = crypto.randomUUID();
-                          const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png';
+                          const ext = IMAGE_EXT_BY_MIME[blob.type] ?? 'png';
                           const path = `assets/images/${imageId}.${ext}`;
                           zip.file(path, arrayBuf);
                           data['imageSrc'] = path;
@@ -152,9 +173,8 @@ export class SbdService {
                         const imgFile = zip.file(src);
                         if (imgFile) {
                           const arrayBuffer = await imgFile.async('arraybuffer');
-                          const ext = src.split('.').pop();
-                          const mimeType =
-                            ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+                          const ext = src.split('.').pop()?.toLowerCase() ?? 'png';
+                          const mimeType = IMAGE_MIME_BY_EXT[ext] ?? 'image/png';
                           const blob = new Blob([arrayBuffer], { type: mimeType });
                           data['imageSrc'] = URL.createObjectURL(blob);
                         }

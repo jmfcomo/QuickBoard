@@ -45,10 +45,12 @@ export class ImprovedSelectShape implements LCTool {
     const unsub3 = lc.on('lc-pointerup', (e: unknown) =>
       this.onUp(e as { x: number; y: number }, lc),
     );
+    const unsub4 = lc.on('drawingChange', () => this._drawSelectCanvas(lc));
     this._selectShapeUnsubscribe = () => {
       if (typeof unsub1 === 'function') (unsub1 as () => void)();
       if (typeof unsub2 === 'function') (unsub2 as () => void)();
       if (typeof unsub3 === 'function') (unsub3 as () => void)();
+      if (typeof unsub4 === 'function') (unsub4 as () => void)();
       lc.canvas.removeEventListener('pointermove', this.onCanvasPointerMove);
     };
     lc.canvas.addEventListener('pointermove', this.onCanvasPointerMove);
@@ -182,7 +184,7 @@ export class ImprovedSelectShape implements LCTool {
       )('ImageSelectionOverlay', {
         shape: this.selectedShape,
       });
-      lc.setShapesInProgress([this.selectedShape, overlay]);
+      lc.setShapesInProgress([overlay]);
     } else {
       const LCglobal = (window as unknown as Record<string, unknown>)['LC'] as Record<
         string,
@@ -194,7 +196,7 @@ export class ImprovedSelectShape implements LCTool {
         shape: this.selectedShape,
         handleSize: 0,
       });
-      lc.setShapesInProgress([this.selectedShape, overlay]);
+      lc.setShapesInProgress([overlay]);
     }
     lc.repaintLayer('main');
   }
@@ -375,30 +377,33 @@ export class ImprovedSelectShape implements LCTool {
         finalCrop.w !== this.initialCrop.w ||
         finalCrop.h !== this.initialCrop.h
       ) {
-        const action = new TransformAction(
-          lc,
-          this.selectedShape,
-          {
-            x: this.initialPosition.x,
-            y: this.initialPosition.y,
-            scale: this.initialScale,
-            rotation: this.initialRotation,
-            cropX: this.initialCrop.x,
-            cropY: this.initialCrop.y,
-            cropWidth: this.initialCrop.w,
-            cropHeight: this.initialCrop.h,
-          },
-          {
-            x: finalPosition.x,
-            y: finalPosition.y,
-            scale: finalScale,
-            rotation: finalRot,
-            cropX: finalCrop.x,
-            cropY: finalCrop.y,
-            cropWidth: finalCrop.w,
-            cropHeight: finalCrop.h,
-          },
-        );
+        const isImageShape = this.selectedShape['className'] === 'Image';
+        const fromState: Record<string, unknown> = {
+          x: this.initialPosition.x,
+          y: this.initialPosition.y,
+        };
+        const toState: Record<string, unknown> = {
+          x: finalPosition.x,
+          y: finalPosition.y,
+        };
+
+        if (isImageShape) {
+          fromState['scale'] = this.initialScale;
+          fromState['rotation'] = this.initialRotation;
+          fromState['cropX'] = this.initialCrop.x;
+          fromState['cropY'] = this.initialCrop.y;
+          fromState['cropWidth'] = this.initialCrop.w;
+          fromState['cropHeight'] = this.initialCrop.h;
+
+          toState['scale'] = finalScale;
+          toState['rotation'] = finalRot;
+          toState['cropX'] = finalCrop.x;
+          toState['cropY'] = finalCrop.y;
+          toState['cropWidth'] = finalCrop.w;
+          toState['cropHeight'] = finalCrop.h;
+        }
+
+        const action = new TransformAction(lc, this.selectedShape, fromState, toState);
 
         const activeLc = lc as unknown as Record<string, unknown>;
         if (typeof activeLc['execute'] === 'function') {
