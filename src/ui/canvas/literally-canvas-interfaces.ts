@@ -64,6 +64,7 @@ export interface LiterallyCanvas {
     Eraser: LiterallyCanvasTool;
     Rectangle: LiterallyCanvasTool;
     Ellipse: LiterallyCanvasTool;
+    SelectShape: LiterallyCanvasTool;
     Polygon?: LiterallyCanvasTool;
     Triangle?: LiterallyCanvasTool;
   };

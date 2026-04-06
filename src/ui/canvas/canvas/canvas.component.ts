@@ -22,6 +22,7 @@ import { CanvasUndoRedoService } from '../undo-redo/canvas-undo-redo.service';
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
+import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
@@ -39,7 +40,10 @@ import { appSettings } from 'src/settings-loader';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
-  private readonly defaultCanvasSize = { width: appSettings.board.width, height: appSettings.board.height };
+  private readonly defaultCanvasSize = {
+    width: appSettings.board.width,
+    height: appSettings.board.height,
+  };
   readonly onionSkinLayers = inject(OnionSkinService).onionSkinLayers;
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
@@ -70,6 +74,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     width: 0,
     height: 0,
   });
+
+  readonly tools = [
+    { id: 'pencil', label: 'Pencil', icon: '✏️' },
+    { id: 'brush', label: 'Brush', icon: '🖌️' },
+    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
+    { id: 'circle', label: 'Circle', icon: '⚪' },
+    { id: 'eraser', label: 'Eraser', icon: '🧽' },
+    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
+    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
+  ];
 
   readonly colorPickers = [
     {
@@ -151,7 +165,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.loadBoardData(selectedBoardId);
       }
     });
-
   }
 
   ngAfterViewInit() {
@@ -241,6 +254,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerImprovedSelectShapes(LC as any);
+
     // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
@@ -329,6 +345,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     // Initialize tool instances
+    this.toolInstances.set('select', new ImprovedSelectShape(this.lc));
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
@@ -387,6 +404,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.canvasUndoRedo.beginBoardLoad();
 
+    const selectTool = this.toolInstances.get('select') as ImprovedSelectShape;
+    if (selectTool && typeof selectTool.clearSelection === 'function') {
+      selectTool.clearSelection(this.lc);
+    }
+
     // Clear canvas
     this.lc.shapes = [];
     this.lc.backgroundShapes = [];
@@ -420,12 +442,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.scheduleCanvasFit();
 
     if (board && !board.previewUrl) {
-      this.canvasPersistence.persistCurrentBoardData(
-        this.lc,
-        board.id,
-        this.currentBoardId,
-        true,
-      );
+      this.canvasPersistence.persistCurrentBoardData(this.lc, board.id, this.currentBoardId, true);
     }
 
     this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
@@ -701,4 +718,57 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  public onDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  public onDrop(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        this.handleImageFile(file);
+      }
+    }
+  }
+
+  public handleImageFile(file: File): void {
+    if (!this.lc) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        if (!this.lc) return;
+
+        const defaultWidth = img.width;
+        const defaultHeight = img.height;
+        const backingScale = this.lc.backingScale || 1;
+
+        // Find center of canvas
+        const centerX =
+          this.lc.canvas.width / 2 / (this.lc.scale * backingScale) -
+          this.lc.position.x / backingScale -
+          defaultWidth / 2;
+        const centerY =
+          this.lc.canvas.height / 2 / (this.lc.scale * backingScale) -
+          this.lc.position.y / backingScale -
+          defaultHeight / 2;
+
+        // LC.createShape requires image: Image object
+        const imageShape = LC.createShape('Image', {
+          x: centerX,
+          y: centerY,
+          image: img,
+          scale: 1,
+        });
+
+        this.lc.saveShape(imageShape);
+        this.setTool('select');
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  }
 }

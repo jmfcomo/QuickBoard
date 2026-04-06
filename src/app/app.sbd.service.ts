@@ -33,27 +33,62 @@ export class SbdService {
     }
     if (Array.isArray(rawJson.boards)) {
       rawJson.boards = await Promise.all(
-        rawJson.boards.map(async (board: { id: string; previewUrl?: string }) => {
-          let previewExtUrl: string | null = null;
-          if (board.previewUrl?.startsWith('blob:')) {
-            try {
-              const res = await fetch(board.previewUrl);
-              const blob = await res.blob();
-              const arrayBuffer = await blob.arrayBuffer();
-              const path = `previews/${board.id}.png`;
-              zip.file(path, arrayBuffer);
-              previewExtUrl = path;
-            } catch (e) {
-              console.error('Failed to save preview', e);
+        rawJson.boards.map(
+          async (board: {
+            id: string;
+            previewUrl?: string;
+            canvasData?: Record<string, unknown>;
+          }) => {
+            let previewExtUrl: string | null = null;
+            if (board.previewUrl?.startsWith('blob:')) {
+              try {
+                const res = await fetch(board.previewUrl);
+                const blob = await res.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+                const path = `previews/${board.id}.png`;
+                zip.file(path, arrayBuffer);
+                previewExtUrl = path;
+              } catch (e) {
+                console.error('Failed to save preview', e);
+              }
+            } else {
+              previewExtUrl = board.previewUrl ?? null;
             }
-          } else {
-            previewExtUrl = board.previewUrl ?? null;
-          }
-          return {
-            ...board,
-            previewUrl: previewExtUrl,
-          };
-        }),
+
+            if (board.canvasData && Array.isArray(board.canvasData['shapes'])) {
+              board.canvasData['shapes'] = await Promise.all(
+                board.canvasData['shapes'].map(async (shape: Record<string, unknown>) => {
+                  if (shape['className'] === 'Image' && shape['data']) {
+                    const data = shape['data'] as Record<string, unknown>;
+                    if (typeof data['imageSrc'] === 'string') {
+                      const src = data['imageSrc'];
+                      if (src.startsWith('data:image/') || src.startsWith('blob:')) {
+                        try {
+                          const res = await fetch(src);
+                          const blob = await res.blob();
+                          const arrayBuf = await blob.arrayBuffer();
+                          const imageId = crypto.randomUUID();
+                          const ext = blob.type === 'image/jpeg' ? 'jpg' : 'png';
+                          const path = `assets/images/${imageId}.${ext}`;
+                          zip.file(path, arrayBuf);
+                          data['imageSrc'] = path;
+                        } catch (e) {
+                          console.error('Failed to save image shape to zip', e);
+                        }
+                      }
+                    }
+                  }
+                  return shape;
+                }),
+              );
+            }
+
+            return {
+              ...board,
+              previewUrl: previewExtUrl,
+            };
+          },
+        ),
       );
     }
     zip.file('project.json', JSON.stringify(rawJson, null, 2));
@@ -89,18 +124,49 @@ export class SbdService {
     // Extract previews and convert to Blob URLs
     if (Array.isArray(projectData.boards)) {
       await Promise.all(
-        projectData.boards.map(async (board: { id: string; previewUrl?: string }) => {
-          if (board.previewUrl && board.previewUrl.startsWith('previews/')) {
-            const previewFile = zip.file(board.previewUrl);
-            if (previewFile) {
-              const arrayBuffer = await previewFile.async('arraybuffer');
-              const blob = new Blob([arrayBuffer], { type: 'image/png' });
-              board.previewUrl = URL.createObjectURL(blob);
-            } else {
-              board.previewUrl = undefined;
+        projectData.boards.map(
+          async (board: {
+            id: string;
+            previewUrl?: string;
+            canvasData?: Record<string, unknown>;
+          }) => {
+            if (board.previewUrl && board.previewUrl.startsWith('previews/')) {
+              const previewFile = zip.file(board.previewUrl);
+              if (previewFile) {
+                const arrayBuffer = await previewFile.async('arraybuffer');
+                const blob = new Blob([arrayBuffer], { type: 'image/png' });
+                board.previewUrl = URL.createObjectURL(blob);
+              } else {
+                board.previewUrl = undefined;
+              }
             }
-          }
-        }),
+
+            if (board.canvasData && Array.isArray(board.canvasData['shapes'])) {
+              board.canvasData['shapes'] = await Promise.all(
+                board.canvasData['shapes'].map(async (shape: Record<string, unknown>) => {
+                  if (shape['className'] === 'Image' && shape['data']) {
+                    const data = shape['data'] as Record<string, unknown>;
+                    if (typeof data['imageSrc'] === 'string') {
+                      const src = data['imageSrc'];
+                      if (src.startsWith('assets/images/')) {
+                        const imgFile = zip.file(src);
+                        if (imgFile) {
+                          const arrayBuffer = await imgFile.async('arraybuffer');
+                          const ext = src.split('.').pop();
+                          const mimeType =
+                            ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+                          const blob = new Blob([arrayBuffer], { type: mimeType });
+                          data['imageSrc'] = URL.createObjectURL(blob);
+                        }
+                      }
+                    }
+                  }
+                  return shape;
+                }),
+              );
+            }
+          },
+        ),
       );
     }
 

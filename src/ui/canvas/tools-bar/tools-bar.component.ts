@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 
-type ToolGroupKey = 'draw' | 'shape' | 'erase';
+type ToolGroupKey = 'draw' | 'shape' | 'erase' | 'edit';
 
 type ToolOption = Readonly<{
   id: string;
@@ -29,6 +29,7 @@ export class ToolsBarComponent implements OnDestroy {
   readonly activeTool = input.required<string>();
 
   readonly toolSelected = output<string>();
+  readonly imageSelected = output<File>();
   readonly clearCanvasRequested = output<void>();
 
   readonly tools: readonly ToolOption[] = [{ id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' }];
@@ -45,10 +46,15 @@ export class ToolsBarComponent implements OnDestroy {
     { id: 'eraser', label: 'Eraser', icon: '🧽' },
     { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
   ];
+  readonly editTools: readonly ToolOption[] = [
+    { id: 'select', label: 'Select', icon: '👆' },
+    { id: 'image', label: 'Image', icon: '🖼️' },
+  ];
 
   readonly selectedDrawTool = signal<'pencil' | 'brush'>('pencil');
   readonly selectedShape = signal<'rectangle' | 'circle' | 'polygon'>('rectangle');
   readonly selectedEraserTool = signal<'eraser' | 'object-eraser'>('eraser');
+  readonly selectedEditTool = signal<'select' | 'image'>('select');
   readonly openToolSubmenu = signal<ToolGroupKey | null>(null);
   readonly toolSubmenuTop = signal(0);
 
@@ -57,6 +63,7 @@ export class ToolsBarComponent implements OnDestroy {
     if (group === 'draw') return this.drawTools;
     if (group === 'shape') return this.shapeTools;
     if (group === 'erase') return this.eraseTools;
+    if (group === 'edit') return this.editTools;
     return [] as readonly ToolOption[];
   });
   readonly activeSubmenuLabel = computed(() => {
@@ -64,6 +71,7 @@ export class ToolsBarComponent implements OnDestroy {
     if (group === 'draw') return 'Draw tools';
     if (group === 'shape') return 'Shape tools';
     if (group === 'erase') return 'Eraser tools';
+    if (group === 'edit') return 'Edit tools';
     return '';
   });
   readonly activeSubmenuSelectedId = computed(() => {
@@ -71,11 +79,13 @@ export class ToolsBarComponent implements OnDestroy {
     if (group === 'draw') return this.selectedDrawTool();
     if (group === 'shape') return this.selectedShape();
     if (group === 'erase') return this.selectedEraserTool();
+    if (group === 'edit') return this.selectedEditTool();
     return '';
   });
   readonly isDrawToolActive = computed(() => this.isDrawTool(this.activeTool()));
   readonly isEraserToolActive = computed(() => this.isEraserTool(this.activeTool()));
   readonly isShapeToolActive = computed(() => this.isShapeTool(this.activeTool()));
+  readonly isEditToolActive = computed(() => this.isEditTool(this.activeTool()));
   readonly selectedDrawToolOption = computed(() => {
     const current = this.selectedDrawTool();
     return this.drawTools.find((tool) => tool.id === current) ?? this.drawTools[0];
@@ -87,6 +97,10 @@ export class ToolsBarComponent implements OnDestroy {
   readonly selectedEraserToolOption = computed(() => {
     const current = this.selectedEraserTool();
     return this.eraseTools.find((tool) => tool.id === current) ?? this.eraseTools[0];
+  });
+  readonly selectedEditToolOption = computed(() => {
+    const current = this.selectedEditTool();
+    return this.editTools.find((tool) => tool.id === current) ?? this.editTools[0];
   });
 
   readonly tooltipText = signal('');
@@ -116,6 +130,10 @@ export class ToolsBarComponent implements OnDestroy {
 
       if (this.isEraserTool(toolId)) {
         this.selectedEraserTool.set(toolId);
+      }
+
+      if (this.isEditTool(toolId)) {
+        this.selectedEditTool.set(toolId);
       }
     });
 
@@ -237,6 +255,27 @@ export class ToolsBarComponent implements OnDestroy {
       this.selectedEraserTool.set(toolId);
       this.closeToolSubmenu();
       this.toolSelected.emit(toolId);
+      return;
+    }
+
+    if (group === 'edit' && this.isEditTool(toolId)) {
+      if (toolId === 'image') {
+        const input = this.document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e: Event) => {
+          const target = e.target as HTMLInputElement;
+          if (target.files && target.files.length > 0) {
+            this.imageSelected.emit(target.files[0]);
+          }
+        };
+        input.click();
+        this.closeToolSubmenu();
+        return;
+      }
+      this.selectedEditTool.set(toolId);
+      this.closeToolSubmenu();
+      this.toolSelected.emit(toolId);
     }
   }
 
@@ -308,6 +347,10 @@ export class ToolsBarComponent implements OnDestroy {
     return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
   }
 
+  private isEditTool(toolId: string): toolId is 'select' | 'image' {
+    return toolId === 'select' || toolId === 'image';
+  }
+
   private getSelectedToolForGroup(group: ToolGroupKey): string {
     if (group === 'draw') {
       return this.selectedDrawTool();
@@ -317,7 +360,11 @@ export class ToolsBarComponent implements OnDestroy {
       return this.selectedShape();
     }
 
-    return this.selectedEraserTool();
+    if (group === 'erase') {
+      return this.selectedEraserTool();
+    }
+
+    return this.selectedEditTool();
   }
 
   private closeToolSubmenu(): void {
