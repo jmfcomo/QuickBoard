@@ -1,0 +1,32 @@
+@if (visible()) {
+  <div
+    class="overlay"
+    role="button"
+    tabindex="0"
+    (click)="cancelRequested.emit()"
+    (keydown.enter)="cancelRequested.emit()"
+    (keydown.space)="$event.preventDefault(); cancelRequested.emit()"
+    (keydown.escape)="cancelRequested.emit()"
+  >
+    <div
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Clear canvas confirmation"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
+      <header class="dialog-header centered">
+        <h3 class="title">CLEAR CANVAS</h3>
+        <p class="subtitle">Are you sure? This will erase all contents of this board.</p>
+      </header>
+
+      <div class="dialog-actions">
+        <button class="btn-close" type="button" (click)="cancelRequested.emit()">Cancel</button>
+        <button class="btn-danger" type="button" (click)="confirmRequested.emit()">
+          Clear Canvas
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -12,7 +12,13 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
+import { ClearCanvasConfirmComponent } from '../clear-canvas-confirm';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
+import { OnionSkinOverlayComponent } from '../onion-skin/onion-skin-overlay.component';
+import { OnionSkinService } from '../onion-skin/onion-skin.service';
+import { CanvasPersistenceService } from '../persistence/canvas-persistence.service';
+import { ToolsBarComponent } from '../tools-bar/tools-bar.component';
+import { CanvasUndoRedoService } from '../undo-redo/canvas-undo-redo.service';
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
@@ -23,75 +29,19 @@ import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-canvas',
-  imports: [PropertiesBarComponent],
+  imports: [
+    ClearCanvasConfirmComponent,
+    PropertiesBarComponent,
+    OnionSkinOverlayComponent,
+    ToolsBarComponent,
+  ],
   templateUrl: './canvas.component.html',
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly defaultCanvasSize = { width: appSettings.board.width, height: appSettings.board.height };
-  private readonly boardPreviewScale = 0.2;
-  private readonly previewDebounceMs = 160;
-  private readonly onionPreviewCache = signal<Record<string, string>>({});
-  readonly onionSkinLayers = computed(() => {
-    if (!this.store.onionSkinEnabled() || this.store.isPlaying()) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
+  readonly onionSkinLayers = inject(OnionSkinService).onionSkinLayers;
 
-    const boards = this.store.boards();
-    const currentBoardId = this.store.currentBoardId();
-    if (!currentBoardId || boards.length < 2) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
-
-    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
-    if (currentIndex === -1) {
-      return [] as { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[];
-    }
-
-    const onionPreviewCache = this.onionPreviewCache();
-    const overlays: { id: string; onionPreviewUrl: string; position: 'prev' | 'next' }[] = [];
-    const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
-    const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
-    const previousOnionPreview = previousBoard ? onionPreviewCache[previousBoard.id] : undefined;
-    const nextOnionPreview = nextBoard ? onionPreviewCache[nextBoard.id] : undefined;
-
-    // For middle boards, render both neighbors together so onion skin does not pop in one side at a time.
-    if (previousBoard && nextBoard) {
-      if (!previousOnionPreview || !nextOnionPreview) {
-        return overlays;
-      }
-
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
-      return overlays;
-    }
-
-    if (previousBoard && previousOnionPreview) {
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
-    }
-
-    if (nextBoard && nextOnionPreview) {
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
-    }
-
-    return overlays;
-  });
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
   private readonly toolSizeMap = signal<Record<string, number>>({
@@ -99,6 +49,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     brush: 5,
     rectangle: 5,
     circle: 5,
+    polygon: 5,
     eraser: 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
@@ -119,16 +70,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     width: 0,
     height: 0,
   });
-
-  readonly tools = [
-    { id: 'pencil', label: 'Pencil', icon: '✏️' },
-    { id: 'brush', label: 'Brush', icon: '🖌️' },
-    { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
-    { id: 'circle', label: 'Circle', icon: '⚪' },
-    { id: 'eraser', label: 'Eraser', icon: '🧽' },
-    { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
-    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
-  ];
 
   readonly colorPickers = [
     {
@@ -152,6 +93,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   ];
 
   readonly store = inject(AppStore);
+  private readonly onionSkin = inject(OnionSkinService);
+  private readonly canvasPersistence = inject(CanvasPersistenceService);
+  private readonly canvasUndoRedo = inject(CanvasUndoRedoService);
   private readonly el = inject(ElementRef);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly canvasDataService = inject(CanvasDataService);
@@ -161,40 +105,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private currentBoardId: string | null = null;
   private initCanvasTimeout: number | null = null;
   private updateCanvasTimeout: number | null = null;
-  private lastLoadedCanvasData: Record<string, unknown> | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
-  /** Set to true while we are programmatically calling lc.undo()/redo() so that
-   * the drawingChange listener doesn't create a duplicate history entry. */
-  private _suppressLcHistory = false;
-  /** Tracks the last-known LC undoStack length so we can distinguish a new
-   * user stroke (stack grew) from an undo/redo replay or snapshot load. */
-  private _lcUndoStackLength = 0;
-  /** Snapshot captured when an ObjectEraser stroke begins, for snapshot-based undo. */
-  private _snapshotBeforeObjectErase: Record<string, unknown> | null = null;
-  /** Canvas snapshot captured on mousedown so cross-board stroke undo/redo can restore
-   * the pre-stroke state even after the user has switched away from the original board. */
-  private _lcSnapshotBeforeStroke: Record<string, unknown> | null = null;
   private _canvasDirty = false;
-  private pendingPreviewBoardId: string | null = null;
-  private pendingPreviewSnapshot: Record<string, unknown> | null = null;
-  private previewTimeoutId: number | null = null;
-  private previewIdleId: number | null = null;
-  private colorParserCtx: CanvasRenderingContext2D | null = null;
-  private cachedBackgroundColor: string | null = null;
-  private cachedBackgroundRgb: { r: number; g: number; b: number } | null = null;
-
-  // Tooltip
-  readonly tooltipText = signal('');
-  readonly tooltipVisible = signal(false);
-  readonly tooltipTop = signal(0);
-  readonly tooltipLeft = signal(0);
   readonly showClearCanvasConfirm = signal(false);
-  private tooltipDelay: number | null = null;
-  private tooltipCooldown: number | null = null;
-  private tooltipWarm = false;
 
   constructor() {
     effect(() => {
@@ -204,7 +120,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
       const boardIdChanged = selectedBoardId !== this.currentBoardId;
       const currentBoardData = this.canvasDataService.getCanvasData(selectedBoardId);
-      const canvasDataChanged = currentBoardData !== this.lastLoadedCanvasData;
+      const canvasDataChanged = this.canvasPersistence.hasCanvasDataChanged(currentBoardData);
 
       // Only reload when switching boards or when the canvas data reference changes
       if (boardIdChanged) {
@@ -218,10 +134,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         }
 
         // Ensure any deferred preview for the outgoing board is committed before switching.
-        this.flushPendingPreviewRegeneration();
+        this.canvasPersistence.flushPendingPreviewRegeneration(this.lc, this.currentBoardId);
         // Save current board data before switching
         if (this.currentBoardId && this.lc) {
-          this.persistCurrentBoardData(this.currentBoardId, true);
+          this.canvasPersistence.persistCurrentBoardData(
+            this.lc,
+            this.currentBoardId,
+            this.currentBoardId,
+            true,
+          );
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
           this._canvasDirty = false;
         }
@@ -231,17 +152,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       }
     });
 
-    effect(() => {
-      const onionSkinEnabled = this.store.onionSkinEnabled();
-      const currentBoardId = this.store.currentBoardId();
-      this.store.boards();
-
-      if (!onionSkinEnabled || !currentBoardId) {
-        return;
-      }
-
-      this.ensureAdjacentOnionPreviews(currentBoardId);
-    });
   }
 
   ngAfterViewInit() {
@@ -315,10 +225,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // Clear tool instances to release references
     this.toolInstances.clear();
 
-    this.clearTimer('tooltipDelay');
-    this.clearTimer('tooltipCooldown');
-
-    this.clearPendingPreviewRegeneration();
+    this.canvasPersistence.clearPendingPreviewRegeneration();
   }
 
   private initializeCanvas(): void {
@@ -342,8 +249,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     container.addEventListener(
       'mousedown',
       () => {
-        if (!this._suppressLcHistory && this.lc) {
-          this._lcSnapshotBeforeStroke = this.lc.getSnapshot();
+        if (this.lc) {
+          this.canvasUndoRedo.markStrokeStart(this.lc);
         }
       },
       { capture: true },
@@ -384,7 +291,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             const shapes = [...this.lc.shapes];
             const backgroundShapes = [...this.lc.backgroundShapes];
 
-            this.lastLoadedCanvasData = snapshot;
+            this.canvasPersistence.setLastLoadedCanvasData(snapshot);
             this._canvasDirty = false;
 
             // Update CanvasDataService immediately
@@ -409,68 +316,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           this.updateCanvasTimeout = null;
         }, 300);
 
-        // Record a history entry for new user strokes (stack grew and we're
-        // not in the middle of an undo/redo replay or snapshot load).
-        if (!this._suppressLcHistory) {
-          const currentLen = this.lc.undoStack.length;
-          if (currentLen > this._lcUndoStackLength) {
-            this._lcUndoStackLength = currentLen;
-            const lcRef = this.lc;
-            const boardIdAtRecord = this.currentBoardId;
-            // Capture before/after snapshots so undo/redo works even after the user
-            // has switched to a different board (cross-board undo support).
-            const beforeSnapshot = this._lcSnapshotBeforeStroke;
-            const afterSnapshot = lcRef.getSnapshot();
-            this._lcSnapshotBeforeStroke = null;
-            this.undoRedo.record({
-              undo: () => {
-                if (!boardIdAtRecord) return;
-                if (this.currentBoardId !== boardIdAtRecord) {
-                  // Cross-board: update the store with the pre-stroke canvas state
-                  // then switch to that board — the canvas effect will load it.
-                  if (beforeSnapshot) {
-                    this.canvasDataService.setCanvasData(boardIdAtRecord, beforeSnapshot);
-                  }
-                  this.store.setCurrentBoard(boardIdAtRecord);
-                  return;
-                }
-                // Same board: prefer LC native undo; fall back to snapshot restore.
-                this._suppressLcHistory = true;
-                if (lcRef.undoStack.length > 0) {
-                  this._lcUndoStackLength--;
-                  lcRef.undo();
-                } else if (beforeSnapshot) {
-                  lcRef.loadSnapshot(beforeSnapshot);
-                  this._lcUndoStackLength = lcRef.undoStack.length;
-                }
-                this._suppressLcHistory = false;
-              },
-              redo: () => {
-                if (!boardIdAtRecord) return;
-                if (this.currentBoardId !== boardIdAtRecord) {
-                  // Cross-board: restore the post-stroke snapshot and switch boards.
-                  this.canvasDataService.setCanvasData(boardIdAtRecord, afterSnapshot);
-                  this.store.setCurrentBoard(boardIdAtRecord);
-                  return;
-                }
-                // Same board: prefer LC native redo; fall back to snapshot restore.
-                this._suppressLcHistory = true;
-                if (lcRef.redoStack.length > 0) {
-                  this._lcUndoStackLength++;
-                  lcRef.redo();
-                } else {
-                  lcRef.loadSnapshot(afterSnapshot);
-                  this._lcUndoStackLength = lcRef.undoStack.length;
-                }
-                this._suppressLcHistory = false;
-              },
-            });
-
-            if (boardIdAtRecord) {
-              this.persistCurrentBoardData(boardIdAtRecord, true, { deferPreviews: true });
-            }
-          }
-        }
+        this.canvasUndoRedo.onDrawingChange(this.lc, this.currentBoardId, (id, include, options) =>
+          this.canvasPersistence.persistCurrentBoardData(
+            this.lc,
+            id,
+            this.currentBoardId,
+            include,
+            options,
+          ),
+        );
       }
     });
 
@@ -480,67 +334,28 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.set('brush', new Brush(this.lc));
     this.toolInstances.set('rectangle', new LC.tools.Rectangle(this.lc));
     this.toolInstances.set('circle', new LC.tools.Ellipse(this.lc));
+    // Use the built-in LC polygon tool when available.
+    const shapeTools = LC.tools as {
+      Polygon?: new (lc: LCInstance) => LCTool;
+      Triangle?: new (lc: LCInstance) => LCTool;
+    };
+    const PolygonTool = shapeTools.Polygon ?? shapeTools.Triangle;
+    if (PolygonTool) {
+      this.toolInstances.set('polygon', new PolygonTool(this.lc));
+    }
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
 
-    // ObjectEraser bypasses LC's undo stack (directly mutates lc.shapes), so
-    // we wrap begin/end to capture a before/after snapshot and record it ourselves.
-    const objectEraser = new ObjectEraser(this.lc);
-    const origBegin = objectEraser.begin!.bind(objectEraser);
-    const origEnd = objectEraser.end!.bind(objectEraser);
-    objectEraser.begin = (x, y, lc) => {
-      if (!this._suppressLcHistory) {
-        this._snapshotBeforeObjectErase = lc.getSnapshot();
-      }
-      origBegin(x, y, lc);
-    };
-    objectEraser.end = (x, y, lc) => {
-      origEnd(x, y, lc);
-      if (!this._suppressLcHistory && this._snapshotBeforeObjectErase !== null) {
-        const before = this._snapshotBeforeObjectErase;
-        this._snapshotBeforeObjectErase = null;
-        const after = lc.getSnapshot();
-        // Only record if something was actually removed
-        if (
-          JSON.stringify((before as { shapes?: unknown }).shapes) !==
-          JSON.stringify((after as { shapes?: unknown }).shapes)
-        ) {
-          const lcRef = lc;
-          const snapshotBoardId = this.store.currentBoardId();
-          this.undoRedo.record({
-            undo: () => {
-              const currentBoardId = this.store.currentBoardId();
-              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
-                // Cross-board: update store with the pre-erase snapshot and switch boards.
-                this.canvasDataService.setCanvasData(snapshotBoardId, before);
-                this.store.setCurrentBoard(snapshotBoardId);
-                return;
-              }
-              this._suppressLcHistory = true;
-              lcRef.loadSnapshot(before);
-              this._lcUndoStackLength = lcRef.undoStack.length;
-              this._suppressLcHistory = false;
-            },
-            redo: () => {
-              const currentBoardId = this.store.currentBoardId();
-              if (snapshotBoardId !== null && currentBoardId !== snapshotBoardId) {
-                // Cross-board: update store with the post-erase snapshot and switch boards.
-                this.canvasDataService.setCanvasData(snapshotBoardId, after);
-                this.store.setCurrentBoard(snapshotBoardId);
-                return;
-              }
-              this._suppressLcHistory = true;
-              lcRef.loadSnapshot(after);
-              this._lcUndoStackLength = lcRef.undoStack.length;
-              this._suppressLcHistory = false;
-            },
-          });
-
-          if (snapshotBoardId) {
-            this.persistCurrentBoardData(snapshotBoardId, true);
-          }
-        }
-      }
-    };
+    const objectEraser = this.canvasUndoRedo.instrumentObjectEraser(
+      new ObjectEraser(this.lc),
+      (id, include, options) =>
+        this.canvasPersistence.persistCurrentBoardData(
+          this.lc,
+          id,
+          this.currentBoardId,
+          include,
+          options,
+        ),
+    );
     this.toolInstances.set('object-eraser', objectEraser);
 
     const brushTool = this.toolInstances.get('brush') as Brush | undefined;
@@ -570,8 +385,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.currentBoardId = boardId;
     this._canvasDirty = false;
 
-    this._suppressLcHistory = true;
-    this._lcUndoStackLength = 0;
+    this.canvasUndoRedo.beginBoardLoad();
 
     // Clear canvas
     this.lc.shapes = [];
@@ -594,10 +408,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           snapshot: cache.snapshot,
         });
       }
-      this.lastLoadedCanvasData = cache.snapshot;
+      this.canvasPersistence.setLastLoadedCanvasData(cache.snapshot);
     } else {
       this.lc.repaintLayer('main');
-      this.lastLoadedCanvasData = null;
+      this.canvasPersistence.setLastLoadedCanvasData(null);
     }
     this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
     const boardBackground = board?.backgroundColor ?? '#ffffff';
@@ -606,16 +420,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.scheduleCanvasFit();
 
     if (board && !board.previewUrl) {
-      this.persistCurrentBoardData(board.id, true);
+      this.canvasPersistence.persistCurrentBoardData(
+        this.lc,
+        board.id,
+        this.currentBoardId,
+        true,
+      );
     }
 
-    this.updateOnionPreviewForCurrentBoard(boardId);
-    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
+    this.onionSkin.updateCurrentBoardPreview(this.lc, this.currentBoardId, boardId);
+    this.onionSkin.pruneToCurrentAndNeighbors(boardId);
 
-    this.lc.undoStack.length = 0;
-    this.lc.redoStack.length = 0;
-    this._lcUndoStackLength = 0;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.finishBoardLoad(this.lc);
   }
 
   private observeCanvasResize(): void {
@@ -642,376 +458,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.fitCanvasToContainer();
       this.syncOnionLayerRect();
     });
-  }
-
-  private createBoardPreviews(): { previewUrl: string } {
-    if (!this.lc) {
-      return { previewUrl: '' };
-    }
-
-    return {
-      previewUrl: this.lc.getImage({ scale: this.boardPreviewScale }).toDataURL('image/png'),
-    };
-  }
-
-  private updateOnionPreviewForCurrentBoard(boardId: string): void {
-    if (!this.lc || this.currentBoardId !== boardId) {
-      return;
-    }
-
-    // Onion skin previews are generated at full canvas resolution for precise animation alignment.
-    const onionImage = this.lc.getImage({
-      scale: 1,
-      includeWatermark: false,
-      rect: {
-        x: 0,
-        y: 0,
-        width: this.defaultCanvasSize.width,
-        height: this.defaultCanvasSize.height,
-      },
-    });
-
-    const onionPreviewUrl = this.createTransparentOnionPreview(onionImage);
-    this.onionPreviewCache.update((cache) => ({
-      ...cache,
-      [boardId]: onionPreviewUrl,
-    }));
-  }
-
-  private ensureAdjacentOnionPreviews(currentBoardId: string): void {
-    const boards = this.store.boards();
-    const currentIndex = boards.findIndex((board) => board.id === currentBoardId);
-    if (currentIndex === -1) {
-      return;
-    }
-
-    const adjacentBoards = [
-      currentIndex > 0 ? boards[currentIndex - 1] : null,
-      currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null,
-    ].filter((board): board is NonNullable<typeof board> => Boolean(board));
-
-    if (adjacentBoards.length === 0) {
-      return;
-    }
-
-    const cache = this.onionPreviewCache();
-    const nextEntries: Record<string, string> = {};
-
-    for (const board of adjacentBoards) {
-      if (cache[board.id]) {
-        continue;
-      }
-
-      const canvasData = this.canvasDataService.getCanvasData(board.id);
-      const preview = this.renderOnionPreviewForBoard(canvasData, board.backgroundColor);
-      if (preview) {
-        nextEntries[board.id] = preview;
-      }
-    }
-
-    if (Object.keys(nextEntries).length > 0) {
-      this.onionPreviewCache.update((existing) => ({
-        ...existing,
-        ...nextEntries,
-      }));
-    }
-  }
-
-  private renderOnionPreviewForBoard(
-    canvasData: Record<string, unknown> | null,
-    backgroundColor: string,
-  ): string | null {
-    const container = document.createElement('div');
-    container.style.cssText =
-      'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;';
-    document.body.appendChild(container);
-
-    let preview: string | null = null;
-    let lc: LCInstance | null = null;
-
-    try {
-      lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-      lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
-      if (canvasData) {
-        lc.loadSnapshot(this.withoutViewportState(canvasData));
-      } else {
-        lc.repaintLayer('main');
-      }
-      lc.setColor('background', backgroundColor || '#ffffff');
-
-      const onionImage = lc.getImage({
-        scale: 1,
-        includeWatermark: false,
-        rect: {
-          x: 0,
-          y: 0,
-          width: this.defaultCanvasSize.width,
-          height: this.defaultCanvasSize.height,
-        },
-      });
-
-      preview = this.createTransparentOnionPreview(onionImage, backgroundColor || '#ffffff');
-    } catch {
-      preview = null;
-    } finally {
-      try {
-        lc?.teardown();
-      } catch {
-        // Ignore teardown errors.
-      }
-      document.body.removeChild(container);
-    }
-
-    return preview;
-  }
-
-  private getOnionPreviewKeepIds(boardId: string): string[] {
-    const boards = this.store.boards();
-    const currentIndex = boards.findIndex((board) => board.id === boardId);
-    if (currentIndex === -1) {
-      return [boardId];
-    }
-
-    const ids = [boardId];
-    if (currentIndex > 0) {
-      ids.push(boards[currentIndex - 1].id);
-    }
-    if (currentIndex < boards.length - 1) {
-      ids.push(boards[currentIndex + 1].id);
-    }
-    return ids;
-  }
-
-  private pruneOnionPreviewCache(keepIds: string[]): void {
-    const keep = new Set(keepIds);
-    this.onionPreviewCache.update((cache) => {
-      const nextCache: Record<string, string> = {};
-      for (const [id, previewUrl] of Object.entries(cache)) {
-        if (keep.has(id)) {
-          nextCache[id] = previewUrl;
-        }
-      }
-      return nextCache;
-    });
-  }
-
-  private persistCurrentBoardData(
-    boardId: string,
-    includePreviews: boolean,
-    options: { deferPreviews?: boolean } = {},
-  ): void {
-    if (!this.lc) {
-      return;
-    }
-
-    const normalizedSnapshot = this.withoutViewportState(this.lc.getSnapshot());
-    this.lastLoadedCanvasData = normalizedSnapshot;
-
-    if (includePreviews) {
-      if (options.deferPreviews) {
-        this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
-        this.schedulePreviewRegeneration(boardId, normalizedSnapshot);
-        return;
-      }
-
-      const previews = this.createBoardPreviews();
-      this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
-      if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
-      this.updateOnionPreviewForCurrentBoard(boardId);
-      this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
-      return;
-    }
-
-    this.canvasDataService.setCanvasData(boardId, normalizedSnapshot);
-  }
-
-  private schedulePreviewRegeneration(boardId: string, snapshot: Record<string, unknown>): void {
-    if (!this.lc || boardId !== this.currentBoardId) {
-      return;
-    }
-
-    this.pendingPreviewBoardId = boardId;
-    this.pendingPreviewSnapshot = snapshot;
-
-    if (this.previewTimeoutId !== null) {
-      clearTimeout(this.previewTimeoutId);
-    }
-
-    this.previewTimeoutId = window.setTimeout(() => {
-      this.previewTimeoutId = null;
-      this.schedulePreviewRegenerationOnIdle();
-    }, this.previewDebounceMs);
-  }
-
-  private schedulePreviewRegenerationOnIdle(): void {
-    if (typeof window.requestIdleCallback === 'function') {
-      if (this.previewIdleId !== null) {
-        window.cancelIdleCallback(this.previewIdleId);
-      }
-      this.previewIdleId = window.requestIdleCallback(
-        () => {
-          this.previewIdleId = null;
-          this.flushPendingPreviewRegeneration();
-        },
-        { timeout: 300 },
-      );
-      return;
-    }
-
-    this.flushPendingPreviewRegeneration();
-  }
-
-  private flushPendingPreviewRegeneration(): void {
-    if (
-      !this.lc ||
-      !this.pendingPreviewBoardId ||
-      !this.pendingPreviewSnapshot ||
-      this.pendingPreviewBoardId !== this.currentBoardId
-    ) {
-      this.clearPendingPreviewRegeneration();
-      return;
-    }
-
-    const boardId = this.pendingPreviewBoardId;
-    const snapshot = this.pendingPreviewSnapshot;
-    const previews = this.createBoardPreviews();
-    this.canvasDataService.setCanvasData(boardId, snapshot);
-    if (previews.previewUrl) this.store.updateBoardPreview(boardId, previews.previewUrl);
-    this.updateOnionPreviewForCurrentBoard(boardId);
-    this.pruneOnionPreviewCache(this.getOnionPreviewKeepIds(boardId));
-
-    this.pendingPreviewBoardId = null;
-    this.pendingPreviewSnapshot = null;
-  }
-
-  private clearPendingPreviewRegeneration(): void {
-    if (this.previewTimeoutId !== null) {
-      clearTimeout(this.previewTimeoutId);
-      this.previewTimeoutId = null;
-    }
-
-    if (this.previewIdleId !== null && typeof window.cancelIdleCallback === 'function') {
-      window.cancelIdleCallback(this.previewIdleId);
-      this.previewIdleId = null;
-    }
-
-    this.pendingPreviewBoardId = null;
-    this.pendingPreviewSnapshot = null;
-  }
-
-  private createTransparentOnionPreview(
-    source: HTMLCanvasElement,
-    backgroundColor?: string,
-  ): string {
-    const width = source.width;
-    const height = source.height;
-    if (width <= 0 || height <= 0) {
-      return source.toDataURL('image/png');
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return source.toDataURL('image/png');
-    }
-
-    ctx.drawImage(source, 0, 0);
-
-    const bgColor = this.getCachedBackgroundRgb(
-      backgroundColor ?? this.lc?.getColor('background') ?? '#ffffff',
-    );
-    if (!bgColor) {
-      return canvas.toDataURL('image/png');
-    }
-
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    const tolerance = 3;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      if (
-        Math.abs(r - bgColor.r) <= tolerance &&
-        Math.abs(g - bgColor.g) <= tolerance &&
-        Math.abs(b - bgColor.b) <= tolerance
-      ) {
-        data[i + 3] = 0;
-      }
-    }
-
-    ctx.putImageData(imageData, 0, 0);
-    return canvas.toDataURL('image/png');
-  }
-
-  private getCachedBackgroundRgb(color: string): { r: number; g: number; b: number } | null {
-    if (this.cachedBackgroundColor === color) {
-      return this.cachedBackgroundRgb;
-    }
-
-    this.cachedBackgroundColor = color;
-    this.cachedBackgroundRgb = this.parseColorToRgb(color);
-    return this.cachedBackgroundRgb;
-  }
-
-  private withoutViewportState(snapshot: Record<string, unknown>): Record<string, unknown> {
-    const normalized = { ...snapshot };
-    delete (normalized as { position?: unknown }).position;
-    delete (normalized as { scale?: unknown }).scale;
-    return normalized;
-  }
-
-  private parseColorToRgb(color: string): { r: number; g: number; b: number } | null {
-    let parserCtx = this.colorParserCtx;
-    if (!parserCtx) {
-      const parserCanvas = document.createElement('canvas');
-      parserCanvas.width = 1;
-      parserCanvas.height = 1;
-      parserCtx = parserCanvas.getContext('2d');
-      this.colorParserCtx = parserCtx;
-    }
-
-    if (!parserCtx) {
-      return null;
-    }
-
-    parserCtx.fillStyle = '#000000';
-    parserCtx.fillStyle = color;
-    const normalized = parserCtx.fillStyle;
-
-    if (typeof normalized !== 'string') {
-      return null;
-    }
-
-    if (normalized.startsWith('#')) {
-      const hex = normalized.slice(1);
-      if (hex.length === 3) {
-        const r = Number.parseInt(hex[0] + hex[0], 16);
-        const g = Number.parseInt(hex[1] + hex[1], 16);
-        const b = Number.parseInt(hex[2] + hex[2], 16);
-        return { r, g, b };
-      }
-      if (hex.length === 6) {
-        const r = Number.parseInt(hex.slice(0, 2), 16);
-        const g = Number.parseInt(hex.slice(2, 4), 16);
-        const b = Number.parseInt(hex.slice(4, 6), 16);
-        return { r, g, b };
-      }
-    }
-
-    const rgbMatch = normalized.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-    if (rgbMatch) {
-      return {
-        r: Number.parseInt(rgbMatch[1], 10),
-        g: Number.parseInt(rgbMatch[2], 10),
-        b: Number.parseInt(rgbMatch[3], 10),
-      };
-    }
-
-    return null;
   }
 
   private fitCanvasToContainer(): void {
@@ -1136,8 +582,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public requestClearCanvas(): void {
     const showWarning = appSettings.export.showClearCanvasWarning;
-    this.hideTooltip();
-    if(showWarning) {
+    if (showWarning) {
       this.showClearCanvasConfirm.set(true);
     } else {
       this.confirmClearCanvas();
@@ -1153,64 +598,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     const lcRef = this.lc;
     const boardIdAtClear = this.currentBoardId;
-    const before = lcRef.getSnapshot();
-
-    this._suppressLcHistory = true;
-
-    // Clear all shapes
-    lcRef.shapes = [];
-    lcRef.backgroundShapes = [];
-    lcRef.repaintLayer('main');
-
-    // Trigger clear event
-    lcRef.trigger('clear');
-
+    const before = this.canvasUndoRedo.prepareClear(lcRef);
     const after = lcRef.getSnapshot();
-    this._lcUndoStackLength = lcRef.undoStack.length;
-    this._suppressLcHistory = false;
 
     if (boardIdAtClear) {
-      this.persistCurrentBoardData(boardIdAtClear, true);
+      this.canvasPersistence.persistCurrentBoardData(
+        this.lc,
+        boardIdAtClear,
+        this.currentBoardId,
+        true,
+      );
     }
 
-    const beforeShapes = JSON.stringify((before as { shapes?: unknown }).shapes ?? []);
-    const beforeBgShapes = JSON.stringify(
-      (before as { backgroundShapes?: unknown }).backgroundShapes ?? [],
-    );
-    const afterShapes = JSON.stringify((after as { shapes?: unknown }).shapes ?? []);
-    const afterBgShapes = JSON.stringify(
-      (after as { backgroundShapes?: unknown }).backgroundShapes ?? [],
-    );
-
-    // Only record a history entry when clear actually removes something.
-    if (beforeShapes !== afterShapes || beforeBgShapes !== afterBgShapes) {
-      this.undoRedo.record({
-        undo: () => {
-          if (!boardIdAtClear) return;
-          if (this.currentBoardId !== boardIdAtClear) {
-            this.canvasDataService.setCanvasData(boardIdAtClear, before);
-            this.store.setCurrentBoard(boardIdAtClear);
-            return;
-          }
-          this._suppressLcHistory = true;
-          lcRef.loadSnapshot(before);
-          this._lcUndoStackLength = lcRef.undoStack.length;
-          this._suppressLcHistory = false;
-        },
-        redo: () => {
-          if (!boardIdAtClear) return;
-          if (this.currentBoardId !== boardIdAtClear) {
-            this.canvasDataService.setCanvasData(boardIdAtClear, after);
-            this.store.setCurrentBoard(boardIdAtClear);
-            return;
-          }
-          this._suppressLcHistory = true;
-          lcRef.loadSnapshot(after);
-          this._lcUndoStackLength = lcRef.undoStack.length;
-          this._suppressLcHistory = false;
-        },
-      });
-    }
+    this.canvasUndoRedo.recordClear(lcRef, before, after, boardIdAtClear);
 
     this.showClearCanvasConfirm.set(false);
   }
@@ -1267,44 +667,20 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public showTooltip(event: MouseEvent, label: string): void {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.tooltipText.set(label);
-    this.tooltipTop.set(rect.top + rect.height / 2);
-    this.tooltipLeft.set(rect.right + 8);
-    this.clearTimer('tooltipCooldown');
-
-    if (this.tooltipWarm) {
-      this.tooltipVisible.set(true);
-    } else {
-      this.tooltipDelay = window.setTimeout(() => {
-        this.tooltipVisible.set(true);
-        this.tooltipWarm = true;
-        this.tooltipDelay = null;
-      }, 500);
-    }
-  }
-
   public undoStroke(): void {
     if (!this.lc) {
       return;
     }
 
-    // Only attempt undo when LC has something to undo, and keep our
-    // internal undo stack length in sync with LC's undo stack.
-    if (this.lc.undoStack.length === 0) {
-      // Ensure we don't drift if external code changed LC directly.
-      this._lcUndoStackLength = this.lc.undoStack.length;
-      return;
-    }
-
-    this._suppressLcHistory = true;
-    this.lc.undo();
-    this._lcUndoStackLength = this.lc.undoStack.length;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.undoStroke(this.lc);
 
     if (this.currentBoardId) {
-      this.persistCurrentBoardData(this.currentBoardId, true);
+      this.canvasPersistence.persistCurrentBoardData(
+        this.lc,
+        this.currentBoardId,
+        this.currentBoardId,
+        true,
+      );
     }
   }
 
@@ -1313,37 +689,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Only attempt redo when LC has something to redo, and keep our
-    // internal undo stack length in sync with LC's undo stack.
-    if (this.lc.redoStack.length === 0) {
-      // Ensure we don't drift if external code changed LC directly.
-      this._lcUndoStackLength = this.lc.undoStack.length;
-      return;
-    }
-
-    this._suppressLcHistory = true;
-    this.lc.redo();
-    this._lcUndoStackLength = this.lc.undoStack.length;
-    this._suppressLcHistory = false;
+    this.canvasUndoRedo.redoStroke(this.lc);
 
     if (this.currentBoardId) {
-      this.persistCurrentBoardData(this.currentBoardId, true);
+      this.canvasPersistence.persistCurrentBoardData(
+        this.lc,
+        this.currentBoardId,
+        this.currentBoardId,
+        true,
+      );
     }
   }
 
-  public hideTooltip(): void {
-    this.clearTimer('tooltipDelay');
-    this.tooltipVisible.set(false);
-    this.tooltipCooldown = window.setTimeout(() => {
-      this.tooltipWarm = false;
-      this.tooltipCooldown = null;
-    }, 400);
-  }
-
-  private clearTimer(key: 'tooltipDelay' | 'tooltipCooldown'): void {
-    if (this[key] !== null) {
-      clearTimeout(this[key]!);
-      this[key] = null;
-    }
-  }
 }

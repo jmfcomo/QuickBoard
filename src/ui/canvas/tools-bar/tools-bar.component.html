@@ -1,0 +1,114 @@
+<div class="tools-region">
+  <div class="tools-bar">
+    <button
+      class="tool-button tool-group-button"
+      [class.active]="isDrawToolActive()"
+      type="button"
+      (click)="onToolGroupClick('draw')"
+      (pointerdown)="onToolGroupPointerDown($event, 'draw')"
+      (pointerup)="onToolGroupPointerUp('draw')"
+      (pointerleave)="onToolGroupPointerCancel('draw')"
+      (pointercancel)="onToolGroupPointerCancel('draw')"
+      (contextmenu)="onToolGroupContextMenu($event, 'draw')"
+      (mouseenter)="showTooltip($event, selectedDrawToolOption().label)"
+      (mouseleave)="hideTooltip()"
+      [attr.aria-label]="selectedDrawToolOption().label"
+    >
+      {{ selectedDrawToolOption().icon }}
+      <span class="submenu-indicator" aria-hidden="true"></span>
+    </button>
+
+    <button
+      class="tool-button tool-group-button"
+      [class.active]="isShapeToolActive()"
+      type="button"
+      (click)="onToolGroupClick('shape')"
+      (pointerdown)="onToolGroupPointerDown($event, 'shape')"
+      (pointerup)="onToolGroupPointerUp('shape')"
+      (pointerleave)="onToolGroupPointerCancel('shape')"
+      (pointercancel)="onToolGroupPointerCancel('shape')"
+      (contextmenu)="onToolGroupContextMenu($event, 'shape')"
+      (mouseenter)="showTooltip($event, selectedShapeTool().label)"
+      (mouseleave)="hideTooltip()"
+      [attr.aria-label]="selectedShapeTool().label"
+    >
+      {{ selectedShapeTool().icon }}
+      <span class="submenu-indicator" aria-hidden="true"></span>
+    </button>
+
+    <button
+      class="tool-button tool-group-button"
+      [class.active]="isEraserToolActive()"
+      type="button"
+      (click)="onToolGroupClick('erase')"
+      (pointerdown)="onToolGroupPointerDown($event, 'erase')"
+      (pointerup)="onToolGroupPointerUp('erase')"
+      (pointerleave)="onToolGroupPointerCancel('erase')"
+      (pointercancel)="onToolGroupPointerCancel('erase')"
+      (contextmenu)="onToolGroupContextMenu($event, 'erase')"
+      (mouseenter)="showTooltip($event, selectedEraserToolOption().label)"
+      (mouseleave)="hideTooltip()"
+      [attr.aria-label]="selectedEraserToolOption().label"
+    >
+      {{ selectedEraserToolOption().icon }}
+      <span class="submenu-indicator" aria-hidden="true"></span>
+    </button>
+
+    @for (tool of tools; track tool.id) {
+      <button
+        class="tool-button"
+        [class.active]="activeTool() === tool.id"
+        type="button"
+        (click)="toolSelected.emit(tool.id)"
+        (mouseenter)="showTooltip($event, tool.label)"
+        (mouseleave)="hideTooltip()"
+        [attr.aria-label]="tool.label"
+      >
+        {{ tool.icon }}
+      </button>
+    }
+
+    <div class="separator"></div>
+
+    <button
+      class="tool-button"
+      type="button"
+      (click)="requestClearCanvas()"
+      (mouseenter)="showTooltip($event, 'Clear Canvas')"
+      (mouseleave)="hideTooltip()"
+      aria-label="Clear Canvas"
+    >
+      🗑️
+    </button>
+  </div>
+
+  @if (openToolSubmenu()) {
+    <div
+      class="tool-group-submenu"
+      [style.top.px]="toolSubmenuTop()"
+      role="menu"
+      [attr.aria-label]="activeSubmenuLabel()"
+    >
+      @for (submenuTool of activeSubmenuTools(); track submenuTool.id) {
+        <button
+          class="tool-button"
+          [class.active]="activeSubmenuSelectedId() === submenuTool.id"
+          type="button"
+          (click)="onActiveSubmenuSelect(submenuTool.id)"
+          (mouseenter)="showTooltip($event, submenuTool.label)"
+          (mouseleave)="hideTooltip()"
+          [attr.aria-label]="submenuTool.label"
+          role="menuitem"
+        >
+          {{ submenuTool.icon }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (tooltipVisible()) {
+    <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
+      {{ tooltipText() }}
+    </div>
+  }
+</div>

@@ -10,94 +10,27 @@
   (colorToleranceChange)="setColorTolerance($event)"
 ></app-properties-bar>
 <div class="canvas-container">
-  <div class="tools-bar">
-    @for (tool of tools; track tool.id) {
-      <button
-        class="tool-button"
-        [class.active]="activeTool() === tool.id"
-        (click)="setTool(tool.id)"
-        (mouseenter)="showTooltip($event, tool.label)"
-        (mouseleave)="hideTooltip()"
-        [attr.aria-label]="tool.label"
-      >
-        {{ tool.icon }}
-      </button>
-    }
-    <div class="separator"></div>
-    <button
-      (click)="requestClearCanvas()"
-      class="tool-button"
-      (mouseenter)="showTooltip($event, 'Clear Canvas')"
-      (mouseleave)="hideTooltip()"
-      aria-label="Clear Canvas"
-    >
-      🗑️
-    </button>
-  </div>
-  @if (tooltipVisible()) {
-    <div class="custom-tooltip" [style.top.px]="tooltipTop()" [style.left.px]="tooltipLeft()">
-      {{ tooltipText() }}
-    </div>
-  }
+  <app-tools-bar
+    [activeTool]="activeTool()"
+    (toolSelected)="setTool($event)"
+    (clearCanvasRequested)="requestClearCanvas()"
+  ></app-tools-bar>
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage>
       <div class="canvas-board-stack">
         <div #canvasContainer class="literally-canvas"></div>
-        @for (layer of onionSkinLayers(); track layer.id) {
-          <div
-            class="onion-skin-layer"
-            [class.previous]="layer.position === 'prev'"
-            [class.next]="layer.position === 'next'"
-            [style.left.px]="onionLayerRect().left"
-            [style.top.px]="onionLayerRect().top"
-            [style.width.px]="onionLayerRect().width"
-            [style.height.px]="onionLayerRect().height"
-          >
-            <img
-              [src]="layer.onionPreviewUrl"
-              [style.left.px]="onionImageRect().left"
-              [style.top.px]="onionImageRect().top"
-              [style.width.px]="onionImageRect().width"
-              [style.height.px]="onionImageRect().height"
-              alt=""
-              aria-hidden="true"
-              draggable="false"
-            />
-          </div>
-        }
+        <app-onion-skin-overlay
+          [layers]="onionSkinLayers()"
+          [layerRect]="onionLayerRect()"
+          [imageRect]="onionImageRect()"
+        ></app-onion-skin-overlay>
       </div>
     </div>
   </div>
 </div>
 
-@if (showClearCanvasConfirm()) {
-  <div
-    class="overlay"
-    role="button"
-    tabindex="0"
-    (click)="cancelClearCanvas()"
-    (keydown.enter)="cancelClearCanvas()"
-    (keydown.escape)="cancelClearCanvas()"
-  >
-    <div
-      class="dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Clear canvas confirmation"
-      (click)="$event.stopPropagation()"
-      (keydown)="$event.stopPropagation()"
-    >
-      <header class="dialog-header centered">
-        <h3 class="title">CLEAR CANVAS</h3>
-        <p class="subtitle">Are you sure? This will erase all contents of this board.</p>
-      </header>
-
-      <div class="dialog-actions">
-        <button class="btn-close" type="button" (click)="cancelClearCanvas()">Cancel</button>
-        <button class="btn-danger" type="button" (click)="confirmClearCanvas()">
-          Clear Canvas
-        </button>
-      </div>
-    </div>
-  </div>
-}
+<app-clear-canvas-confirm
+  [visible]="showClearCanvasConfirm()"
+  (cancelRequested)="cancelClearCanvas()"
+  (confirmRequested)="confirmClearCanvas()"
+></app-clear-canvas-confirm>

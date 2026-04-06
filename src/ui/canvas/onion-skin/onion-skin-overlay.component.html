@@ -1,0 +1,22 @@
+@for (layer of layers(); track layer.id) {
+  <div
+    class="onion-skin-layer"
+    [class.previous]="layer.position === 'prev'"
+    [class.next]="layer.position === 'next'"
+    [style.left.px]="layerRect().left"
+    [style.top.px]="layerRect().top"
+    [style.width.px]="layerRect().width"
+    [style.height.px]="layerRect().height"
+  >
+    <img
+      [src]="layer.onionPreviewUrl"
+      [style.left.px]="imageRect().left"
+      [style.top.px]="imageRect().top"
+      [style.width.px]="imageRect().width"
+      [style.height.px]="imageRect().height"
+      alt=""
+      aria-hidden="true"
+      draggable="false"
+    />
+  </div>
+}

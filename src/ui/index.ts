@@ -1,5 +1,12 @@
 // Canvas
-export { CanvasComponent, PropertiesBarComponent, Brush, BucketFill, ObjectEraser } from './canvas';
+export {
+  CanvasComponent,
+  PropertiesBarComponent,
+  ToolsBarComponent,
+  Brush,
+  BucketFill,
+  ObjectEraser,
+} from './canvas';
 export type {
   ColorPicker,
   LCTool,
