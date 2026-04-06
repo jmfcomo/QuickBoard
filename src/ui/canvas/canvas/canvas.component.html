@@ -17,7 +17,7 @@
     (clearCanvasRequested)="requestClearCanvas()"
   ></app-tools-bar>
   <div class="canvas-right">
-    <div class="canvas-stage" #canvasStage>
+    <div class="canvas-stage" #canvasStage (dragover)="onDragOver($event)" (drop)="onDrop($event)">
       <div class="canvas-board-stack">
         <div #canvasContainer class="literally-canvas"></div>
         <app-onion-skin-overlay
