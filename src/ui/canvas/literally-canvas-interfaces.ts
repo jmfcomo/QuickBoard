@@ -64,6 +64,7 @@ export interface LiterallyCanvas {
     Eraser: LiterallyCanvasTool;
     Rectangle: LiterallyCanvasTool;
     Ellipse: LiterallyCanvasTool;
+    SelectShape: LiterallyCanvasTool;
   };
   createShape(type: string, args: Record<string, unknown>): unknown;
   JSONToShape(shape: Record<string, unknown>): unknown;

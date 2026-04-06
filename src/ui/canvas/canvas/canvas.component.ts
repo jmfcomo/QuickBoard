@@ -16,6 +16,7 @@ import { PropertiesBarComponent } from '../properties-bar/properties-bar.compone
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
+import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
@@ -120,6 +121,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   });
 
   readonly tools = [
+    { id: 'select', label: 'Select', icon: '👆' },
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },
     { id: 'rectangle', label: 'Rectangle', icon: '⬜' },
@@ -333,6 +335,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.currentBoardId = currentBoard.id;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerImprovedSelectShapes(LC as any);
+
     // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
@@ -474,6 +479,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     // Initialize tool instances
+    this.toolInstances.set('select', new ImprovedSelectShape(this.lc));
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
@@ -1339,5 +1345,66 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       clearTimeout(this[key]!);
       this[key] = null;
     }
+  }
+
+  public onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.handleImageFile(input.files[0]);
+    }
+  }
+
+  public onDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  public onDrop(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        this.handleImageFile(file);
+      }
+    }
+  }
+
+  private handleImageFile(file: File): void {
+    if (!this.lc) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        if (!this.lc) return;
+
+        const defaultWidth = img.width;
+        const defaultHeight = img.height;
+        const backingScale = this.lc.backingScale || 1;
+
+        // Find center of canvas
+        const centerX =
+          this.lc.canvas.width / 2 / (this.lc.scale * backingScale) -
+          this.lc.position.x / backingScale -
+          defaultWidth / 2;
+        const centerY =
+          this.lc.canvas.height / 2 / (this.lc.scale * backingScale) -
+          this.lc.position.y / backingScale -
+          defaultHeight / 2;
+
+        // LC.createShape requires image: Image object
+        const imageShape = LC.createShape('Image', {
+          x: centerX,
+          y: centerY,
+          image: img,
+          scale: 1,
+        });
+
+        this.lc.saveShape(imageShape);
+        this.setTool('select');
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
   }
 }

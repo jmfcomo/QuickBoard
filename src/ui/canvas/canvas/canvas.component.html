@@ -24,6 +24,22 @@
       </button>
     }
     <div class="separator"></div>
+    <input
+      type="file"
+      #fileInput
+      accept="image/*"
+      style="display: none"
+      (change)="onFileSelected($event)"
+    />
+    <button
+      (click)="fileInput.click()"
+      class="tool-button"
+      (mouseenter)="showTooltip($event, 'Upload Image')"
+      (mouseleave)="hideTooltip()"
+      aria-label="Upload Image"
+    >
+      🖼️
+    </button>
     <button
       (click)="requestClearCanvas()"
       class="tool-button"
@@ -42,7 +58,12 @@
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage>
       <div class="canvas-board-stack">
-        <div #canvasContainer class="literally-canvas"></div>
+        <div
+          #canvasContainer
+          class="literally-canvas"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop($event)"
+        ></div>
         @for (layer of onionSkinLayers(); track layer.id) {
           <div
             class="onion-skin-layer"
