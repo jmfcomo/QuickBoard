@@ -7,21 +7,61 @@
     <button
       class="onion-skin-btn"
       [class.active]="store.onionSkinEnabled()"
-      [attr.aria-label]="store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'"
+      [attr.aria-label]="
+        store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
+      "
       [attr.title]="store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'"
       [attr.aria-pressed]="store.onionSkinEnabled()"
       (click)="toggleOnionSkin()"
     >
-      <svg
-        viewBox="0 0 24 24"
-        class="onion-skin-icon"
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg viewBox="0 0 24 24" class="onion-skin-icon" aria-hidden="true" focusable="false">
         <circle cx="9" cy="12" r="5.6" class="left"></circle>
         <circle cx="15" cy="12" r="5.6" class="right"></circle>
       </svg>
     </button>
+
+    <div class="timeline-zoom" role="group" aria-label="Timeline zoom controls">
+      <button
+        class="zoom-btn"
+        type="button"
+        (click)="zoomOut()"
+        [disabled]="isMinZoom()"
+        aria-label="Zoom out timeline"
+      >
+        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+      </button>
+
+      <input
+        class="zoom-slider"
+        type="range"
+        [min]="minScale"
+        [max]="maxScale"
+        [step]="zoomStep"
+        [value]="zoomScale()"
+        (input)="updateZoom($any($event.target).value)"
+        aria-label="Timeline zoom"
+      />
+
+      <button
+        class="zoom-btn"
+        type="button"
+        (click)="zoomIn()"
+        [disabled]="isMaxZoom()"
+        aria-label="Zoom in timeline"
+      >
+        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+      </button>
+
+      <button
+        class="zoom-reset-btn"
+        type="button"
+        (click)="resetZoom()"
+        aria-label="Reset timeline zoom"
+      >
+        {{ zoomPercent() }}%
+      </button>
+    </div>
+
     <button
       class="back-to-start-btn"
       [class.active]="store.isPlaying()"

@@ -12,6 +12,7 @@ import {
 import { AppStore } from '../../../data/store/app.store';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
 import { PlaybackService } from '../../../services/playback.service';
+import { TimelineZoomService } from '../../../services/timeline-zoom.service';
 import { BoardsTrackComponent } from '../boards-track/boards-track';
 import { AudioTracksComponent } from '../audio-tracks/audio-tracks';
 import { TimelineControlsComponent } from '../timeline-controls/timeline-controls';
@@ -29,12 +30,13 @@ import { TimelineControlsComponent } from '../timeline-controls/timeline-control
 export class TimelineEditor implements AfterViewInit {
   readonly store = inject(AppStore);
   readonly playback = inject(PlaybackService);
+  readonly zoom = inject(TimelineZoomService);
   private readonly destroyRef = inject(DestroyRef);
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
   @ViewChild('scrollContainer') scrollContainer!: ElementRef<HTMLDivElement>;
 
-  scale = signal(40); // pixels per second
+  readonly scale = this.zoom.scale;
   containerWidth = signal(800);
   isScrubbing = signal(false);
 

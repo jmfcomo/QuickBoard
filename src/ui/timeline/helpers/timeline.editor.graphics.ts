@@ -43,16 +43,18 @@ export function createTimelineData(
   const rulerTicks = computed(() => {
     const ticks: { time: number; left: number; label: string }[] = [];
     const width = totalWidth();
-    const stepSeconds = 5;
     const s = scale();
+    // Smaller zoom scales use denser ticks, larger scales use sparser ticks.
+    const stepSeconds = getRulerStepSeconds(s);
     const stepPx = stepSeconds * s;
     const count = Math.ceil(width / stepPx);
+    const showHundredths = stepSeconds < 1;
 
     for (let i = 0; i < count; i++) {
       ticks.push({
         time: i * stepSeconds,
         left: i * stepPx,
-        label: formatTime(i * stepSeconds),
+        label: formatTime(i * stepSeconds, showHundredths),
       });
     }
     return ticks;
@@ -65,4 +67,14 @@ export function createTimelineData(
     rulerTicks,
     formatTime,
   } as const;
+}
+
+function getRulerStepSeconds(scale: number): number {
+  if (scale <= 15) return 30;
+  if (scale <= 30) return 15;
+  if (scale <= 60) return 10;
+  if (scale <= 120) return 5;
+  if (scale <= 240) return 2;
+  if (scale <= 400) return 0.5;
+  return 0.25;
 }
