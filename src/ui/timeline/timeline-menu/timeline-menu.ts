@@ -3,6 +3,7 @@ import { AppStore } from '../../../data/store/app.store';
 import { PlaybackService } from '../../../services/playback.service';
 import { TimelineZoomService } from '../../../services/timeline-zoom.service';
 import { formatTime as formatTimeUtil } from '../helpers/format-time';
+import appSettings from '@econfig/appsettings.json';
 
 @Component({
   selector: 'app-timeline-menu',
@@ -31,9 +32,10 @@ export class TimelineMenu {
 
   updateDuration(value: string) {
     const n = Number(value);
+    const minDuration = 1 / (appSettings.board.defaultFps || 24);
     if (Number.isFinite(n) && n > 0) {
       const id = this.store.currentBoardId();
-      if (id) this.store.updateBoardDuration(id, Math.max(0.01, n));
+      if (id) this.store.updateBoardDuration(id, Math.max(minDuration, n));
     }
   }
 
