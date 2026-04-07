@@ -91,25 +91,48 @@ function buildMenu(app, win, hooks = {}) {
             checked: nativeTheme.themeSource === 'system',
             click: () => {
               nativeTheme.themeSource = 'system';
+              global.quickboardCustomTheme = null;
               win.webContents.send('quickboard:theme-changed', 'system');
             },
           },
           {
             label: 'Light',
             type: 'radio',
-            checked: nativeTheme.themeSource === 'light',
+            checked: nativeTheme.themeSource === 'light' && !global.quickboardCustomTheme,
             click: () => {
               nativeTheme.themeSource = 'light';
+              global.quickboardCustomTheme = null;
               win.webContents.send('quickboard:theme-changed', 'light');
+            },
+          },
+          {
+            label: 'Sepia',
+            type: 'radio',
+            checked: global.quickboardCustomTheme === 'sepia',
+            click: () => {
+              nativeTheme.themeSource = 'light';
+              global.quickboardCustomTheme = 'sepia';
+              win.webContents.send('quickboard:theme-changed', 'sepia');
             },
           },
           {
             label: 'Dark',
             type: 'radio',
-            checked: nativeTheme.themeSource === 'dark',
+            checked: global.quickboardCustomTheme === 'dark',
             click: () => {
-              nativeTheme.themeSource = 'dark';
+              nativeTheme.themeSource = 'light';
+              global.quickboardCustomTheme = 'dark';
               win.webContents.send('quickboard:theme-changed', 'dark');
+            },
+          },
+          {
+            label: 'Black',
+            type: 'radio',
+            checked: global.quickboardCustomTheme === 'black',
+            click: () => {
+              nativeTheme.themeSource = 'light';
+              global.quickboardCustomTheme = 'black';
+              win.webContents.send('quickboard:theme-changed', 'black');
             },
           },
         ],

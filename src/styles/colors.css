@@ -1,4 +1,4 @@
-/* ─── Shared (same in both modes) ───────────────────────── */
+/* ─── Shared (same in all themes) ──────────────────────── */
 :root {
   /* Accent (purple – 10 % rule) */
   --accent: #c97fff;
@@ -19,8 +19,9 @@
   --scrollbar-track: var(--bg-panel);
 }
 
-/* ─── Light mode (default) ──────────────────────────────── */
-:root {
+/* ─── Light theme (default & explicit) ────────────────── */
+:root,
+:root[data-theme='light'] {
   /* Borders */
   --border-default: #d1d5db;
   --border-darker: #9ca3af;
@@ -62,9 +63,139 @@
   --scrollbar-thumb-hover: var(--text-light);
 }
 
-/* ─── Dark mode ─────────────────────────────────────────── */
+/* ─── Sepia theme (warm, eye-strain reduction) ────────── */
+:root[data-theme='sepia'] {
+  /* Borders */
+  --border-default: #d4b896;
+  --border-darker: #a68860;
+  --border-light: #e8dcc8;
+
+  /* Backgrounds */
+  --bg-hover: #f2e8d8;
+  --bg-hover-light: #faf5ed;
+  --bg-transparent-checker: #e8dcc8;
+  --bg-panel: #fef8f0;
+  --bg-body: #fffaf4;
+
+  /* Text */
+  --text-default: #6b5041;
+  --text-muted: #8b7355;
+  --text-light: #ab9373;
+
+  /* Focus */
+  --focus-ring: #d4a574;
+
+  /* Canvas defaults */
+  --canvas-stroke: #4a3830;
+  --canvas-fill: #fffaf4;
+
+  /* Status */
+  --danger: #c86b3a;
+  --success: #7a8e2f;
+  --playhead: #d88a3a;
+
+  /* Shadows & Overlays */
+  --shadow-sm: rgba(107, 80, 65, 0.1);
+  --shadow-md: rgba(107, 80, 65, 0.15);
+  --overlay-light: rgba(255, 250, 244, 0.85);
+  --overlay-dark: rgba(107, 80, 65, 0.55);
+  --overlay-dark-light: rgba(107, 80, 65, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-thumb: var(--border-darker);
+  --scrollbar-thumb-hover: var(--text-light);
+}
+
+/* ─── Dark theme (dark gray) ────────────────────────────── */
+:root[data-theme='dark'] {
+  /* Borders */
+  --border-default: #4d4d4d;
+  --border-darker: #696969;
+  --border-light: #454545;
+
+  /* Backgrounds */
+  --bg-hover: #3a3a3a;
+  --bg-hover-light: #333333;
+  --bg-transparent-checker: #4a4a4a;
+  --bg-panel: #2a2a2a;
+  --bg-body: #222222;
+
+  /* Text */
+  --text-default: #f0f0f0;
+  --text-muted: #b8b8b8;
+  --text-light: #909090;
+
+  /* Focus */
+  --focus-ring: #7db3e8;
+
+  /* Canvas defaults */
+  --canvas-stroke: #f0f0f0;
+  --canvas-fill: #2a2a2a;
+
+  /* Status */
+  --danger: #ff9999;
+  --success: #66dd88;
+  --playhead: #ff9999;
+
+  /* Shadows & Overlays */
+  --shadow-sm: rgba(0, 0, 0, 0.25);
+  --shadow-md: rgba(0, 0, 0, 0.4);
+  --overlay-light: rgba(0, 0, 0, 0.6);
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-dark-light: rgba(0, 0, 0, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-thumb: #696969;
+  --scrollbar-thumb-hover: #909090;
+}
+
+/* ─── Black theme (very dark) ──────────────────────────── */
+:root[data-theme='black'] {
+  /* Borders */
+  --border-default: #4a4a4a;
+  --border-darker: #6a6a6a;
+  --border-light: #4a4a4a;
+
+  /* Backgrounds */
+  --bg-hover: #2a2a2a;
+  --bg-hover-light: #232323;
+  --bg-transparent-checker: #4a4a4a;
+  --bg-panel: #1a1a1a;
+  --bg-body: #0a0a0a;
+
+  /* Text */
+  --text-default: #f0f0f0;
+  --text-muted: #b1b1b1;
+  --text-light: #818181;
+
+  /* Focus */
+  --focus-ring: #70b5fa;
+
+  /* Canvas defaults */
+  --canvas-stroke: #ffffff;
+  --canvas-fill: #1a1a1a;
+
+  /* Status */
+  --danger: #ff8a8a;
+  --success: #4ade80;
+  --playhead: #ff8a8a;
+
+  /* Shadows & Overlays */
+  --shadow-sm: rgba(0, 0, 0, 0.4);
+  --shadow-md: rgba(0, 0, 0, 0.6);
+  --overlay-light: rgba(0, 0, 0, 0.8);
+  --overlay-dark: rgba(0, 0, 0, 0.7);
+  --overlay-dark-light: rgba(0, 0, 0, 0.5);
+
+  /* Scrollbar */
+  --scrollbar-thumb: #6a6a6a;
+  --scrollbar-thumb-hover: #818181;
+}
+
+/* ─── System preference fallback (uses Black for dark mode) ──── */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']), :root[data-theme='dark'] {
+  :root:not([data-theme='light']):not([data-theme='sepia']):not([data-theme='dark']):not([data-theme='black']) {
+    /* Apply Black theme colors when system is in dark mode and no explicit theme is set */
     --border-default: #4a4a4a;
     --border-darker: #6a6a6a;
     --border-light: #4a4a4a;

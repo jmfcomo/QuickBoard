@@ -3,6 +3,9 @@ const path = require('path');
 const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
 
+// Initialize custom theme tracking (null = system/light, otherwise = 'sepia'|'dark'|'black')
+global.quickboardCustomTheme = null;
+
 // Must be called before app is ready
 protocol.registerSchemesAsPrivileged([
   {
@@ -76,7 +79,20 @@ const exportModule = require('./src/electron/export');
 fileio.registerIpcHandlers();
 exportModule.registerIpcHandlers();
 
-ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
+ipcMain.handle('quickboard:get-theme-source', () => {
+  // If a custom theme is set, return it; otherwise return nativeTheme.themeSource
+  if (global.quickboardCustomTheme) {
+    return global.quickboardCustomTheme;
+  }
+  return nativeTheme.themeSource;
+});
+
+ipcMain.on('quickboard:set-custom-theme', (_event, theme) => {
+  // Called by renderer to sync custom theme preference to main process
+  if (theme === null || ['sepia', 'dark', 'black'].includes(theme)) {
+    global.quickboardCustomTheme = theme;
+  }
+});
 
 app.whenReady().then(async () => {
   const mimeTypes = {
