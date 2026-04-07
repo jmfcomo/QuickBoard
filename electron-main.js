@@ -80,17 +80,33 @@ fileio.registerIpcHandlers();
 exportModule.registerIpcHandlers();
 
 ipcMain.handle('quickboard:get-theme-source', () => {
-  // If a custom theme is set, return it; otherwise return nativeTheme.themeSource
   if (global.quickboardCustomTheme) {
     return global.quickboardCustomTheme;
   }
-  return nativeTheme.themeSource;
+  return 'system';
 });
 
 ipcMain.on('quickboard:set-custom-theme', (_event, theme) => {
-  // Called by renderer to sync custom theme preference to main process
-  if (theme === null || ['sepia', 'dark', 'black'].includes(theme)) {
+  if (theme === null || ['white', 'light', 'sepia', 'dark', 'black'].includes(theme)) {
     global.quickboardCustomTheme = theme;
+    if (theme === null) {
+      nativeTheme.themeSource = 'system';
+    } else if (['dark', 'black'].includes(theme)) {
+      nativeTheme.themeSource = 'dark';
+    } else {
+      nativeTheme.themeSource = 'light';
+    }
+    // Rebuild menu to update checkmarks
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      const { buildMenu } = require('./src/electron/menu');
+      const hooks = {
+        onSave: fileio.requestSaveFromRenderer,
+        onLoad: fileio.loadBoardIntoRenderer,
+        onExport: exportModule.exportRequest,
+      };
+      buildMenu(app, win, hooks);
+    }
   }
 });
 

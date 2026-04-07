@@ -19,9 +19,9 @@
   --scrollbar-track: var(--bg-panel);
 }
 
-/* ─── Light theme (default & explicit) ────────────────── */
+/* ─── White theme (default & explicit) ───────────────── */
 :root,
-:root[data-theme='light'] {
+:root[data-theme='white'] {
   /* Borders */
   --border-default: #d1d5db;
   --border-darker: #9ca3af;
@@ -57,6 +57,49 @@
   --overlay-light: rgba(255, 255, 255, 0.85);
   --overlay-dark: rgba(0, 0, 0, 0.55);
   --overlay-dark-light: rgba(0, 0, 0, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-thumb: var(--border-darker);
+  --scrollbar-thumb-hover: var(--text-light);
+}
+
+/* ─── Light theme (light gray) ─────────────────────────── */
+:root[data-theme='light'] {
+  /* Borders */
+  --border-default: #d0d0d0;
+  --border-darker: #b0b0b0;
+  --border-light: #e0e0e0;
+
+  /* Backgrounds */
+  --bg-hover: #e8e8e8;
+  --bg-hover-light: #f0f0f0;
+  --bg-transparent-checker: #dfdfdf;
+  --bg-panel: #f2f2f2;
+  --bg-body: #f8f8f8;
+
+  /* Text */
+  --text-default: #333333;
+  --text-muted: #555555;
+  --text-light: #777777;
+
+  /* Focus */
+  --focus-ring: #4a90e2;
+
+  /* Canvas defaults */
+  --canvas-stroke: #000000;
+  --canvas-fill: #f8f8f8;
+
+  /* Status */
+  --danger: #e74c3c;
+  --success: #27ae60;
+  --playhead: #e94b3c;
+
+  /* Shadows & Overlays */
+  --shadow-sm: rgba(0, 0, 0, 0.08);
+  --shadow-md: rgba(0, 0, 0, 0.12);
+  --overlay-light: rgba(255, 255, 255, 0.82);
+  --overlay-dark: rgba(0, 0, 0, 0.5);
+  --overlay-dark-light: rgba(0, 0, 0, 0.25);
 
   /* Scrollbar */
   --scrollbar-thumb: var(--border-darker);
@@ -194,7 +237,7 @@
 
 /* ─── System preference fallback (uses Black for dark mode) ──── */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='sepia']):not([data-theme='dark']):not([data-theme='black']) {
+  :root:not([data-theme='white']):not([data-theme='light']):not([data-theme='sepia']):not([data-theme='dark']):not([data-theme='black']) {
     /* Apply Black theme colors when system is in dark mode and no explicit theme is set */
     --border-default: #4a4a4a;
     --border-darker: #6a6a6a;

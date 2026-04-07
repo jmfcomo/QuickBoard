@@ -10,9 +10,9 @@ declare global {
       ) => () => void;
       sendSaveData: (payload: { filePath: string; data: string }) => void;
       sendSaveBinary: (payload: { filePath: string; data: Uint8Array }) => void;
-      onThemeChanged: (handler: (theme: 'system' | 'light' | 'sepia' | 'dark' | 'black') => void) => () => void;
-      getThemeSource: () => Promise<'system' | 'light' | 'sepia' | 'dark' | 'black'>;
-      setCustomTheme: (theme: 'sepia' | 'dark' | 'black' | null) => void;
+      onThemeChanged: (handler: (theme: 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black') => void) => () => void;
+      getThemeSource: () => Promise<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>;
+      setCustomTheme: (theme: 'white' | 'light' | 'sepia' | 'dark' | 'black' | null) => void;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       openExternal: (url: string) => void;

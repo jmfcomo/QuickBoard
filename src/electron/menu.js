@@ -88,7 +88,7 @@ function buildMenu(app, win, hooks = {}) {
           {
             label: 'System',
             type: 'radio',
-            checked: nativeTheme.themeSource === 'system',
+            checked: !global.quickboardCustomTheme,
             click: () => {
               nativeTheme.themeSource = 'system';
               global.quickboardCustomTheme = null;
@@ -96,12 +96,22 @@ function buildMenu(app, win, hooks = {}) {
             },
           },
           {
-            label: 'Light',
+            label: 'White',
             type: 'radio',
-            checked: nativeTheme.themeSource === 'light' && !global.quickboardCustomTheme,
+            checked: global.quickboardCustomTheme === 'white',
             click: () => {
               nativeTheme.themeSource = 'light';
-              global.quickboardCustomTheme = null;
+              global.quickboardCustomTheme = 'white';
+              win.webContents.send('quickboard:theme-changed', 'white');
+            },
+          },
+          {
+            label: 'Light',
+            type: 'radio',
+            checked: global.quickboardCustomTheme === 'light',
+            click: () => {
+              nativeTheme.themeSource = 'light';
+              global.quickboardCustomTheme = 'light';
               win.webContents.send('quickboard:theme-changed', 'light');
             },
           },
@@ -120,7 +130,7 @@ function buildMenu(app, win, hooks = {}) {
             type: 'radio',
             checked: global.quickboardCustomTheme === 'dark',
             click: () => {
-              nativeTheme.themeSource = 'light';
+              nativeTheme.themeSource = 'dark';
               global.quickboardCustomTheme = 'dark';
               win.webContents.send('quickboard:theme-changed', 'dark');
             },
@@ -130,7 +140,7 @@ function buildMenu(app, win, hooks = {}) {
             type: 'radio',
             checked: global.quickboardCustomTheme === 'black',
             click: () => {
-              nativeTheme.themeSource = 'light';
+              nativeTheme.themeSource = 'dark';
               global.quickboardCustomTheme = 'black';
               win.webContents.send('quickboard:theme-changed', 'black');
             },
@@ -202,19 +212,3 @@ function buildMenu(app, win, hooks = {}) {
 }
 
 module.exports = { buildMenu };
-function registerThemeListener(app, win, hooks = {}) {
-  const handler = () => {
-    buildMenu(app, win, hooks);
-    try {
-      win.webContents.send('quickboard:theme-changed', nativeTheme.themeSource);
-    } catch (err) {}
-  };
-
-  nativeTheme.on('updated', handler);
-
-  return () => {
-    nativeTheme.removeListener('updated', handler);
-  };
-}
-
-module.exports = { buildMenu, registerThemeListener };
