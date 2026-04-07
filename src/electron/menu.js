@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 let aboutWin = null;
+let settingsWin = null;
 
 function openAboutWindow(app) {
   if (aboutWin && !aboutWin.isDestroyed()) {
@@ -27,6 +28,35 @@ function openAboutWindow(app) {
   });
   aboutWin.on('closed', () => {
     aboutWin = null;
+  });
+}
+
+function openSettingsWindow(app) {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.focus();
+    return;
+  }
+
+  let defaultTool = 'pencil';
+  let dir = 'documents';
+
+  // const settingsJsonPath = path.join(app.getAppPath(), './src/electron/config/appsettings.json');
+  // try {
+  //   const settingsJson = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf8'));
+  //   defaultTool = settingsJson.canvas.defaultTool || 'pencil';
+  //   dir = settingsJson.initialDir || 'documents';
+  // } catch (err) {
+  //   // ignore error, fallback to defaults
+  // }
+
+  settingsWin = openDialogWindow(app, {
+    title: 'QuickBoard Settings',
+    width: 320,
+    height: 260,
+    query: { dialog: 'settings' },
+  });
+  settingsWin.on('closed', () => {
+    settingsWin = null;
   });
 }
 
@@ -147,6 +177,12 @@ function buildMenu(app, win, hooks = {}) {
     ],
   };
 
+  const settingsMenu = {
+    label: 'Settings',
+    accelerator: 'CmdOrCtrl+Q',
+    click: () => openSettingsWindow(app),
+  };
+
   const template = [];
 
   if (process.platform === 'darwin') {
@@ -165,11 +201,13 @@ function buildMenu(app, win, hooks = {}) {
     template.push(fileMenu);
     template.push(editMenu);
     template.push(viewMenu);
+    template.push(settingsMenu);
   } else {
     template.push(fileMenu);
     template.push(editMenu);
     template.push(viewMenu);
     template.push(optionsMenu);
+    template.push(settingsMenu);
     template.push({ role: 'quit' });
   }
 
