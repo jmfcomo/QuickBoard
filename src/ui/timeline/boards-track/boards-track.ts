@@ -22,7 +22,7 @@ export class BoardsTrackComponent {
   scale = input.required<number>();
   containerWidth = input.required<number>();
 
-  readonly MIN_DURATION = 0.5;
+  readonly MIN_DURATION = 0.01;
 
   // Resize state
   private isResizing = signal(false);

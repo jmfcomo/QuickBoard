@@ -33,7 +33,7 @@ export class TimelineMenu {
     const n = Number(value);
     if (Number.isFinite(n) && n > 0) {
       const id = this.store.currentBoardId();
-      if (id) this.store.updateBoardDuration(id, Math.max(0.1, n));
+      if (id) this.store.updateBoardDuration(id, Math.max(0.01, n));
     }
   }
 
