@@ -25,6 +25,7 @@ import { TimelineControlsComponent } from '../timeline-controls/timeline-control
   host: {
     '(document:mousemove)': 'onMouseMove($event)',
     '(document:mouseup)': 'onMouseUp()',
+    '(wheel)': 'onWheel($event)',
   },
 })
 export class TimelineEditor implements AfterViewInit {
@@ -98,6 +99,16 @@ export class TimelineEditor implements AfterViewInit {
       } catch (err) {
         console.error('Failed to resume playback after scrubbing:', err);
       }
+    }
+  }
+
+  onWheel(event: WheelEvent) {
+    if (!event.shiftKey) return;
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      this.zoom.zoomIn();
+    } else {
+      this.zoom.zoomOut();
     }
   }
 
