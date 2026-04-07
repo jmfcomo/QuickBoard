@@ -44,7 +44,8 @@ export function createTimelineData(
     const ticks: { time: number; left: number; label: string }[] = [];
     const width = totalWidth();
     const s = scale();
-    // Smaller zoom scales use denser ticks, larger scales use sparser ticks.
+    // Smaller zoom scales use larger time steps and therefore sparser ticks;
+    // larger scales use smaller time steps and therefore denser ticks.
     const stepSeconds = getRulerStepSeconds(s);
     const stepPx = stepSeconds * s;
     const count = Math.ceil(width / stepPx);
