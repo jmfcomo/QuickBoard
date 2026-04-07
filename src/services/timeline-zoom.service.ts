@@ -29,7 +29,9 @@ export class TimelineZoomService {
   }
 
   private clamp(value: number): number {
-    const snapped = Math.round(value / this.STEP) * this.STEP;
+    const bounded = Math.min(this.MAX_SCALE, Math.max(this.MIN_SCALE, value));
+    const snapped =
+      this.MIN_SCALE + Math.round((bounded - this.MIN_SCALE) / this.STEP) * this.STEP;
     return Math.min(this.MAX_SCALE, Math.max(this.MIN_SCALE, snapped));
   }
 }
