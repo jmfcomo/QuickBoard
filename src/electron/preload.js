@@ -65,6 +65,9 @@ contextBridge.exposeInMainWorld('quickboard', {
     return () => ipcRenderer.removeListener('quickboard:theme-changed', listener);
   },
   getThemeSource: () => ipcRenderer.invoke('quickboard:get-theme-source'),
+  setCustomTheme: (theme) => {
+    ipcRenderer.send('quickboard:set-custom-theme', theme);
+  },
   onUndo: (handler) => {
     const listener = () => handler();
     ipcRenderer.on('quickboard:undo', listener);

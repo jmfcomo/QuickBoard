@@ -1,30 +1,74 @@
 import { Injectable } from '@angular/core';
+import appSettings from '@econfig/appsettings.json';
+
+type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  initTheme(): () => void {
-    window.quickboard
-      ?.getThemeSource?.()
-      .then((source: 'system' | 'light' | 'dark') => this.applyTheme(source));
+  private readonly THEME_STORAGE_KEY = 'qb-theme';
+  private mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  private lastCustomThemeSent: Theme | null | undefined;
 
-    let removeListener: (() => void) | undefined;
+  initTheme(): () => void {
+    const storedTheme = this.getStoredTheme();
+    if (storedTheme) {
+      this.applyTheme(storedTheme);
+    } else {
+      window.quickboard
+        ?.getThemeSource?.()
+        ?.then((source: Theme) => this.applyTheme(source as Theme));
+    }
+
+    let removeAppListener: (() => void) | undefined;
     if (window.quickboard?.onThemeChanged) {
-      removeListener = window.quickboard.onThemeChanged((theme: 'system' | 'light' | 'dark') =>
-        this.applyTheme(theme),
+      removeAppListener = window.quickboard.onThemeChanged((theme: string) =>
+        this.applyTheme(theme as Theme),
       );
     }
 
+    const osListener = () => {
+      const stored = this.getStoredTheme() || 'system';
+      if (stored === 'system') {
+        this.applyTheme('system');
+      }
+    };
+    this.mediaQuery.addEventListener('change', osListener);
+
     return () => {
-      removeListener?.();
+      removeAppListener?.();
+      this.mediaQuery.removeEventListener('change', osListener);
     };
   }
 
-  applyTheme(source: 'system' | 'light' | 'dark'): void {
+  applyTheme(source: Theme): void {
     const root = document.documentElement;
+    localStorage.setItem(this.THEME_STORAGE_KEY, source);
+
+    const customTheme = source === 'system' ? null : source;
+    if (customTheme !== this.lastCustomThemeSent) {
+      window.quickboard?.setCustomTheme?.(customTheme);
+      this.lastCustomThemeSent = customTheme;
+    }
+
+    let activeTheme = source;
     if (source === 'system') {
+      activeTheme = this.mediaQuery.matches 
+        ? (appSettings.theme.systemDarkTheme as Theme)
+        : (appSettings.theme.systemLightTheme as Theme);
+    }
+
+    if (source === 'system' && activeTheme === 'white') {
       root.removeAttribute('data-theme');
     } else {
-      root.setAttribute('data-theme', source);
+      root.setAttribute('data-theme', activeTheme);
     }
+  }
+
+  getStoredTheme(): Theme | null {
+    const stored = localStorage.getItem(this.THEME_STORAGE_KEY);
+    if (stored && ['system', 'white', 'light', 'sepia', 'dark', 'black'].includes(stored)) {
+      return stored as Theme;
+    }
+    return null;
   }
 }
