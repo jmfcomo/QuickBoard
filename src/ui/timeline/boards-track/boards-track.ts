@@ -3,6 +3,7 @@ import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
 import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
+import appSettings from '@econfig/appsettings.json';
 
 @Component({
   selector: 'app-boards-track',
@@ -22,7 +23,9 @@ export class BoardsTrackComponent {
   scale = input.required<number>();
   containerWidth = input.required<number>();
 
-  readonly MIN_DURATION = 0.5;
+  readonly MIN_DURATION = 1 / (appSettings.board.defaultFps || 24);
+  readonly SNAP_PRECISION =
+    appSettings.board.defaultSnapPrecision || 1 / (appSettings.board.defaultFps || 24);
 
   // Resize state
   private isResizing = signal(false);
@@ -121,7 +124,8 @@ export class BoardsTrackComponent {
   }
 
   private snap(value: number): number {
-    return Math.round(value * 100) / 100;
+    const precision = this.SNAP_PRECISION;
+    return Math.round(value / precision) * precision;
   }
 
   private handleResizeDrag(event: MouseEvent) {

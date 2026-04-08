@@ -7,6 +7,7 @@
           type="range" min="0" max="100" step="1"
           [value]="strokeSizeSliderPos()"
           (input)="strokeSizeFromSliderChange.emit(+$any($event.target).value)"
+          [style.--percent]="strokeSizeSliderPos() + '%'"
           class="property-slider"
         >
         <div class="number-input-wrapper">
@@ -30,6 +31,7 @@
           type="range" min="0" max="128" step="1"
           [value]="colorTolerance()"
           (input)="colorToleranceChange.emit(+$any($event.target).value)"
+          [style.--percent]="(colorTolerance() / 1.28) + '%'"
           class="property-slider"
         >
         <div class="number-input-wrapper">
@@ -53,6 +55,7 @@
           type="range" min="10" max="200" step="1"
           [value]="brushSpacing()"
           (input)="brushSpacingChange.emit(+$any($event.target).value)"
+          [style.--percent]="((brushSpacing() - 10) / 1.9) + '%'"
           class="property-slider"
         >
         <div class="number-input-wrapper">

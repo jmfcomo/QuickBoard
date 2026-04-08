@@ -39,9 +39,6 @@
 
 .property-slider {
   width: 120px;
-  height: 4px;
-  cursor: pointer;
-  accent-color: var(--accent);
 }
 
 .number-input-wrapper {
