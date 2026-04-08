@@ -17,12 +17,12 @@ export class TimelineMenu {
   readonly zoom = inject(TimelineZoomService);
 
   readonly zoomScale = this.zoom.scale;
+  readonly sliderPosition = this.zoom.sliderPosition;
   readonly zoomPercent = this.zoom.zoomPercent;
-  readonly minScale = this.zoom.MIN_SCALE;
-  readonly maxScale = this.zoom.MAX_SCALE;
-  readonly zoomStep = this.zoom.STEP;
-  readonly isMinZoom = computed(() => this.zoomScale() <= this.minScale);
-  readonly isMaxZoom = computed(() => this.zoomScale() >= this.maxScale);
+  readonly sliderMin = this.zoom.SLIDER_MIN;
+  readonly sliderMax = this.zoom.SLIDER_MAX;
+  readonly isMinZoom = computed(() => this.sliderPosition() <= this.sliderMin);
+  readonly isMaxZoom = computed(() => this.sliderPosition() >= this.sliderMax);
 
   currentDuration = computed(() => {
     const id = this.store.currentBoardId();
@@ -86,7 +86,7 @@ export class TimelineMenu {
   updateZoom(value: string) {
     const n = Number(value);
     if (Number.isFinite(n)) {
-      this.zoom.setScale(n);
+      this.zoom.setSliderPosition(n);
     }
   }
 

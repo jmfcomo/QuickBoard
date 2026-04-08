@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  :root {
+    --accent: #c97fff;
+    --accent-hover: #b039df;
+    --accent-light: #cc8cfa;
+    --border-darker: #6a6a6a;
+  }
+  body { background: #1a1a1a; padding: 50px; }
+  
+  .zoom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 200px;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(var(--accent-hover), var(--accent-hover)) no-repeat;
+    background-color: var(--border-darker);
+    /* For testing: */
+    background-size: 50% 100%;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent-hover);
+    border: none;
+    /* Optional transition */
+    transition: background-color 0.15s ease, transform 0.1s ease;
+  }
+
+  /* No hover color */
+  .zoom-slider:hover::-webkit-slider-thumb {
+    background: var(--accent-hover);
+  }
+
+  /* Active dragging */
+  .zoom-slider:active::-webkit-slider-thumb {
+    background: var(--accent-light);
+  }
+
+  /* Active drag state gradient? Hard to do CSS only. */
+  .zoom-slider:active {
+    background: linear-gradient(var(--accent-light), var(--accent-light)) no-repeat;
+    background-color: var(--border-darker);
+  }
+</style>
+</head>
+<body>
+  <input class="zoom-slider" type="range" value="50">
+</body>
+</html>

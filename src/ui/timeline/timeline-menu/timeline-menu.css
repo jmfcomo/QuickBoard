@@ -16,30 +16,35 @@
 
 .menu-left {
   justify-content: flex-start;
-  min-width: 120px;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
 }
 
 .menu-center {
   justify-content: center;
   align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  gap: 4px;
+  flex: 0 0 auto;
+  gap: 16px;
 }
 
 .timeline-zoom {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-right: 12px;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
-.zoom-btn,
-.zoom-reset-btn {
+.playback-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-btn {
   height: 30px;
-  padding: 0 8px;
+  width: 30px;
+  padding: 0;
   background-color: transparent;
   border: 1px solid var(--border-default);
   border-radius: 6px;
@@ -54,13 +59,7 @@
     opacity 0.15s;
 }
 
-.zoom-btn {
-  width: 30px;
-  padding: 0;
-}
-
-.zoom-btn:hover,
-.zoom-reset-btn:hover {
+.zoom-btn:hover {
   background-color: var(--bg-hover);
 }
 
@@ -70,14 +69,7 @@
 }
 
 .zoom-slider {
-  width: 110px;
-  accent-color: var(--accent-border);
-}
-
-.zoom-reset-btn {
-  min-width: 54px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+  width: 80px;
 }
 
 .onion-skin-btn {
@@ -95,7 +87,6 @@
     background-color 0.15s,
     border-color 0.15s;
   color: var(--text-default);
-  margin-right: 10px;
 }
 
 .onion-skin-btn:hover {
@@ -126,8 +117,15 @@
 
 .menu-right {
   justify-content: flex-end;
-  min-width: 160px;
-  flex: 0 0 auto;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 /* ─── Timecode Display (Left) ──────────────────────────── */
 .timecode-display {
@@ -136,9 +134,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-default);
   letter-spacing: 0.5px;
-  min-width: 90px;
+  min-width: 100px;
+  margin-right: 12px;
   text-align: left;
   user-select: text;
+  flex-shrink: 0;
 }
 
 /* ─── Duration control ───────────────────────────────────── */
@@ -305,16 +305,10 @@
 
 @media (max-width: 1080px) {
   .timeline-zoom {
-    margin-right: 8px;
     gap: 4px;
   }
 
   .zoom-slider {
-    width: 86px;
-  }
-
-  .zoom-reset-btn {
-    min-width: 46px;
-    padding: 0 6px;
+    width: 60px;
   }
 }
