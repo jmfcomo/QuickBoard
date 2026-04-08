@@ -3,6 +3,7 @@ import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
+import { SettingsWindowComponent } from 'src/ui/dialogs/settings-window/settings-window.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { SbdService } from './app.sbd.service';
@@ -25,13 +26,14 @@ import { PlaybackService } from '../services/playback.service';
     ExportProgressComponent,
     ExportSettingsComponent,
     AboutWindowComponent,
+    SettingsWindowComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-  protected readonly dialogMode = signal<'about' | null>(null);
+  protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
@@ -56,6 +58,9 @@ export class App implements OnInit, OnDestroy {
     const dialog = params.get('dialog');
     if (dialog === 'about') {
       this.dialogMode.set(dialog);
+      return;
+    } else if (dialog === 'settings') {
+      this.dialogMode.set('settings');
       return;
     }
 

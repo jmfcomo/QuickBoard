@@ -40,20 +40,20 @@ function openSettingsWindow(app) {
   let defaultTool = 'pencil';
   let dir = 'documents';
 
-  // const settingsJsonPath = path.join(app.getAppPath(), './src/electron/config/appsettings.json');
-  // try {
-  //   const settingsJson = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf8'));
-  //   defaultTool = settingsJson.canvas.defaultTool || 'pencil';
-  //   dir = settingsJson.initialDir || 'documents';
-  // } catch (err) {
-  //   // ignore error, fallback to defaults
-  // }
+  const settingsJsonPath = path.join(app.getAppPath(), './src/electron/config/appsettings.json');
+  try {
+    const settingsJson = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf8'));
+    defaultTool = settingsJson.canvas.defaultTool || 'pencil';
+    dir = settingsJson.initialDir || 'documents';
+  } catch (err) {
+    // ignore error, fallback to defaults
+  }
 
   settingsWin = openDialogWindow(app, {
     title: 'QuickBoard Settings',
     width: 320,
     height: 260,
-    query: { dialog: 'settings' },
+    query: { dialog: 'settings', directory: dir, tool: defaultTool },
   });
   settingsWin.on('closed', () => {
     settingsWin = null;

@@ -1,4 +1,3 @@
-import { appSettings } from "src/settings-loader";
 import { Component, OnInit, signal } from '@angular/core';
 
 @Component({
@@ -7,14 +6,18 @@ import { Component, OnInit, signal } from '@angular/core';
   templateUrl: './settings-window.component.html',
   styleUrl: './settings-window.component.css',
 })
-
 export class SettingsWindowComponent implements OnInit {
-  protected readonly description = signal('');
+  protected readonly dir = signal('');
+  protected readonly tool = signal('pencil');
   // readonly githubUrl = 'https://github.com/jmfcomo/QuickBoard';
-  readonly defaultDirectory = appSettings.initialDir;
 
   ngOnInit() {
     const params = new URLSearchParams(window.location.search);
-    this.description.set(params.get('description') ?? '');
+    this.dir.set(params.get('dir') ?? 'documents');
+    this.tool.set(params.get('tool') ?? 'pencil');
   }
+
+  // protected openGitHub(): void {
+  //   window.quickboard?.openExternal(this.githubUrl);
+  // }
 }
