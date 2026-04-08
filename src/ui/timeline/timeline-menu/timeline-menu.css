@@ -16,16 +16,60 @@
 
 .menu-left {
   justify-content: flex-start;
-  min-width: 120px;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  align-items: center;
+  min-width: 0;
 }
 
 .menu-center {
   justify-content: center;
   align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  gap: 16px;
+}
+
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.playback-controls-group {
+  display: flex;
+  align-items: center;
   gap: 4px;
+}
+
+.zoom-btn {
+  height: 30px;
+  width: 30px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-default);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+.zoom-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.zoom-slider {
+  width: 80px;
 }
 
 .onion-skin-btn {
@@ -43,7 +87,6 @@
     background-color 0.15s,
     border-color 0.15s;
   color: var(--text-default);
-  margin-right: 10px;
 }
 
 .onion-skin-btn:hover {
@@ -74,8 +117,15 @@
 
 .menu-right {
   justify-content: flex-end;
-  min-width: 160px;
-  flex: 0 0 auto;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 /* ─── Timecode Display (Left) ──────────────────────────── */
 .timecode-display {
@@ -84,9 +134,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-default);
   letter-spacing: 0.5px;
-  min-width: 90px;
+  min-width: 100px;
+  margin-right: 12px;
   text-align: left;
   user-select: text;
+  flex-shrink: 0;
 }
 
 /* ─── Duration control ───────────────────────────────────── */
@@ -249,4 +301,14 @@
   line-height: 1;
   color: currentColor;
   display: inline-block;
+}
+
+@media (max-width: 1080px) {
+  .timeline-zoom {
+    gap: 4px;
+  }
+
+  .zoom-slider {
+    width: 60px;
+  }
 }
