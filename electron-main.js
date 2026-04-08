@@ -3,6 +3,9 @@ const path = require('path');
 const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
 
+// Initialize custom theme tracking (null = system, otherwise = explicit theme: 'white'|'light'|'sepia'|'dark'|'black')
+global.quickboardCustomTheme = null;
+
 // Must be called before app is ready
 protocol.registerSchemesAsPrivileged([
   {
@@ -76,7 +79,36 @@ const exportModule = require('./src/electron/export');
 fileio.registerIpcHandlers();
 exportModule.registerIpcHandlers();
 
-ipcMain.handle('quickboard:get-theme-source', () => nativeTheme.themeSource);
+ipcMain.handle('quickboard:get-theme-source', () => {
+  if (global.quickboardCustomTheme) {
+    return global.quickboardCustomTheme;
+  }
+  return 'system';
+});
+
+ipcMain.on('quickboard:set-custom-theme', (_event, theme) => {
+  if (theme === null || ['white', 'light', 'sepia', 'dark', 'black'].includes(theme)) {
+    global.quickboardCustomTheme = theme;
+    if (theme === null) {
+      nativeTheme.themeSource = 'system';
+    } else if (['dark', 'black'].includes(theme)) {
+      nativeTheme.themeSource = 'dark';
+    } else {
+      nativeTheme.themeSource = 'light';
+    }
+    // Rebuild menu to update checkmarks
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      const { buildMenu } = require('./src/electron/menu');
+      const hooks = {
+        onSave: fileio.requestSaveFromRenderer,
+        onLoad: fileio.loadBoardIntoRenderer,
+        onExport: exportModule.exportRequest,
+      };
+      buildMenu(app, win, hooks);
+    }
+  }
+});
 
 app.whenReady().then(async () => {
   const mimeTypes = {
