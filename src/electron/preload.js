@@ -78,6 +78,11 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:redo', listener);
     return () => ipcRenderer.removeListener('quickboard:redo', listener);
   },
+  onSaveResult: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('quickboard:save-result', listener);
+    return () => ipcRenderer.removeListener('quickboard:save-result', listener);
+  },
   onRequestExport: (handler) => {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on('quickboard:request-export', listener);

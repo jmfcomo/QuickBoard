@@ -5,6 +5,7 @@ const fs = require('fs/promises');
 let _app = null;
 let lastUsedDir = null;
 let settingsFile = null;
+let currentFilePath = null;
 
 async function loadSettings() {
   try {
@@ -29,6 +30,14 @@ async function init(appInstance) {
 }
 
 async function requestSaveFromRenderer(win) {
+  if (currentFilePath) {
+    win.webContents.send('quickboard:request-save', { filePath: currentFilePath });
+    return;
+  }
+  return await requestSaveAsFromRenderer(win);
+}
+
+async function requestSaveAsFromRenderer(win) {
   const documentsDir = _app.getPath('documents');
   const baseDir = lastUsedDir || documentsDir;
   const defaultPath = path.join(baseDir, 'untitled.sbd');
@@ -70,6 +79,7 @@ async function loadBoardIntoRenderer(win) {
 
     try {
       lastUsedDir = path.dirname(filePath);
+      currentFilePath = filePath;
       await saveSettings();
     } catch {}
 
@@ -100,6 +110,7 @@ function registerIpcHandlers() {
 
     try {
       await fs.writeFile(payload.filePath, payload.data, 'utf-8');
+      currentFilePath = payload.filePath;
       try {
         event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
       } catch (e) {}
@@ -132,6 +143,7 @@ function registerIpcHandlers() {
 
     try {
       await fs.writeFile(payload.filePath, Buffer.from(payload.data));
+      currentFilePath = payload.filePath;
       try {
         event.sender.send('quickboard:save-result', { filePath: payload.filePath, success: true });
       } catch (e) {}
@@ -159,6 +171,7 @@ async function loadBoardFromPath(win, filePath) {
 
     try {
       lastUsedDir = path.dirname(filePath);
+      currentFilePath = filePath;
       await saveSettings();
     } catch {}
 
@@ -175,6 +188,7 @@ async function loadBoardFromPath(win, filePath) {
 module.exports = {
   init,
   requestSaveFromRenderer,
+  requestSaveAsFromRenderer,
   loadBoardIntoRenderer,
   loadBoardFromPath,
   registerIpcHandlers,

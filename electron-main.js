@@ -56,6 +56,7 @@ function createWindow() {
   const { buildMenu } = require('./src/electron/menu');
   const hooks = {
     onSave: fileio.requestSaveFromRenderer,
+    onSaveAs: fileio.requestSaveAsFromRenderer,
     onLoad: fileio.loadBoardIntoRenderer,
     onExport: exportModule.exportRequest,
   };
@@ -102,6 +103,7 @@ ipcMain.on('quickboard:set-custom-theme', (_event, theme) => {
       const { buildMenu } = require('./src/electron/menu');
       const hooks = {
         onSave: fileio.requestSaveFromRenderer,
+        onSaveAs: fileio.requestSaveAsFromRenderer,
         onLoad: fileio.loadBoardIntoRenderer,
         onExport: exportModule.exportRequest,
       };
