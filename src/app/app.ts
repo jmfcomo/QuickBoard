@@ -7,11 +7,11 @@ import { ExportProgressComponent } from '../ui/export-progress/export-progress.c
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
+import { SaveService } from '../services/save.service';
 import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
-import appSettings from '@econfig/appsettings.json';
 
 @Component({
   selector: 'app-root',
@@ -32,6 +32,7 @@ import appSettings from '@econfig/appsettings.json';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
+  protected readonly saveService = inject(SaveService);
   protected readonly dialogMode = signal<'about' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
@@ -41,16 +42,11 @@ export class App implements OnInit, OnDestroy {
   protected readonly exportIpc = inject(ExportIpcService);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
-  private removeRequestSaveListener?: () => void;
-  private removeLoadDataListener?: () => void;
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
-  private removeSaveResultListener?: () => void;
-  private currentFilePath: string | null = null;
-  private autosaveTimer: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();
@@ -63,63 +59,7 @@ export class App implements OnInit, OnDestroy {
       return;
     }
 
-    if (window.quickboard?.onRequestSave) {
-      this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
-        try {
-          this.currentFilePath = payload.filePath;
-          const zipData = await this.sbd.buildSbdZip();
-          window.quickboard?.sendSaveBinary({ filePath: payload.filePath, data: zipData });
-        } catch (err) {
-          console.error('Failed to build .sbd file:', err);
-        }
-      });
-    }
-
-    if (window.quickboard?.onLoadData) {
-      this.removeLoadDataListener = window.quickboard.onLoadData(async (payload) => {
-        try {
-          this.currentFilePath = payload.filePath;
-          if (payload.isBinary) {
-            await this.sbd.loadSbdZip(payload.content);
-          } else {
-            // Legacy plain-JSON fallback
-            this.sbd.loadLegacyJson(payload.content);
-          }
-          // Clear history — the newly-loaded project starts with a clean slate
-          this.undoRedo.clear();
-          // Derive default export prefix from the opened file's name.
-          const stem =
-            payload.filePath
-              .split(/[\\/]/)
-              .pop()
-              ?.replace(/\.[^.]+$/, '') ?? '';
-          if (stem) this.exportIpc.setProjectName(stem);
-        } catch (err) {
-          console.error('Failed to load data from file:', err);
-          const message = err instanceof Error ? err.message : String(err);
-          window.alert(`Failed to load file: ${message}`);
-        }
-      });
-    }
-
-    if (appSettings.autosave) {
-      this.autosaveTimer = setInterval(
-        async () => {
-          if (this.currentFilePath && window.quickboard?.sendSaveBinary) {
-            try {
-              const zipData = await this.sbd.buildSbdZip();
-              window.quickboard.sendSaveBinary({
-                filePath: this.currentFilePath,
-                data: zipData,
-              });
-            } catch (err) {
-              console.error('Autosave failed:', err);
-            }
-          }
-        },
-        5 * 60 * 1000,
-      );
-    }
+    this.saveService.init();
 
     this.removeExportIpcListeners = this.exportIpc.init();
 
@@ -132,20 +72,6 @@ export class App implements OnInit, OnDestroy {
     if (window.quickboard?.onRedo) {
       this.removeRedoListener = window.quickboard.onRedo(() => {
         this.undoRedo.triggerRedo();
-      });
-    }
-
-    if (window.quickboard?.onSaveResult) {
-      this.removeSaveResultListener = window.quickboard.onSaveResult((payload) => {
-        if (payload.success) {
-          const oldTitle = this.title();
-          this.title.set('Saved!');
-          setTimeout(() => {
-            if (this.title() === 'Saved!') {
-              this.title.set(oldTitle);
-            }
-          }, 2000);
-        }
       });
     }
 
@@ -219,12 +145,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.autosaveTimer) {
-      clearInterval(this.autosaveTimer);
-    }
-    this.removeRequestSaveListener?.();
-    this.removeLoadDataListener?.();
-    this.removeSaveResultListener?.();
+    this.saveService.destroy();
     this.removeThemeListener?.();
     this.removeUndoListener?.();
     this.removeRedoListener?.();

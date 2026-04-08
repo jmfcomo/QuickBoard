@@ -71,7 +71,7 @@ async function loadBoardIntoRenderer(win) {
 
   if (canceled || !filePaths || filePaths.length === 0) return;
 
-  const filePath = filePaths[0];
+  const filePath = path.resolve(filePaths[0]);
 
   try {
     const buffer = await fs.readFile(filePath);
@@ -166,16 +166,21 @@ function registerIpcHandlers() {
 
 async function loadBoardFromPath(win, filePath) {
   try {
-    const buffer = await fs.readFile(filePath);
+    const resolvedPath = path.resolve(filePath);
+    const buffer = await fs.readFile(resolvedPath);
     const content = buffer.toString('base64');
 
     try {
-      lastUsedDir = path.dirname(filePath);
-      currentFilePath = filePath;
+      lastUsedDir = path.dirname(resolvedPath);
+      currentFilePath = resolvedPath;
       await saveSettings();
     } catch {}
 
-    win.webContents.send('quickboard:load-data', { filePath, content, isBinary: true });
+    win.webContents.send('quickboard:load-data', {
+      filePath: resolvedPath,
+      content,
+      isBinary: true,
+    });
   } catch (err) {
     console.error('Failed to load file from path:', err);
     const message = err && err.message ? err.message : String(err);
