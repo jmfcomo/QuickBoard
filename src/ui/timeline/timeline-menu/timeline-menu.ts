@@ -1,7 +1,9 @@
 import { Component, inject, computed } from '@angular/core';
 import { AppStore } from '../../../data/store/app.store';
 import { PlaybackService } from '../../../services/playback.service';
+import { TimelineZoomService } from '../../../services/timeline-zoom.service';
 import { formatTime as formatTimeUtil } from '../helpers/format-time';
+import appSettings from '@econfig/appsettings.json';
 
 @Component({
   selector: 'app-timeline-menu',
@@ -12,6 +14,15 @@ import { formatTime as formatTimeUtil } from '../helpers/format-time';
 export class TimelineMenu {
   readonly store = inject(AppStore);
   readonly playback = inject(PlaybackService);
+  readonly zoom = inject(TimelineZoomService);
+
+  readonly zoomScale = this.zoom.scale;
+  readonly sliderPosition = this.zoom.sliderPosition;
+  readonly zoomPercent = this.zoom.zoomPercent;
+  readonly sliderMin = this.zoom.SLIDER_MIN;
+  readonly sliderMax = this.zoom.SLIDER_MAX;
+  readonly isMinZoom = computed(() => this.sliderPosition() <= this.sliderMin);
+  readonly isMaxZoom = computed(() => this.sliderPosition() >= this.sliderMax);
 
   currentDuration = computed(() => {
     const id = this.store.currentBoardId();
@@ -21,9 +32,10 @@ export class TimelineMenu {
 
   updateDuration(value: string) {
     const n = Number(value);
+    const minDuration = 1 / (appSettings.board.defaultFps || 24);
     if (Number.isFinite(n) && n > 0) {
       const id = this.store.currentBoardId();
-      if (id) this.store.updateBoardDuration(id, Math.max(0.1, n));
+      if (id) this.store.updateBoardDuration(id, Math.max(minDuration, n));
     }
   }
 
@@ -69,6 +81,25 @@ export class TimelineMenu {
   goToEnd() {
     const total = this.store.totalDuration();
     this.playback.seek(total);
+  }
+
+  updateZoom(value: string) {
+    const n = Number(value);
+    if (Number.isFinite(n)) {
+      this.zoom.setSliderPosition(n);
+    }
+  }
+
+  zoomIn() {
+    this.zoom.zoomIn();
+  }
+
+  zoomOut() {
+    this.zoom.zoomOut();
+  }
+
+  resetZoom() {
+    this.zoom.reset();
   }
 
   formatTime(seconds: number, hundredths = false): string {
