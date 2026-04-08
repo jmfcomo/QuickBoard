@@ -7,11 +7,17 @@ type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
 export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'qb-theme';
   private mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  private lastCustomThemeSent: Theme | null | undefined;
 
   initTheme(): () => void {
-    window.quickboard
-      ?.getThemeSource?.()
-      .then((source: Theme) => this.applyTheme(source as Theme));
+    const storedTheme = this.getStoredTheme();
+    if (storedTheme) {
+      this.applyTheme(storedTheme);
+    } else {
+      window.quickboard
+        ?.getThemeSource?.()
+        ?.then((source: Theme) => this.applyTheme(source as Theme));
+    }
 
     let removeAppListener: (() => void) | undefined;
     if (window.quickboard?.onThemeChanged) {
@@ -38,10 +44,10 @@ export class ThemeService {
     const root = document.documentElement;
     localStorage.setItem(this.THEME_STORAGE_KEY, source);
 
-    if (source === 'system') {
-      window.quickboard?.setCustomTheme?.(null);
-    } else {
-      window.quickboard?.setCustomTheme?.(source);
+    const customTheme = source === 'system' ? null : source;
+    if (customTheme !== this.lastCustomThemeSent) {
+      window.quickboard?.setCustomTheme?.(customTheme);
+      this.lastCustomThemeSent = customTheme;
     }
 
     let activeTheme = source;
@@ -51,7 +57,7 @@ export class ThemeService {
         : (appSettings.theme.systemLightTheme as Theme);
     }
 
-    if (activeTheme === 'white') {
+    if (source === 'system' && activeTheme === 'white') {
       root.removeAttribute('data-theme');
     } else {
       root.setAttribute('data-theme', activeTheme);

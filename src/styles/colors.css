@@ -237,7 +237,7 @@
 
 /* ─── System preference fallback (uses Black for dark mode) ──── */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='white']):not([data-theme='light']):not([data-theme='sepia']):not([data-theme='dark']):not([data-theme='black']) {
+  :root:not([data-theme]) {
     /* Apply Black theme colors when system is in dark mode and no explicit theme is set */
     --border-default: #4a4a4a;
     --border-darker: #6a6a6a;

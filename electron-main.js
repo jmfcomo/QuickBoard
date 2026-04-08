@@ -3,7 +3,7 @@ const path = require('path');
 const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
 
-// Initialize custom theme tracking (null = system/light, otherwise = 'sepia'|'dark'|'black')
+// Initialize custom theme tracking (null = system, otherwise = explicit theme: 'white'|'light'|'sepia'|'dark'|'black')
 global.quickboardCustomTheme = null;
 
 // Must be called before app is ready
