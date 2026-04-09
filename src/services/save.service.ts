@@ -83,7 +83,7 @@ export class SaveService {
             }
           }
         },
-        5 * 60 * 1000,
+        appSettings.autosaveDuration as number,
       );
     }
 
