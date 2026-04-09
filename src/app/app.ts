@@ -12,7 +12,7 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
-import { WebToolbar } from './ui/web-toolbar/web-toolbar';
+import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 
 @Component({
   selector: 'app-root',
@@ -28,7 +28,7 @@ import { WebToolbar } from './ui/web-toolbar/web-toolbar';
     ExportProgressComponent,
     ExportSettingsComponent,
     AboutWindowComponent,
-    WebToolbar,
+    WebToolbarComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',

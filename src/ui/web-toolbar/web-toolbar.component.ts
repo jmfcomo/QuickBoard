@@ -1,17 +1,18 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { SbdService } from '../../app.sbd.service';
-import { UndoRedoService } from '../../../services/undo-redo.service';
-import { ExportIpcService } from '../../../services/export-ipc.service';
-import { ThemeService } from '../../../services/theme.service';
-import { SaveService } from '../../../services/save.service';
+import { SbdService } from '../../app/app.sbd.service';
+import { UndoRedoService } from '../../services/undo-redo.service';
+import { ExportIpcService } from '../../services/export-ipc.service';
+import { ThemeService } from '../../services/theme.service';
+import { SaveService } from '../../services/save.service';
 
 @Component({
+  standalone: true,
   selector: 'app-web-toolbar',
   imports: [],
-  templateUrl: './web-toolbar.html',
-  styleUrl: './web-toolbar.css',
+  templateUrl: './web-toolbar.component.html',
+  styleUrl: './web-toolbar.component.css',
 })
-export class WebToolbar {
+export class WebToolbarComponent {
   private readonly sbd = inject(SbdService);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly exportIpc = inject(ExportIpcService);
@@ -19,6 +20,7 @@ export class WebToolbar {
   private readonly saveService = inject(SaveService);
 
   readonly activeMenu = signal<string | null>(null);
+  readonly isElectron = !!window.quickboard;
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
@@ -77,11 +79,42 @@ export class WebToolbar {
       a.click();
       URL.revokeObjectURL(url);
       this.saveService.saveStatus.set('Saved!');
-      setTimeout(() => this.saveService.saveStatus.set(null), 2000);
+      setTimeout(() => {
+        if (this.saveService.saveStatus() === 'Saved!') {
+          this.saveService.saveStatus.set(null);
+        }
+      }, 2000);
     } catch (e) {
       console.error('Save failed', e);
       window.alert('Failed to save file: ' + (e instanceof Error ? e.message : String(e)));
     }
+  }
+
+  private readFileAsBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        if (typeof reader.result !== 'string') {
+          reject(new Error('Failed to read file as base64.'));
+          return;
+        }
+
+        const commaIndex = reader.result.indexOf(',');
+        if (commaIndex === -1) {
+          reject(new Error('Invalid file data.'));
+          return;
+        }
+
+        resolve(reader.result.slice(commaIndex + 1));
+      };
+
+      reader.onerror = () => {
+        reject(reader.error ?? new Error('Failed to read file.'));
+      };
+
+      reader.readAsDataURL(file);
+    });
   }
 
   async triggerMobileLoad(event: Event): Promise<void> {
@@ -89,13 +122,7 @@ export class WebToolbar {
     const file = input.files?.[0];
     if (!file) return;
     try {
-      const arr = await file.arrayBuffer();
-      const bytes = new Uint8Array(arr);
-      let binaryStr = '';
-      for (const byte of bytes) {
-        binaryStr += String.fromCharCode(byte);
-      }
-      const base64 = btoa(binaryStr);
+      const base64 = await this.readFileAsBase64(file);
       await this.sbd.loadSbdZip(base64);
       this.undoRedo.clear();
       const stem = file.name.replace(/\.[^.]+$/, '');

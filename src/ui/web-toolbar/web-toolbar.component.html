@@ -6,8 +6,10 @@
         <button (click)="fileInput.click(); closeMenu()">Load</button>
         <button (click)="triggerMobileSave(); closeMenu()">Save</button>
         <button (click)="triggerMobileSaveAs(); closeMenu()">Save As...</button>
-        <div class="menu-separator"></div>
-        <button (click)="triggerMobileExport(); closeMenu()">Export...</button>
+        @if (isElectron) {
+          <div class="menu-separator"></div>
+          <button (click)="triggerMobileExport(); closeMenu()">Export...</button>
+        }
       </div>
     }
   </div>
