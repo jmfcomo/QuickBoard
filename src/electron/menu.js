@@ -93,6 +93,13 @@ function buildMenu(app, win, hooks = {}) {
         },
       },
       {
+        label: 'Save As...',
+        accelerator: 'CmdOrCtrl+Shift+S',
+        click: () => {
+          if (typeof hooks.onSaveAs === 'function') hooks.onSaveAs(win);
+        },
+      },
+      {
         label: 'Load',
         accelerator: 'CmdOrCtrl+O',
         click: () => {
