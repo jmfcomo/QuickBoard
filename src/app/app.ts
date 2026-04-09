@@ -13,6 +13,7 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
+import { SettingsService } from 'src/services/settings.service';
 
 @Component({
   selector: 'app-root',
@@ -34,18 +35,15 @@ import { PlaybackService } from '../services/playback.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
-<<<<<<< HEAD
-  protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
-=======
   protected readonly saveService = inject(SaveService);
-  protected readonly dialogMode = signal<'about' | null>(null);
->>>>>>> main
+  protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
+  protected readonly settingsService = inject(SettingsService);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private removeThemeListener?: () => void;
@@ -53,6 +51,7 @@ export class App implements OnInit, OnDestroy {
   private removeRedoListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
+  // private removeSettingsListener?: () => void;
 
   ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();
@@ -64,7 +63,7 @@ export class App implements OnInit, OnDestroy {
       this.dialogMode.set(dialog);
       return;
     } else if (dialog === 'settings') {
-      this.dialogMode.set('settings');
+      this.dialogMode.set(dialog);
       return;
     }
 

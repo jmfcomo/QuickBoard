@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import appSettings from '@econfig/appsettings.json';
 
-type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
+export type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
