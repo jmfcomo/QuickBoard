@@ -19,6 +19,7 @@ import { WebToolbar } from './ui/web-toolbar/web-toolbar';
   host: {
     '[class.dialog-mode]': 'dialogMode() !== null',
     '(document:keydown)': 'onKeyDown($event)',
+    '[class.is-web]': '!isElectron',
   },
   imports: [
     CanvasComponent,
