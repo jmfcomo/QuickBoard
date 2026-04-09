@@ -51,9 +51,12 @@ function openSettingsWindow(app) {
 
   settingsWin = openDialogWindow(app, {
     title: 'QuickBoard Settings',
-    width: 320,
-    height: 260,
+    width: 480,
+    height: 360,
     query: { dialog: 'settings', directory: dir, tool: defaultTool },
+  });
+  settingsWin.on('close', () => {
+    settingsWin = null;
   });
   settingsWin.on('closed', () => {
     settingsWin = null;
@@ -106,6 +109,11 @@ function buildMenu(app, win, hooks = {}) {
           if (typeof hooks.onExport === 'function') hooks.onExport(win);
         },
       },
+      {
+        label: 'Settings',
+        accelerator: 'CmdOrCtrl+Q',
+        click: () => openSettingsWindow(app),
+      }
     ],
   };
 
@@ -210,12 +218,6 @@ function buildMenu(app, win, hooks = {}) {
     ],
   };
 
-  const settingsMenu = {
-    label: 'Settings',
-    accelerator: 'CmdOrCtrl+Q',
-    click: () => openSettingsWindow(app),
-  };
-
   const template = [];
 
   if (process.platform === 'darwin') {
@@ -234,13 +236,11 @@ function buildMenu(app, win, hooks = {}) {
     template.push(fileMenu);
     template.push(editMenu);
     template.push(viewMenu);
-    template.push(settingsMenu);
   } else {
     template.push(fileMenu);
     template.push(editMenu);
     template.push(viewMenu);
     template.push(optionsMenu);
-    template.push(settingsMenu);
     template.push({ role: 'quit' });
   }
 

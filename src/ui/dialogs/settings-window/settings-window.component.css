@@ -13,6 +13,7 @@
     Roboto,
     Arial,
     sans-serif;
+  overflow: auto;
 }
 
 .title {
@@ -28,11 +29,14 @@
   color: var(--text-light);
 }
 
-.settings-list {
-  margin: 0 0 16px;
+#settings {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.5;
+}
+
+li {
+    display: inline;
 }
 
 .divider {
@@ -41,6 +45,37 @@
   margin: 0 0 12px;
 }
 
-.settings-option {
+.settings-section {
     list-style-type: none;
+    display: grid;
+    grid-template-columns: 40% 60%;
+}
+
+.link-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+}
+
+.btn-apply {
+  margin-top: 5px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  border: 1px solid var(--border-default);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.15s ease;
+}
+
+select {
+  height: 80%;
 }

@@ -1,13 +1,41 @@
 <div class="page">
   <h2 class="title">QuickBoard Settings</h2>
   <div class="divider"></div>
-  <div class="settings-list">
-    <ul class="settings-option">
-        <li>default directory: </li>
-        <li>default tool: </li>
-    </ul>
+  <div id="settings">
+    <div class="settings-section">
+        <p>clear canvas warning: </p>
+        <input type="checkbox" value="warning" checked (change)="onWarningChange($event)">
+    </div>
+    <div class="settings-section">
+        <p>theme: </p>
+        <select name="theme" [value]="theme()" (change)="onThemeChange($event)">
+            <option value="system">System</option>
+            <option value="white">White</option>
+            <option value="light">Light</option>
+            <option value="sepia">Sepia</option>
+            <option value="dark">Dark</option>
+            <option value="Black">Black</option>
+        </select>
+    </div>
+    <div class="settings-section">
+        <p>standard framerate: </p>
+        <select name="framerate" [value]="framerate()" (change)="onFPSChange($event)">
+            <option value="30">30 fps</option>
+            <option value="24">24 fps</option>
+            <option value="60">60 fps</option>    
+        </select>
+    </div>
+    <div class="settings-section">
+        <p>volume: </p>
+        <input type="number" 
+        [value]="volume()" 
+        (change)="onVolumeChange($event)"
+        max="5"
+        min="0">
+    </div>
   </div>
-  <div class="settings-inputs">
-    
-  </div>
+  
+    <button class="btn-apply" (click)="applyChanges()">
+        Apply
+    </button>
 </div>

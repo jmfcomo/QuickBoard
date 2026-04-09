@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
+import { NewSettings } from 'src/ui/dialogs/settings-window/settings-inputs';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
@@ -19,6 +20,10 @@ export class ExportIpcService {
   readonly settingsMode = signal<'png' | 'video'>('png');
   readonly settingsVisible = signal(false);
   readonly settingsBoardCount = signal(0);
+
+  readonly theme = signal<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>('system');
+  readonly warning = signal<boolean>(true);
+  readonly framerate = signal<'30' | '24' | '60'>('30');
 
   readonly exportVisible = signal(false);
   readonly exportStatus = signal<'exporting' | 'success' | 'error'>('exporting');
@@ -72,6 +77,12 @@ export class ExportIpcService {
     } else {
       await this.runPngExport(settings);
     }
+  }
+
+  async onApplySettings(settings: NewSettings): Promise<void> {
+    this.theme.set(settings.theme);
+    this.warning.set(settings.warning);
+    this.framerate.set(settings.framerate);
   }
 
   private async runPngExport(settings: ExportSettings): Promise<void> {
