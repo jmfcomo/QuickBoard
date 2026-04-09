@@ -5,6 +5,33 @@ const path = require('path');
 let aboutWin = null;
 let settingsWin = null;
 
+function isWindowAlive(win) {
+  return !!win && !win.isDestroyed() && !!win.webContents && !win.webContents.isDestroyed();
+}
+
+function resolveMainWindow(preferredWin) {
+  if (isWindowAlive(preferredWin)) {
+    return preferredWin;
+  }
+
+  const windows = BrowserWindow.getAllWindows();
+  const nonAboutWindow = windows.find((w) => isWindowAlive(w) && w !== aboutWin);
+  if (nonAboutWindow) {
+    return nonAboutWindow;
+  }
+
+  return windows.find((w) => isWindowAlive(w)) || null;
+}
+
+function sendToMainWindow(preferredWin, channel, payload) {
+  const target = resolveMainWindow(preferredWin);
+  if (!target) {
+    return;
+  }
+
+  target.webContents.send(channel, payload);
+}
+
 function openAboutWindow(app) {
   if (aboutWin && !aboutWin.isDestroyed()) {
     aboutWin.focus();
@@ -92,21 +119,37 @@ function buildMenu(app, win, hooks = {}) {
         label: 'Save',
         accelerator: 'CmdOrCtrl+S',
         click: () => {
-          if (typeof hooks.onSave === 'function') hooks.onSave(win);
+          if (typeof hooks.onSave === 'function') {
+            const target = resolveMainWindow(win);
+            if (target) hooks.onSave(target);
+          }
+        },
+      },
+      {
+        label: 'Save As...',
+        accelerator: 'CmdOrCtrl+Shift+S',
+        click: () => {
+          if (typeof hooks.onSaveAs === 'function') hooks.onSaveAs(win);
         },
       },
       {
         label: 'Load',
         accelerator: 'CmdOrCtrl+O',
         click: () => {
-          if (typeof hooks.onLoad === 'function') hooks.onLoad(win);
+          if (typeof hooks.onLoad === 'function') {
+            const target = resolveMainWindow(win);
+            if (target) hooks.onLoad(target);
+          }
         },
       },
       { type: 'separator' },
       {
         label: 'Export...',
         click: () => {
-          if (typeof hooks.onExport === 'function') hooks.onExport(win);
+          if (typeof hooks.onExport === 'function') {
+            const target = resolveMainWindow(win);
+            if (target) hooks.onExport(target);
+          }
         },
       },
       {
@@ -130,7 +173,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'system';
               global.quickboardCustomTheme = null;
-              win.webContents.send('quickboard:theme-changed', 'system');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'system');
             },
           },
           {
@@ -140,7 +183,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'light';
               global.quickboardCustomTheme = 'white';
-              win.webContents.send('quickboard:theme-changed', 'white');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'white');
             },
           },
           {
@@ -150,7 +193,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'light';
               global.quickboardCustomTheme = 'light';
-              win.webContents.send('quickboard:theme-changed', 'light');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'light');
             },
           },
           {
@@ -160,7 +203,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'light';
               global.quickboardCustomTheme = 'sepia';
-              win.webContents.send('quickboard:theme-changed', 'sepia');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'sepia');
             },
           },
           {
@@ -170,7 +213,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'dark';
               global.quickboardCustomTheme = 'dark';
-              win.webContents.send('quickboard:theme-changed', 'dark');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'dark');
             },
           },
           {
@@ -180,7 +223,7 @@ function buildMenu(app, win, hooks = {}) {
             click: () => {
               nativeTheme.themeSource = 'dark';
               global.quickboardCustomTheme = 'black';
-              win.webContents.send('quickboard:theme-changed', 'black');
+              sendToMainWindow(win, 'quickboard:theme-changed', 'black');
             },
           },
         ],
@@ -205,14 +248,14 @@ function buildMenu(app, win, hooks = {}) {
         label: 'Undo',
         accelerator: 'CmdOrCtrl+Z',
         click: () => {
-          win.webContents.send('quickboard:undo');
+          sendToMainWindow(win, 'quickboard:undo');
         },
       },
       {
         label: 'Redo',
         accelerator: 'CmdOrCtrl+Shift+Z',
         click: () => {
-          win.webContents.send('quickboard:redo');
+          sendToMainWindow(win, 'quickboard:redo');
         },
       },
     ],

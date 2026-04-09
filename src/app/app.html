@@ -1,5 +1,8 @@
 @if (!dialogMode()) {
   <div class="app">
+    <div class="save-toast" [class.visible]="saveService.saveStatus()">
+      {{ saveService.saveStatus() }}
+    </div>
     <div class="editors">
       <app-canvas></app-canvas>
       <app-script></app-script>
