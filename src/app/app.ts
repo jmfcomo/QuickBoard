@@ -12,6 +12,7 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
+import { WebToolbar } from './ui/web-toolbar/web-toolbar';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ import { PlaybackService } from '../services/playback.service';
     ExportProgressComponent,
     ExportSettingsComponent,
     AboutWindowComponent,
+    WebToolbar,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -40,6 +42,7 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
+  protected readonly isElectron = !!window.quickboard;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private removeThemeListener?: () => void;

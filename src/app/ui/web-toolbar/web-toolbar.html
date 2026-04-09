@@ -1,0 +1,52 @@
+<div class="mobile-toolbar">
+  <div class="menu-dropdown-container">
+    <button class="menu-root-btn" (click)="toggleMenu('file', $event)">File</button>
+    @if (activeMenu() === 'file') {
+      <div class="menu-dropdown">
+        <button (click)="fileInput.click(); closeMenu()">Load</button>
+        <button (click)="triggerMobileSave(); closeMenu()">Save</button>
+        <button (click)="triggerMobileSaveAs(); closeMenu()">Save As...</button>
+        <div class="menu-separator"></div>
+        <button (click)="triggerMobileExport(); closeMenu()">Export...</button>
+      </div>
+    }
+  </div>
+  <div class="menu-dropdown-container">
+    <button class="menu-root-btn" (click)="toggleMenu('edit', $event)">Edit</button>
+    @if (activeMenu() === 'edit') {
+      <div class="menu-dropdown">
+        <button (click)="triggerUndo(); closeMenu()">Undo</button>
+        <button (click)="triggerRedo(); closeMenu()">Redo</button>
+      </div>
+    }
+  </div>
+  <div class="menu-dropdown-container">
+    <button class="menu-root-btn" (click)="toggleMenu('view', $event)">View</button>
+    @if (activeMenu() === 'view') {
+      <div class="menu-dropdown">
+        <div class="menu-label">Appearance</div>
+        <button (click)="setTheme('system'); closeMenu()">System</button>
+        <button (click)="setTheme('white'); closeMenu()">White</button>
+        <button (click)="setTheme('light'); closeMenu()">Light</button>
+        <button (click)="setTheme('sepia'); closeMenu()">Sepia</button>
+        <button (click)="setTheme('dark'); closeMenu()">Dark</button>
+        <button (click)="setTheme('black'); closeMenu()">Black</button>
+      </div>
+    }
+  </div>
+  <div class="menu-dropdown-container">
+    <button class="menu-root-btn" (click)="toggleMenu('help', $event)">Help</button>
+    @if (activeMenu() === 'help') {
+      <div class="menu-dropdown">
+        <button (click)="triggerMobileAbout(); closeMenu()">About QuickBoard</button>
+      </div>
+    }
+  </div>
+  <input
+    #fileInput
+    type="file"
+    style="display: none"
+    accept=".sbd"
+    (change)="triggerMobileLoad($event)"
+  />
+</div>

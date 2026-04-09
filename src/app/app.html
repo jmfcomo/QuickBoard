@@ -1,5 +1,10 @@
 @if (!dialogMode()) {
   <div class="app">
+    <!-- Non-Electron Toolbar -->
+    @if (!isElectron) {
+      <app-web-toolbar />
+    }
+
     <div class="save-toast" [class.visible]="saveService.saveStatus()">
       {{ saveService.saveStatus() }}
     </div>
@@ -42,3 +47,5 @@
 } @else if (dialogMode() === 'about') {
   <app-about-window />
 }
+
+
