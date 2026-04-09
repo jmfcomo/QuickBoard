@@ -12,12 +12,14 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
+import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 
 @Component({
   selector: 'app-root',
   host: {
     '[class.dialog-mode]': 'dialogMode() !== null',
     '(document:keydown)': 'onKeyDown($event)',
+    '[class.is-web]': '!isElectron',
   },
   imports: [
     CanvasComponent,
@@ -26,6 +28,7 @@ import { PlaybackService } from '../services/playback.service';
     ExportProgressComponent,
     ExportSettingsComponent,
     AboutWindowComponent,
+    WebToolbarComponent,
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -40,6 +43,7 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
+  protected readonly isElectron = !!window.quickboard;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private removeThemeListener?: () => void;
