@@ -1,3 +1,4 @@
+export { AppSettingsService } from './app-settings.service';
 export { AudioService } from './audio.service';
 export { ExportIpcService } from './export-ipc.service';
 export { PlaybackService } from './playback.service';

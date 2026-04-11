@@ -134,4 +134,9 @@ contextBridge.exposeInMainWorld('quickboard', {
       buffer: payload.buffer,
     });
   },
+  getAppSettings: () => ipcRenderer.invoke('quickboard:get-app-settings'),
+  saveAppSettings: (settings) => ipcRenderer.invoke('quickboard:save-app-settings', settings),
+  restoreAppSettingsDefaults: () =>
+    ipcRenderer.invoke('quickboard:restore-app-settings-defaults'),
+  selectFolder: () => ipcRenderer.invoke('quickboard:select-folder'),
 });

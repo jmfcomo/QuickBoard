@@ -3,7 +3,7 @@ import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
 import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-boards-track',

@@ -1,0 +1,274 @@
+<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="dialog">
+    <header class="dialog-header">
+      <p class="eyebrow">Configuration</p>
+      <h3 class="title" id="settings-title">Settings</h3>
+    </header>
+
+    <div class="settings-content">
+      <!-- Saving Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Saving</h4>
+        <div class="settings-grid saving-grid">
+          <div class="field location-field">
+            <label for="initial-dir" class="field-label">Default Save Location</label>
+            <div class="folder-input-group">
+              <input
+                id="initial-dir"
+                type="text"
+                class="text-input folder-path"
+                [value]="initialDir()"
+                readonly
+              />
+              <button type="button" class="browse-button" (click)="openBrowseDialog()">Browse</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="autosave-checkbox" class="field-label">Autosave</label>
+            <div class="checkbox-label autosave-checkbox-label">
+              <input id="autosave-checkbox" type="checkbox" class="checkbox" [checked]="autosave()" 
+                     (change)="autosave.set($any($event.target).checked)" />
+              <span class="checkbox-text">{{ autosave() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="autosave-duration" class="field-label">Duration</label>
+            <div class="duration-input-group">
+              <input
+                id="autosave-duration"
+                type="number"
+                class="number-input"
+                [value]="autosaveDuration()"
+                (change)="autosaveDuration.set($any($event.target).valueAsNumber)"
+                [disabled]="!autosave()"
+                min="1"
+              />
+              <span class="unit-label" [class.is-disabled]="!autosave()">min</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audio Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Audio</h4>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="default-lanes" class="field-label">Default Audio Tracks</label>
+            <input
+              id="default-lanes"
+              type="number"
+              class="number-input"
+              [value]="defaultLaneCount()"
+              (change)="defaultLaneCount.set($any($event.target).valueAsNumber)"
+              min="1"
+              max="4"
+            />
+          </div>
+
+          <div class="field">
+            <label for="default-volume" class="field-label">Default Clip Volume</label>
+            <div class="volume-input-group">
+              <input
+                id="default-volume"
+                type="number"
+                class="number-input"
+                [value]="defaultVolume()"
+                (change)="defaultVolume.set($any($event.target).valueAsNumber)"
+                min="0"
+                max="100"
+              />
+              <span class="unit-label">%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Themes Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Themes</h4>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="light-theme" class="field-label">System Light Theme</label>
+            <select
+              id="light-theme"
+              class="select-input"
+              [ngModel]="systemLightTheme()"
+              (ngModelChange)="systemLightTheme.set($event)"
+            >
+              <!-- eslint-disable-next-line @angular-eslint/template/prefer-control-flow -->
+              <option *ngFor="let theme of availableThemes" [value]="theme.id">
+                {{ theme.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="dark-theme" class="field-label">System Dark Theme</label>
+            <select
+              id="dark-theme"
+              class="select-input"
+              [ngModel]="systemDarkTheme()"
+              (ngModelChange)="systemDarkTheme.set($event)"
+            >
+              <!-- eslint-disable-next-line @angular-eslint/template/prefer-control-flow -->
+              <option *ngFor="let theme of availableThemes" [value]="theme.id">
+                {{ theme.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Canvas Defaults Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Canvas Defaults</h4>
+        <div class="settings-grid canvas-grid">
+          <div class="field compact-color-field">
+            <label for="stroke-color" class="field-label">Stroke</label>
+            <input
+              id="stroke-color"
+              type="color"
+              class="color-input"
+              [value]="defaultStrokeColor()"
+              (change)="defaultStrokeColor.set($event.target.value)"
+            />
+          </div>
+
+          <div class="field compact-color-field">
+            <label for="fill-color" class="field-label">Fill</label>
+            <input
+              id="fill-color"
+              type="color"
+              class="color-input"
+              [value]="defaultFillColor()"
+              (change)="defaultFillColor.set($event.target.value)"
+            />
+          </div>
+
+          <div class="field compact-color-field">
+            <label for="bg-color" class="field-label">BG</label>
+            <input
+              id="bg-color"
+              type="color"
+              class="color-input"
+              [value]="defaultBackgroundColor()"
+              (change)="defaultBackgroundColor.set($event.target.value)"
+            />
+          </div>
+
+          <div class="field">
+            <label for="default-tool" class="field-label">Tool</label>
+            <select
+              id="default-tool"
+              class="select-input"
+              [value]="defaultTool()"
+              (change)="defaultTool.set($any($event.target).value)"
+            >
+              <!-- eslint-disable-next-line @angular-eslint/template/prefer-control-flow -->
+              <option *ngFor="let tool of availableTools" [value]="tool.id">
+                {{ tool.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="clear-canvas-warning" class="field-label">Clear Canvas Warning</label>
+            <div class="checkbox-label">
+              <input id="clear-canvas-warning" type="checkbox" class="checkbox" [checked]="showClearCanvasWarning()"
+                     (change)="showClearCanvasWarning.set($any($event.target).checked)" />
+              <span class="checkbox-text">{{ showClearCanvasWarning() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Timeline Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Timeline (Experimental)</h4>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="min-zoom" class="field-label">minZoom</label>
+            <input
+              id="min-zoom"
+              type="number"
+              class="number-input"
+              [value]="minZoom()"
+              (change)="minZoom.set($any($event.target).valueAsNumber)"
+              min="1"
+            />
+          </div>
+
+          <div class="field">
+            <label for="max-zoom" class="field-label">maxZoom</label>
+            <input
+              id="max-zoom"
+              type="number"
+              class="number-input"
+              [value]="maxZoom()"
+              (change)="maxZoom.set($any($event.target).valueAsNumber)"
+              min="1"
+            />
+          </div>
+
+          <div class="field">
+            <label for="default-zoom" class="field-label">defaultZoom</label>
+            <input
+              id="default-zoom"
+              type="number"
+              class="number-input"
+              [value]="defaultZoom()"
+              (change)="defaultZoom.set($any($event.target).valueAsNumber)"
+              min="1"
+            />
+          </div>
+
+          <div class="field">
+            <label for="zoom-step" class="field-label">zoomStep</label>
+            <input
+              id="zoom-step"
+              type="number"
+              class="number-input"
+              [value]="zoomStep()"
+              (change)="zoomStep.set($any($event.target).valueAsNumber)"
+              min="1"
+            />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Restore Defaults Button -->
+    <div class="dialog-footer">
+      <button
+        type="button"
+        class="restore-button"
+        [disabled]="saving()"
+        (click)="showRestoreConfirmDialog($event)"
+      >
+        Restore Defaults
+      </button>
+    </div>
+
+    <!-- Restore Confirmation -->
+    @if (showRestoreConfirm()) {
+      <div
+        class="restore-confirm"
+        [style.top.px]="restoreConfirmTop()"
+        [style.right.px]="restoreConfirmRight()"
+      >
+        <p class="confirm-message">Restore all settings to default values?</p>
+        <div class="confirm-buttons">
+          <button type="button" class="confirm-yes" (click)="confirmRestore()" [disabled]="saving()">
+            {{ saving() ? 'Restoring...' : 'Yes' }}
+          </button>
+          <button type="button" class="confirm-no" (click)="cancelRestore()" [disabled]="saving()">
+            No
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

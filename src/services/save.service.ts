@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SbdService } from '../app/app.sbd.service';
 import { UndoRedoService } from './undo-redo.service';
 import { ExportIpcService } from './export-ipc.service';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 @Injectable({
   providedIn: 'root',

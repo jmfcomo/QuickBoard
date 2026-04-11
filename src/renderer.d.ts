@@ -35,6 +35,20 @@ declare global {
         name: string;
         buffer: Uint8Array;
       }) => Promise<{ success: boolean; message?: string }>;
+      getAppSettings: () => Promise<{
+        success: boolean;
+        data?: Record<string, unknown>;
+        message?: string;
+      }>;
+      saveAppSettings: (settings: Record<string, unknown>) => Promise<{
+        success: boolean;
+        message?: string;
+      }>;
+      restoreAppSettingsDefaults: () => Promise<{
+        success: boolean;
+        message?: string;
+      }>;
+      selectFolder: () => Promise<string | undefined>;
     };
   }
 }

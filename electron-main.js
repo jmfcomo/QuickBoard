@@ -16,6 +16,11 @@ protocol.registerSchemesAsPrivileged([
 
 let pendingFilePath = null;
 
+// Keep userData stable in dev and packaged runs.
+const USER_DATA_APP_NAME = 'QuickBoard';
+app.setName(USER_DATA_APP_NAME);
+app.setPath('userData', path.join(app.getPath('appData'), USER_DATA_APP_NAME));
+
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
   if (filePath.toLowerCase().endsWith(appSettings.suffix)) {

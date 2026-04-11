@@ -3,7 +3,7 @@ import { AppStore } from '../../../data/store/app.store';
 import { PlaybackService } from '../../../services/playback.service';
 import { TimelineZoomService } from '../../../services/timeline-zoom.service';
 import { formatTime as formatTimeUtil } from '../helpers/format-time';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-timeline-menu',
