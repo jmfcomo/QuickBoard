@@ -1,5 +1,11 @@
 :host {
   display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+body {
+  overflow: scroll;
 }
 
 .page {
@@ -13,7 +19,9 @@
     Roboto,
     Arial,
     sans-serif;
-  overflow: auto;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .title {
@@ -36,7 +44,7 @@
 }
 
 li {
-    display: inline;
+  display: inline;
 }
 
 .divider {
@@ -46,9 +54,31 @@ li {
 }
 
 .settings-section {
-    list-style-type: none;
-    display: grid;
-    grid-template-columns: 40% 60%;
+  list-style-type: none;
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 8px;
+  align-items: center;
+}
+
+.section-header {
+  margin-top: 16px;
+  font-weight: 700;
+  color: var(--text-default);
+}
+
+.settings-section input[type='color'] {
+  width: 100%;
+  height: 32px;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.settings-section input[type='number'],
+.settings-section select {
+  width: 100%;
+  min-width: 0;
 }
 
 .link-label {

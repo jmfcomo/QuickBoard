@@ -13,7 +13,6 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
-import { SettingsService } from 'src/services/settings.service';
 
 @Component({
   selector: 'app-root',
@@ -43,7 +42,6 @@ export class App implements OnInit, OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
-  protected readonly settingsService = inject(SettingsService);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private removeThemeListener?: () => void;

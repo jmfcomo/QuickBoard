@@ -3,39 +3,129 @@
   <div class="divider"></div>
   <div id="settings">
     <div class="settings-section">
-        <p>clear canvas warning: </p>
-        <input type="checkbox" value="warning" checked (change)="onWarningChange($event)">
+      <p>clear canvas warning:</p>
+      <input
+        type="checkbox"
+        [checked]="warning()"
+        (change)="onWarningChange($event)"
+      />
+    </div>
+
+    <div class="settings-section section-header">
+      <p>Canvas defaults</p>
+      <span></span>
     </div>
     <div class="settings-section">
-        <p>theme: </p>
-        <select name="theme" [value]="theme()" (change)="onThemeChange($event)">
-            <option value="system">System</option>
-            <option value="white">White</option>
-            <option value="light">Light</option>
-            <option value="sepia">Sepia</option>
-            <option value="dark">Dark</option>
-            <option value="Black">Black</option>
-        </select>
+      <p>stroke color:</p>
+      <input
+        type="color"
+        [value]="strokeColor()"
+        (input)="onStrokeColorChange($event)"
+      />
     </div>
     <div class="settings-section">
-        <p>standard framerate: </p>
-        <select name="framerate" [value]="framerate()" (change)="onFPSChange($event)">
-            <option value="30">30 fps</option>
-            <option value="24">24 fps</option>
-            <option value="60">60 fps</option>    
-        </select>
+      <p>fill color:</p>
+      <input
+        type="color"
+        [value]="fillColor()"
+        (input)="onFillColorChange($event)"
+      />
     </div>
     <div class="settings-section">
-        <p>volume: </p>
-        <input type="number" 
-        [value]="volume()" 
-        (change)="onVolumeChange($event)"
-        max="5"
-        min="0">
+      <p>default tool:</p>
+      <select [value]="defaultTool()" (change)="onDefaultToolChange($event)">
+        <option value="pencil">Pencil</option>
+        <option value="brush">Brush</option>
+      </select>
+    </div>
+
+    <div class="settings-section section-header">
+      <p>Board defaults</p>
+      <span></span>
+    </div>
+    <div class="settings-section">
+      <p>canvas width by height:</p>
+      <span>
+        <input
+            type="number"
+            [value]="boardWidth()"
+            (change)="onBoardWidthChange($event)"
+            min="1"
+        />
+      
+        <input
+            type="number"
+            [value]="boardHeight()"
+            (change)="onBoardHeightChange($event)"
+            min="1"
+        /></span>
+    </div>
+    <div class="settings-section">
+      <p>background color:</p>
+      <input
+        type="color"
+        [value]="backgroundColor()"
+        (input)="onBackgroundColorChange($event)"
+      />
+    </div>
+
+    <div class="settings-section section-header">
+      <p>Timeline defaults</p>
+      <span></span>
+    </div>
+    <div class="settings-section">
+      <p>default duration:</p>
+      <input
+        type="number"
+        [value]="boardDuration()"
+        (change)="onBoardDurationChange($event)"
+        min="0.1"
+        step="1"
+      />
+    </div>
+    <div class="settings-section">
+      <p>default FPS:</p>
+      <input
+        type="number"
+        [value]="boardFps()"
+        (change)="onBoardFpsChange($event)"
+        min="1"
+      />
+    </div>
+    <div class="settings-section">
+      <p>snap precision:</p>
+      <input
+        type="number"
+        [value]="snapPrecision()"
+        (change)="onSnapPrecisionChange($event)"
+        min="0"
+        step="0.001"
+      />
+    </div>
+
+    <div class="settings-section section-header">
+      <p>Export defaults</p>
+      <span></span>
+    </div>
+    <div class="settings-section">
+      <p>default export resolution:</p>
+      <select
+        [value]="exportResolutionIndex()"
+        (change)="onExportResolutionChange($event)"
+      >
+        <!-- eslint-disable @angular-eslint/template/prefer-control-flow -->
+        <option
+          *ngFor="let resolution of exportResolutions; let index = index"
+          [value]="index"
+        >
+          {{ resolution.label }}
+        </option>
+        <!-- eslint-enable @angular-eslint/template/prefer-control-flow -->
+      </select>
     </div>
   </div>
-  
-    <button class="btn-apply" (click)="applyChanges()">
-        Apply
-    </button>
+
+  <button class="btn-apply" (click)="applyChanges()">
+    Apply
+  </button>
 </div>

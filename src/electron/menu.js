@@ -79,7 +79,7 @@ function openSettingsWindow(app) {
   settingsWin = openDialogWindow(app, {
     title: 'QuickBoard Settings',
     width: 480,
-    height: 360,
+    height: 600,
     query: { dialog: 'settings', directory: dir, tool: defaultTool },
   });
   settingsWin.on('close', () => {
@@ -104,6 +104,7 @@ function openDialogWindow(app, { title, width, height, query }) {
       preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
+      scrollable: true,
     },
   });
   win.setMenuBarVisibility(false);

@@ -113,6 +113,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
+  private readonly onSettingsWarningChange = (event: Event): void => {
+    const detail = (event as CustomEvent<{ showClearCanvasWarning: boolean }>).detail;
+    if (detail?.showClearCanvasWarning === false) {
+      this.showClearCanvasConfirm.set(false);
+    }
+  };
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
 
@@ -159,6 +165,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     if (isPlatformBrowser(this.platformId) && typeof LC !== 'undefined') {
+      window.addEventListener('quickboard-settings-warning-change', this.onSettingsWarningChange);
       this.initCanvasTimeout = window.setTimeout(() => {
         this.initializeCanvas();
         // Ensure preview is generated for the first board if missing
@@ -223,6 +230,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.onWindowResize);
+      window.removeEventListener('quickboard-settings-warning-change', this.onSettingsWarningChange);
     }
 
     // Clear tool instances to release references

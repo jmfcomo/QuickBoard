@@ -134,4 +134,11 @@ contextBridge.exposeInMainWorld('quickboard', {
       buffer: payload.buffer,
     });
   },
+  saveAppSettings: async (payload) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      console.error('quickboard: invalid app settings payload');
+      return { success: false, message: 'Invalid payload' };
+    }
+    return ipcRenderer.invoke('quickboard:save-app-settings', payload);
+  },
 });

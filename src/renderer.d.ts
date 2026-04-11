@@ -35,6 +35,7 @@ declare global {
         name: string;
         buffer: Uint8Array;
       }) => Promise<{ success: boolean; message?: string }>;
+      saveAppSettings: (payload: object) => Promise<{ success: boolean; message?: string }>;
     };
   }
 }

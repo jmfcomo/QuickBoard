@@ -23,6 +23,16 @@ async function saveSettings() {
   } catch (err) {}
 }
 
+function getAppSettingsPath() {
+  return path.resolve(_app.getAppPath(), './src/electron/config/appsettings.json');
+}
+
+async function saveAppSettingsFile(settings) {
+  const appSettingsFilePath = getAppSettingsPath();
+  const json = JSON.stringify(settings, null, 2);
+  await fs.writeFile(appSettingsFilePath, json, 'utf-8');
+}
+
 async function init(appInstance) {
   _app = appInstance;
   settingsFile = path.join(_app.getPath('userData'), 'settings.json');
@@ -160,6 +170,21 @@ function registerIpcHandlers() {
           message,
         });
       } catch (e) {}
+    }
+  });
+
+  ipcMain.handle('quickboard:save-app-settings', async (_event, payload) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return { success: false, message: 'Invalid app settings payload' };
+    }
+
+    try {
+      await saveAppSettingsFile(payload);
+      return { success: true };
+    } catch (err) {
+      const message = err && err.message ? err.message : String(err);
+      console.error('Failed to save app settings:', err);
+      return { success: false, message };
     }
   });
 }

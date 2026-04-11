@@ -1,4 +1,4 @@
-import { appSettings } from "src/settings-loader";
+import { appSettings } from 'src/settings-loader';
 
 export interface ExportResolution {
   label: string;
