@@ -91,7 +91,7 @@
 }
 
 .saving-grid {
-  grid-template-columns: minmax(280px, 1fr) 140px 160px;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
 }
 
 .location-field {
@@ -255,7 +255,7 @@
   font-size: 13px;
 }
 
-.autosave-checkbox-label {
+.saving-checkbox-label {
   min-height: 34px;
 }
 
@@ -273,7 +273,7 @@
   user-select: none;
 }
 
-.autosave-checkbox-label .checkbox-text {
+.saving-checkbox-label .checkbox-text {
   line-height: 1.15;
 }
 

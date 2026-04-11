@@ -1,4 +1,4 @@
-const { dialog, ipcMain } = require('electron');
+const { dialog, ipcMain, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -101,6 +101,19 @@ async function loadBoardIntoRenderer(win) {
 }
 
 function registerIpcHandlers() {
+  ipcMain.on('quickboard:request-save-from-renderer', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) {
+        return;
+      }
+
+      await requestSaveFromRenderer(win);
+    } catch (err) {
+      console.error('Failed to trigger save from renderer:', err);
+    }
+  });
+
   ipcMain.on('quickboard:save-data', async (event, payload) => {
     if (!payload || !payload.filePath || typeof payload.data !== 'string') return;
 

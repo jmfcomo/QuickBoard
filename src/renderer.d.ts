@@ -10,6 +10,7 @@ declare global {
       ) => () => void;
       sendSaveData: (payload: { filePath: string; data: string }) => void;
       sendSaveBinary: (payload: { filePath: string; data: Uint8Array }) => void;
+      requestSave: () => void;
       onThemeChanged: (
         handler: (theme: 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black') => void,
       ) => () => void;

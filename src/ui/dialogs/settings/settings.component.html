@@ -10,7 +10,7 @@
       <section class="settings-section">
         <h4 class="section-title">Saving</h4>
         <div class="settings-grid saving-grid">
-          <div class="field location-field">
+          <div class="field location-field field-full">
             <label for="initial-dir" class="field-label">Default Save Location</label>
             <div class="folder-input-group">
               <input
@@ -25,10 +25,43 @@
           </div>
 
           <div class="field">
+            <label for="saved-toast-checkbox" class="field-label">Save Alert</label>
+            <div class="checkbox-label saving-checkbox-label">
+              <input
+                id="saved-toast-checkbox"
+                type="checkbox"
+                class="checkbox"
+                [checked]="savedToast()"
+                (change)="savedToast.set($any($event.target).checked)"
+              />
+              <span class="checkbox-text">{{ savedToast() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="initial-save-checkbox" class="field-label">Save New Projects</label>
+            <div class="checkbox-label saving-checkbox-label">
+              <input
+                id="initial-save-checkbox"
+                type="checkbox"
+                class="checkbox"
+                [checked]="initialSave()"
+                (change)="initialSave.set($any($event.target).checked)"
+              />
+              <span class="checkbox-text">{{ initialSave() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+
+          <div class="field">
             <label for="autosave-checkbox" class="field-label">Autosave</label>
-            <div class="checkbox-label autosave-checkbox-label">
-              <input id="autosave-checkbox" type="checkbox" class="checkbox" [checked]="autosave()" 
-                     (change)="autosave.set($any($event.target).checked)" />
+            <div class="checkbox-label saving-checkbox-label">
+              <input
+                id="autosave-checkbox"
+                type="checkbox"
+                class="checkbox"
+                [checked]="autosave()"
+                (change)="autosave.set($any($event.target).checked)"
+              />
               <span class="checkbox-text">{{ autosave() ? 'ON' : 'OFF' }}</span>
             </div>
           </div>

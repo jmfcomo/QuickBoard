@@ -1,8 +1,21 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, effect, Injector, type EffectRef } from '@angular/core';
 import { SbdService } from '../app/app.sbd.service';
 import { UndoRedoService } from './undo-redo.service';
 import { ExportIpcService } from './export-ipc.service';
 import { appSettings } from 'src/settings-loader';
+
+interface RuntimeSavingSettings {
+  autosave?: boolean;
+  autosaveDuration?: number;
+  savedToast?: boolean;
+  initialSave?: boolean;
+}
+
+interface RuntimeAppSettings {
+  autosave?: boolean;
+  autosaveDuration?: number;
+  saving?: RuntimeSavingSettings;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -11,10 +24,13 @@ export class SaveService {
   private readonly sbd = inject(SbdService);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly exportIpc = inject(ExportIpcService);
+  private readonly injector = inject(Injector);
 
   private currentFilePath: string | null = null;
   private autosaveTimer: ReturnType<typeof setInterval> | null = null;
   private saveInProgress = false;
+  private initialSavePrompted = false;
+  private initialSaveEffectRef?: EffectRef;
 
   public readonly saveStatus = signal<string | null>(null);
 
@@ -22,7 +38,63 @@ export class SaveService {
   private removeLoadDataListener?: () => void;
   private removeSaveResultListener?: () => void;
 
+  private getSavingSettings(): {
+    autosave: boolean;
+    autosaveDurationMs: number;
+    savedToast: boolean;
+    initialSave: boolean;
+  } {
+    const runtimeSettings = appSettings as unknown as RuntimeAppSettings;
+    const saving = runtimeSettings.saving;
+
+    const resolvedAutosave = saving?.autosave ?? runtimeSettings.autosave ?? true;
+    const resolvedAutosaveDuration =
+      saving?.autosaveDuration ?? runtimeSettings.autosaveDuration ?? 300_000;
+
+    const autosaveDurationMs =
+      typeof resolvedAutosaveDuration === 'number' && resolvedAutosaveDuration > 0
+        ? resolvedAutosaveDuration
+        : 300_000;
+
+    return {
+      autosave: resolvedAutosave,
+      autosaveDurationMs,
+      savedToast: saving?.savedToast ?? true,
+      initialSave: saving?.initialSave ?? true,
+    };
+  }
+
+  private requestSave(): void {
+    window.quickboard?.requestSave?.();
+  }
+
   init(): void {
+    this.initialSavePrompted = false;
+
+    this.initialSaveEffectRef?.destroy();
+    this.initialSaveEffectRef = effect(
+      () => {
+        const hasUndoHistory = this.undoRedo.canUndo();
+
+        if (!hasUndoHistory) {
+          this.initialSavePrompted = false;
+          return;
+        }
+
+        if (!this.getSavingSettings().initialSave) {
+          return;
+        }
+
+        if (this.initialSavePrompted || this.currentFilePath || this.saveInProgress) {
+          return;
+        }
+
+        this.initialSavePrompted = true;
+        this.requestSave();
+      },
+      { injector: this.injector },
+    );
+
     if (window.quickboard?.onRequestSave) {
       this.removeRequestSaveListener = window.quickboard.onRequestSave(async (payload) => {
         if (this.saveInProgress) return;
@@ -65,7 +137,9 @@ export class SaveService {
       });
     }
 
-    if (appSettings.autosave) {
+    const { autosave, autosaveDurationMs } = this.getSavingSettings();
+
+    if (autosave) {
       this.autosaveTimer = setInterval(
         async () => {
           if (this.saveInProgress) return;
@@ -83,7 +157,7 @@ export class SaveService {
             }
           }
         },
-        appSettings.autosaveDuration as number,
+        autosaveDurationMs,
       );
     }
 
@@ -91,12 +165,16 @@ export class SaveService {
       this.removeSaveResultListener = window.quickboard.onSaveResult((payload) => {
         this.saveInProgress = false;
         if (payload.success) {
-          this.saveStatus.set('Saved!');
-          setTimeout(() => {
-            if (this.saveStatus() === 'Saved!') {
-              this.saveStatus.set(null);
-            }
-          }, 2000);
+          if (this.getSavingSettings().savedToast) {
+            this.saveStatus.set('Saved!');
+            setTimeout(() => {
+              if (this.saveStatus() === 'Saved!') {
+                this.saveStatus.set(null);
+              }
+            }, 2000);
+          } else {
+            this.saveStatus.set(null);
+          }
         }
       });
     }
@@ -109,5 +187,7 @@ export class SaveService {
     this.removeRequestSaveListener?.();
     this.removeLoadDataListener?.();
     this.removeSaveResultListener?.();
+    this.initialSaveEffectRef?.destroy();
+    this.initialSaveEffectRef = undefined;
   }
 }

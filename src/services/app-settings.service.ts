@@ -11,6 +11,8 @@ export interface AppSettings {
     initialDir: string;
     autosave: boolean;
     autosaveDuration: number;
+    savedToast: boolean;
+    initialSave: boolean;
   };
   audio: {
     defaultLaneCount: number;

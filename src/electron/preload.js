@@ -59,6 +59,9 @@ contextBridge.exposeInMainWorld('quickboard', {
     }
     ipcRenderer.send('quickboard:save-binary', { filePath, data: payload.data });
   },
+  requestSave: () => {
+    ipcRenderer.send('quickboard:request-save-from-renderer');
+  },
   onThemeChanged: (handler) => {
     const listener = (_event, theme) => handler(theme);
     ipcRenderer.on('quickboard:theme-changed', listener);

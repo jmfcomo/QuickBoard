@@ -81,6 +81,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
         SettingsComponent.MS_PER_MINUTE,
     ),
   );
+  readonly savedToast = signal<boolean>(
+    this.getSafeSettingValue('saving.savedToast', true) as boolean,
+  );
+  readonly initialSave = signal<boolean>(
+    this.getSafeSettingValue('saving.initialSave', true) as boolean,
+  );
   readonly defaultLaneCount = signal<number>(this.getSafeSettingValue('audio.defaultLaneCount', 1) as number);
   readonly defaultVolume = signal<number>(
     ((this.getSafeSettingValue('audio.defaultVolume', 1) as number | null | undefined) ?? 1) * 100,
@@ -148,6 +154,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
         initialDir: this.initialDir(),
         autosave: this.autosave(),
         autosaveDuration: autosaveDurationMs,
+        savedToast: this.savedToast(),
+        initialSave: this.initialSave(),
       },
       audio: {
         defaultLaneCount: this.defaultLaneCount(),
@@ -202,6 +210,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const resolvedAutosaveMs =
         (getValue(settings, 'saving.autosaveDuration', undefined) as number | undefined) ??
         (getValue(settings, 'autosaveDuration', 300000) as number);
+      const resolvedSavedToast =
+        (getValue(settings, 'saving.savedToast', undefined) as boolean | undefined) ?? true;
+      const resolvedInitialSave =
+        (getValue(settings, 'saving.initialSave', undefined) as boolean | undefined) ?? true;
 
       // Update signals with fresh values from disk
       this.initialDir.set(resolvedInitialDir);
@@ -212,6 +224,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
           Math.round((resolvedAutosaveMs || 300000) / SettingsComponent.MS_PER_MINUTE),
         ),
       );
+      this.savedToast.set(resolvedSavedToast);
+      this.initialSave.set(resolvedInitialSave);
       this.defaultLaneCount.set(getValue(settings, 'audio.defaultLaneCount', 1) as number);
       this.defaultVolume.set(
         ((getValue(settings, 'audio.defaultVolume', 1) as number || 1) * 100),
