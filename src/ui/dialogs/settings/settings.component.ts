@@ -82,7 +82,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     ),
   );
   readonly defaultLaneCount = signal<number>(this.getSafeSettingValue('audio.defaultLaneCount', 1) as number);
-  readonly defaultVolume = signal<number>((this.getSafeSettingValue('audio.defaultVolume', 1) as number || 1) * 100);
+  readonly defaultVolume = signal<number>(
+    ((this.getSafeSettingValue('audio.defaultVolume', 1) as number | null | undefined) ?? 1) * 100,
+  );
   readonly systemLightTheme = signal<string>(this.getSafeSettingValue('theme.systemLightTheme', 'white') as string);
   readonly systemDarkTheme = signal<string>(this.getSafeSettingValue('theme.systemDarkTheme', 'black') as string);
   readonly defaultStrokeColor = signal<string>(this.getSafeSettingValue('canvas.defaultStrokeColor', '#000000') as string);

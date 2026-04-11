@@ -184,10 +184,14 @@ function registerIpcHandlers() {
 
   ipcMain.handle('quickboard:save-app-settings', async (event, settings) => {
     try {
-      console.log('[Settings] Saving:', JSON.stringify(settings, null, 2));
+      if (process.env.DEBUG) {
+        console.log('[Settings] Saving:', JSON.stringify(settings, null, 2));
+      }
       const saved = await saveAppSettings(settings);
       if (saved) {
-        console.log('[Settings] Successfully saved');
+        if (process.env.DEBUG) {
+          console.log('[Settings] Successfully saved');
+        }
         return { success: true };
       } else {
         console.error('[Settings] Failed to save');
@@ -241,16 +245,21 @@ function registerIpcHandlers() {
       const defaultsRaw = await fs.readFile(defaultsPath, 'utf-8');
       const defaults = JSON.parse(defaultsRaw);
 
-      // Load current settings and merge only the keys from defaults
+      // Load current settings and merge only the keys from defaults, but also
+      // explicitly reset legacy root keys so stale values are not preserved.
       const current = await loadAppSettings();
-      if (current) {
-        Object.keys(defaults).forEach((key) => {
-          current[key] = defaults[key];
-        });
-        await saveAppSettings(current);
-      } else {
-        await saveAppSettings(defaults);
-      }
+      const restoredSettings = current ? { ...current, ...defaults } : { ...defaults };
+      const legacyRootKeys = ['initialDir', 'autosave', 'autosaveDuration'];
+
+      legacyRootKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+          restoredSettings[key] = defaults[key];
+        } else {
+          delete restoredSettings[key];
+        }
+      });
+
+      await saveAppSettings(restoredSettings);
 
       return { success: true };
     } catch (err) {

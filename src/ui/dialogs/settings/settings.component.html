@@ -41,7 +41,7 @@
                 type="number"
                 class="number-input"
                 [value]="autosaveDuration()"
-                (change)="autosaveDuration.set($any($event.target).valueAsNumber)"
+                (change)="autosaveDuration.set($any($event.target).valueAsNumber || 1)"
                 [disabled]="!autosave()"
                 min="1"
               />
@@ -133,7 +133,7 @@
               type="color"
               class="color-input"
               [value]="defaultStrokeColor()"
-              (change)="defaultStrokeColor.set($event.target.value)"
+              (change)="defaultStrokeColor.set($any($event.target).value)"
             />
           </div>
 
@@ -144,7 +144,7 @@
               type="color"
               class="color-input"
               [value]="defaultFillColor()"
-              (change)="defaultFillColor.set($event.target.value)"
+              (change)="defaultFillColor.set($any($event.target).value)"
             />
           </div>
 
@@ -155,7 +155,7 @@
               type="color"
               class="color-input"
               [value]="defaultBackgroundColor()"
-              (change)="defaultBackgroundColor.set($event.target.value)"
+              (change)="defaultBackgroundColor.set($any($event.target).value)"
             />
           </div>
 
