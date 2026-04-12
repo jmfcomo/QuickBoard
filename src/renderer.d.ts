@@ -18,6 +18,7 @@ declare global {
       onNewBoard: (handler: () => void) => () => void;
       onNewLane: (handler: () => void) => () => void;
       onClearBoard: (handler: () => void) => () => void;
+      onDuplicateBoard: (handler: () => void) => () => void;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       onSaveResult: (

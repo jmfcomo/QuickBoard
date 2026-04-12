@@ -83,6 +83,11 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:clear-board', listener);
     return () => ipcRenderer.removeListener('quickboard:clear-board', listener);
   },
+  onDuplicateBoard: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:duplicate-board', listener);
+    return () => ipcRenderer.removeListener('quickboard:duplicate-board', listener);
+  },
   onUndo: (handler) => {
     const listener = () => handler();
     ipcRenderer.on('quickboard:undo', listener);

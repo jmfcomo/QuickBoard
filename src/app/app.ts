@@ -2,6 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } f
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
+import { TimelineActions } from '../ui/timeline/helpers/timeline.actions';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
@@ -48,12 +49,14 @@ export class App implements OnInit, OnDestroy {
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private store = inject(AppStore);
+  private actions = inject(TimelineActions);
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
   private removeAddBoardListener?: () => void;
   private removeAddLaneListener?: () => void;
   private removeClearBoardListener?: () => void;
+  private removeDuplicateBoardListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -87,6 +90,15 @@ export class App implements OnInit, OnDestroy {
     if(window.quickboard?.onClearBoard) {
       this.removeClearBoardListener = window.quickboard.onClearBoard(() => {
         this.canvas()?.requestClearCanvas();
+      });
+    }
+
+    if(window.quickboard?.onDuplicateBoard) {
+      this.removeDuplicateBoardListener = window.quickboard.onDuplicateBoard(() => {
+        const currentBoardId = this.store.currentBoardId();
+        if (currentBoardId) {
+          this.actions.duplicateBoard(currentBoardId);
+        }
       });
     }
 

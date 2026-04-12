@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeTheme, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, protocol, globalShortcut } = require('electron');
 const path = require('path');
 const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
@@ -60,6 +60,19 @@ function createWindow() {
     onLoad: fileio.loadBoardIntoRenderer,
     onExport: exportModule.exportRequest,
   };
+
+  globalShortcut.register('CmdOrCtrl+N', () => {
+    win.webContents.send('quickboard:new-board');
+  });
+  globalShortcut.register('CmdOrCtrl+Shift+N', () => {
+    win.webContents.send('quickboard:new-lane');
+  });
+  globalShortcut.register('CmdOrCtrl+X', () => {
+    win.webContents.send('quickboard:clear-board');
+  });
+  globalShortcut.register('CmdOrCtrl+D', () => {
+    win.webContents.send('quickboard:duplicate-board');
+  });
 
   buildMenu(app, win, hooks);
 
