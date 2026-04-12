@@ -1,8 +1,10 @@
 const { Menu, nativeTheme, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const appSettings = require('./config/appsettings.json');
 
 let aboutWin = null;
+let settingsWin = null;
 
 function isWindowAlive(win) {
   return !!win && !win.isDestroyed() && !!win.webContents && !win.webContents.isDestroyed();
@@ -57,8 +59,23 @@ function openAboutWindow(app) {
   });
 }
 
+function openSettingsWindow(app) {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.focus();
+    return;
+  }
+  settingsWin = openDialogWindow(app, {
+    title: 'Settings',
+    width: 750,
+    height: 700,
+    query: { dialog: 'settings' },
+  });
+  settingsWin.on('closed', () => {
+    settingsWin = null;
+  });
+}
+
 function openDialogWindow(app, { title, width, height, query }) {
-  const indexPath = path.join(app.getAppPath(), 'dist', 'browser', 'index.html');
   const preloadPath = path.join(app.getAppPath(), 'src', 'electron', 'preload.js');
   const win = new BrowserWindow({
     width,
@@ -74,7 +91,15 @@ function openDialogWindow(app, { title, width, height, query }) {
     },
   });
   win.setMenuBarVisibility(false);
-  win.loadFile(indexPath, { query });
+
+  const url = new URL(appSettings.appURL);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, String(value));
+    }
+  }
+
+  win.loadURL(url.toString());
   return win;
 }
 
@@ -119,6 +144,16 @@ function buildMenu(app, win, hooks = {}) {
           }
         },
       },
+      ...(process.platform !== 'darwin'
+        ? [
+            { type: 'separator' },
+            {
+              label: 'Settings',
+              accelerator: 'CmdOrCtrl+,',
+              click: () => openSettingsWindow(app),
+            },
+          ]
+        : []),
     ],
   };
 
@@ -226,13 +261,18 @@ function buildMenu(app, win, hooks = {}) {
   const template = [];
 
   if (process.platform === 'darwin') {
-    // macOS — custom About under the app name menu (standard Mac placement)
+    // macOS — custom About and Settings under the app name menu (standard Mac placement)
     template.push({
       label: app.name,
       submenu: [
         {
           label: 'About QuickBoard',
           click: () => openAboutWindow(app),
+        },
+        {
+          label: 'Settings',
+          accelerator: 'Cmd+,',
+          click: () => openSettingsWindow(app),
         },
         { type: 'separator' },
         { role: 'quit' },

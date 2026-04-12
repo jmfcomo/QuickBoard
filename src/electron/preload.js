@@ -59,6 +59,9 @@ contextBridge.exposeInMainWorld('quickboard', {
     }
     ipcRenderer.send('quickboard:save-binary', { filePath, data: payload.data });
   },
+  requestSave: () => {
+    ipcRenderer.send('quickboard:request-save-from-renderer');
+  },
   onThemeChanged: (handler) => {
     const listener = (_event, theme) => handler(theme);
     ipcRenderer.on('quickboard:theme-changed', listener);
@@ -134,4 +137,9 @@ contextBridge.exposeInMainWorld('quickboard', {
       buffer: payload.buffer,
     });
   },
+  getAppSettings: () => ipcRenderer.invoke('quickboard:get-app-settings'),
+  saveAppSettings: (settings) => ipcRenderer.invoke('quickboard:save-app-settings', settings),
+  restoreAppSettingsDefaults: () =>
+    ipcRenderer.invoke('quickboard:restore-app-settings-defaults'),
+  selectFolder: () => ipcRenderer.invoke('quickboard:select-folder'),
 });

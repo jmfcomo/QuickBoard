@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
 
