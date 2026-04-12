@@ -108,6 +108,7 @@ jobs:
           retention-days: 1
 
   build-ios:
+    if: false # Temporarily deactivated
     runs-on: macos-latest
 
     steps:
