@@ -36,8 +36,33 @@ a {
 	color: #d351e0;
 }
 
+#quickboard {
+	color: #000000;
+	text-decoration: none;
+}
+
 footer {
 	text-align: center;
 	border-top: #95529c solid 5px;
 	font-style: italic;
+}
+
+li {
+	margin: 0 0 .5em;
+}
+
+#downloads {
+	margin: 0 0 2em 0;
+	display: flex;
+	column-count: 2;
+	justify-content: center;
+}
+
+#download-options {
+	width: 35%;
+}
+
+#download-desc {
+	margin: 0.5em 0 0 0;
+	width: 33%;
 }
