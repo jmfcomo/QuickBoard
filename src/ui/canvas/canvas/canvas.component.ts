@@ -275,6 +275,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const initialBackground = currentBoard?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', initialBackground);
     this.backgroundColor.set(initialBackground);
+    this.setStrokeColor(this.strokeColor());
+    this.setFillColor(this.fillColor());
 
     // Set up resize handling first; the ResizeObserver's initial callback
     // will drive the first fitCanvasToContainer() after layout has settled,

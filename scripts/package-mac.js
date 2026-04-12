@@ -51,8 +51,18 @@ packager({
     /^\/android/,
     /^\/ios/,
     /^\/build/,
+    /^\/docs/,
+    /^\/github-pages/,
+    /^\/public/,
     /^\/release/,
     /^\/\.git/,
+    /^\/angular\.json/,
+    /^\/eslint\.config\.js/,
+    /^\/capacitor\.config\.ts/,
+    /^\/tsconfig.*\.json/,
+    /^\/README\.md/,
+    /^\/exportOptions\.plist/,
+    /^\/patch-literallycanvas\.js/,
     /node_modules\/.cache/,
   ],
   overwrite: true,
@@ -82,7 +92,7 @@ packager({
       const archMatch = path.basename(appDir).match(/darwin-(\w+)$/);
       if (!archMatch) continue;
       const arch = archMatch[1];
-      const dmgPath = path.join(releaseDir, `QuickBoard-${version}-${arch}.dmg`);
+      const dmgPath = path.join(releaseDir, `quickboard-mac-${arch}.dmg`);
       console.log(`Creating ${path.basename(dmgPath)}...`);
       execSync(
         `hdiutil create -volname "QuickBoard" -srcfolder "${appDir}" -ov -format UDZO "${dmgPath}"`,
