@@ -39,6 +39,44 @@ const AVAILABLE_THEMES = [
 
 const AVAILABLE_THEME_IDS = new Set(AVAILABLE_THEMES.map((theme) => theme.id));
 
+interface SelectOption {
+  id: string;
+  label: string;
+}
+
+interface CheckboxFieldConfig {
+  id: string;
+  label: string;
+  value: WritableSignal<boolean>;
+  checkboxLabelClass?: string;
+}
+
+interface NumberFieldConfig {
+  id: string;
+  label: string;
+  value: WritableSignal<number>;
+  min?: number;
+  max?: number;
+  unit?: string;
+  groupClass?: string;
+  disabled?: () => boolean;
+}
+
+interface SelectFieldConfig {
+  id: string;
+  label: string;
+  value: WritableSignal<string>;
+  options: readonly SelectOption[];
+  useNgModel?: boolean;
+}
+
+interface ColorFieldConfig {
+  id: string;
+  label: string;
+  value: WritableSignal<string>;
+  fieldClass?: string;
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -103,6 +141,140 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly maxZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.maxZoom', 2500) as number);
   readonly defaultZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.defaultZoom', 40) as number);
   readonly zoomStep = signal<number>(this.getSafeSettingValue('timeline.zoom.zoomStep', 100) as number);
+
+  readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
+    {
+      id: 'saved-toast-checkbox',
+      label: 'Save Alert',
+      value: this.savedToast,
+      checkboxLabelClass: 'saving-checkbox-label',
+    },
+    {
+      id: 'initial-save-checkbox',
+      label: 'Save New Projects',
+      value: this.initialSave,
+      checkboxLabelClass: 'saving-checkbox-label',
+    },
+    {
+      id: 'autosave-checkbox',
+      label: 'Autosave',
+      value: this.autosave,
+      checkboxLabelClass: 'saving-checkbox-label',
+    },
+  ];
+
+  readonly savingNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'autosave-duration',
+      label: 'Frequency',
+      value: this.autosaveDuration,
+      min: 1,
+      unit: 'min',
+      groupClass: 'duration-input-group',
+      disabled: () => !this.autosave(),
+    },
+  ];
+
+  readonly audioNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'default-lanes',
+      label: 'Default Audio Tracks',
+      value: this.defaultLaneCount,
+      min: 1,
+      max: 4,
+    },
+    {
+      id: 'default-volume',
+      label: 'Default Clip Volume',
+      value: this.defaultVolume,
+      min: 0,
+      max: 100,
+      unit: '%',
+      groupClass: 'volume-input-group',
+    },
+  ];
+
+  readonly themeSelectFields: readonly SelectFieldConfig[] = [
+    {
+      id: 'light-theme',
+      label: 'System Light Theme',
+      value: this.systemLightTheme,
+      options: AVAILABLE_THEMES,
+      useNgModel: true,
+    },
+    {
+      id: 'dark-theme',
+      label: 'System Dark Theme',
+      value: this.systemDarkTheme,
+      options: AVAILABLE_THEMES,
+      useNgModel: true,
+    },
+  ];
+
+  readonly canvasColorFields: readonly ColorFieldConfig[] = [
+    {
+      id: 'stroke-color',
+      label: 'Stroke',
+      value: this.defaultStrokeColor,
+      fieldClass: 'compact-color-field',
+    },
+    {
+      id: 'fill-color',
+      label: 'Fill',
+      value: this.defaultFillColor,
+      fieldClass: 'compact-color-field',
+    },
+    {
+      id: 'bg-color',
+      label: 'BG',
+      value: this.defaultBackgroundColor,
+      fieldClass: 'compact-color-field',
+    },
+  ];
+
+  readonly canvasSelectFields: readonly SelectFieldConfig[] = [
+    {
+      id: 'default-tool',
+      label: 'Tool',
+      value: this.defaultTool,
+      options: AVAILABLE_TOOLS,
+    },
+  ];
+
+  readonly canvasCheckboxFields: readonly CheckboxFieldConfig[] = [
+    {
+      id: 'clear-canvas-warning',
+      label: 'Clear Canvas Warning',
+      value: this.showClearCanvasWarning,
+    },
+  ];
+
+  readonly timelineNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'min-zoom',
+      label: 'minZoom',
+      value: this.minZoom,
+      min: 1,
+    },
+    {
+      id: 'max-zoom',
+      label: 'maxZoom',
+      value: this.maxZoom,
+      min: 1,
+    },
+    {
+      id: 'default-zoom',
+      label: 'defaultZoom',
+      value: this.defaultZoom,
+      min: 1,
+    },
+    {
+      id: 'zoom-step',
+      label: 'zoomStep',
+      value: this.zoomStep,
+      min: 1,
+    },
+  ];
 
   // UI states
   readonly showRestoreConfirm = signal(false);
@@ -300,12 +472,24 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.showRestoreConfirm.set(false);
   }
 
-  getToolLabel(id: string): string {
-    return this.availableTools.find((t) => t.id === id)?.label || id;
+  setBooleanSignalFromInput(event: Event, targetSignal: WritableSignal<boolean>): void {
+    const input = event.target;
+    if (input instanceof HTMLInputElement) {
+      targetSignal.set(input.checked);
+    }
   }
 
-  getThemeLabel(id: string): string {
-    return this.availableThemes.find((t) => t.id === id)?.label || id;
+  setStringSignalFromInput(event: Event, targetSignal: WritableSignal<string>): void {
+    const input = event.target;
+    if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+      targetSignal.set(input.value);
+    }
+  }
+
+  setStringSignalFromModel(value: unknown, targetSignal: WritableSignal<string>): void {
+    if (typeof value === 'string') {
+      targetSignal.set(value);
+    }
   }
 
   setNumberSignalFromInput(
