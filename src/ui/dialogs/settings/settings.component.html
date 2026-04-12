@@ -74,7 +74,7 @@
                 type="number"
                 class="number-input"
                 [value]="autosaveDuration()"
-                (change)="autosaveDuration.set($any($event.target).valueAsNumber || 1)"
+                (change)="setNumberSignalFromInput($event, autosaveDuration, 1)"
                 [disabled]="!autosave()"
                 min="1"
               />
@@ -95,7 +95,7 @@
               type="number"
               class="number-input"
               [value]="defaultLaneCount()"
-              (change)="defaultLaneCount.set($any($event.target).valueAsNumber)"
+              (change)="setNumberSignalFromInput($event, defaultLaneCount, 1, 4)"
               min="1"
               max="4"
             />
@@ -109,7 +109,7 @@
                 type="number"
                 class="number-input"
                 [value]="defaultVolume()"
-                (change)="defaultVolume.set($any($event.target).valueAsNumber)"
+                (change)="setNumberSignalFromInput($event, defaultVolume, 0, 100)"
                 min="0"
                 max="100"
               />
@@ -229,7 +229,7 @@
               type="number"
               class="number-input"
               [value]="minZoom()"
-              (change)="minZoom.set($any($event.target).valueAsNumber)"
+              (change)="setNumberSignalFromInput($event, minZoom, 1)"
               min="1"
             />
           </div>
@@ -241,7 +241,7 @@
               type="number"
               class="number-input"
               [value]="maxZoom()"
-              (change)="maxZoom.set($any($event.target).valueAsNumber)"
+              (change)="setNumberSignalFromInput($event, maxZoom, 1)"
               min="1"
             />
           </div>
@@ -253,7 +253,7 @@
               type="number"
               class="number-input"
               [value]="defaultZoom()"
-              (change)="defaultZoom.set($any($event.target).valueAsNumber)"
+              (change)="setNumberSignalFromInput($event, defaultZoom, 1)"
               min="1"
             />
           </div>
@@ -265,7 +265,7 @@
               type="number"
               class="number-input"
               [value]="zoomStep()"
-              (change)="zoomStep.set($any($event.target).valueAsNumber)"
+              (change)="setNumberSignalFromInput($event, zoomStep, 1)"
               min="1"
             />
           </div>
@@ -275,6 +275,7 @@
 
     <!-- Restore Defaults Button -->
     <div class="dialog-footer">
+      <p class="restart-notice">Restart the app to apply changes.</p>
       <button
         type="button"
         class="restore-button"

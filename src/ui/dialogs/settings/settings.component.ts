@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   OnInit,
   OnDestroy,
+  type WritableSignal,
   signal,
   effect,
   inject,
@@ -305,5 +306,33 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   getThemeLabel(id: string): string {
     return this.availableThemes.find((t) => t.id === id)?.label || id;
+  }
+
+  setNumberSignalFromInput(
+    event: Event,
+    targetSignal: WritableSignal<number>,
+    min?: number,
+    max?: number,
+  ): void {
+    const input = event.target as HTMLInputElement | null;
+    const rawValue = input?.valueAsNumber;
+    const currentValue = targetSignal();
+    const fallbackValue =
+      Number.isFinite(currentValue) ? currentValue : (typeof min === 'number' ? min : 0);
+
+    const finiteValue =
+      typeof rawValue === 'number' && Number.isFinite(rawValue)
+        ? rawValue
+        : fallbackValue;
+
+    const clampedMin = typeof min === 'number' ? Math.max(min, finiteValue) : finiteValue;
+    const clampedValue = typeof max === 'number' ? Math.min(max, clampedMin) : clampedMin;
+
+    targetSignal.set(clampedValue);
+
+    // Keep the visible input value synchronized with clamped/fallback output.
+    if (input) {
+      input.value = String(clampedValue);
+    }
   }
 }

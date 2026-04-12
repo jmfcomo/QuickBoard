@@ -216,35 +216,6 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('quickboard:update-app-setting', async (event, payload) => {
-    if (!payload || typeof payload.path !== 'string') {
-      console.warn('Invalid payload for update-app-setting:', payload);
-      return { success: false, message: 'Invalid payload' };
-    }
-
-    try {
-      console.log(`[Settings] Updating ${payload.path} to ${JSON.stringify(payload.value)}`);
-      const settings = await loadAppSettings();
-      if (!settings) {
-        console.error('[Settings] Failed to load current settings');
-        return { success: false, message: 'Failed to load settings' };
-      }
-
-      setNestedValue(settings, payload.path, payload.value);
-      const saved = await saveAppSettings(settings);
-
-      if (saved) {
-        console.log(`[Settings] Successfully saved ${payload.path} to ${appSettingsPath}`);
-        return { success: true };
-      } else {
-        console.error(`[Settings] Failed to write settings to ${appSettingsPath}`);
-        return { success: false, message: 'Failed to save settings' };
-      }
-    } catch (err) {
-      console.error('[Settings] Error updating app setting:', err);
-      return { success: false, message: err.message || 'Unknown error' };
-    }
-  });
 
   ipcMain.handle('quickboard:restore-app-settings-defaults', async (event) => {
     try {
@@ -326,16 +297,6 @@ async function loadBoardFromPath(win, filePath) {
   }
 }
 
-// Helper function to safely get nested object value
-function getNestedValue(obj, path) {
-  const keys = path.split('.');
-  let current = obj;
-  for (const key of keys) {
-    current = current?.[key];
-  }
-  return current;
-}
-
 // Helper function to safely set nested object value
 function setNestedValue(obj, path, value) {
   const keys = path.split('.');
@@ -380,12 +341,8 @@ async function loadAppSettings() {
 
 async function saveAppSettings(settings) {
   try {
-    console.log(`[Settings] Writing to ${appSettingsPath}`);
-    console.log(`[Settings] Content:`, JSON.stringify(settings, null, 2));
-    // Ensure directory exists before writing file
     await fs.mkdir(path.dirname(appSettingsPath), { recursive: true });
     await fs.writeFile(appSettingsPath, JSON.stringify(settings, null, 2), 'utf-8');
-    console.log(`[Settings] Successfully wrote to ${appSettingsPath}`);
     return true;
   } catch (err) {
     console.error(`[Settings] Failed to save app settings to ${appSettingsPath}:`, err);

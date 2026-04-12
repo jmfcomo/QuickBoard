@@ -1,6 +1,13 @@
 import { Injectable } from '@angular/core';
 import defaultSettings from '@econfig/appsettings.json';
 import { appSettings } from 'src/settings-loader';
+import {
+  SETTINGS_STORAGE_KEY,
+  deepClone,
+  deepMerge,
+  isRecord,
+  readStoredSettings,
+} from 'src/settings-utils';
 
 export interface AppSettings {
   // Legacy root keys still used by parts of the app.
@@ -39,27 +46,6 @@ export interface AppSettings {
   };
 }
 
-const SETTINGS_STORAGE_KEY = 'qb-user-settings';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function deepMerge(base: Record<string, unknown>, override: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(override)) {
-    const baseValue = base[key];
-    if (isRecord(baseValue) && isRecord(value)) {
-      deepMerge(baseValue, value);
-      continue;
-    }
-    base[key] = value;
-  }
-}
-
 @Injectable({ providedIn: 'root' })
 export class AppSettingsService {
   private getRuntimeSettings(): Record<string, unknown> {
@@ -68,20 +54,6 @@ export class AppSettingsService {
 
   private getDefaultSettings(): Record<string, unknown> {
     return deepClone(defaultSettings) as Record<string, unknown>;
-  }
-
-  private readStoredSettings(): Record<string, unknown> {
-    try {
-      const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) {
-        return {};
-      }
-
-      const parsed: unknown = JSON.parse(raw);
-      return isRecord(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
   }
 
   private writeStoredSettings(settings: Record<string, unknown>): void {
@@ -126,7 +98,7 @@ export class AppSettingsService {
    */
   async loadCurrentSettings(): Promise<Partial<AppSettings>> {
     const merged = this.getDefaultSettings();
-    deepMerge(merged, this.readStoredSettings());
+    deepMerge(merged, readStoredSettings());
 
     try {
       if (window.quickboard?.getAppSettings) {
