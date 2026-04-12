@@ -1,4 +1,4 @@
-const { Menu, nativeTheme, BrowserWindow } = require('electron');
+const { Menu, nativeTheme, BrowserWindow, dialog, globalShortcut } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -199,6 +199,18 @@ function buildMenu(app, win, hooks = {}) {
       {
         label: 'About QuickBoard',
         click: () => openAboutWindow(app),
+      },
+      {
+        label: 'Shortcuts',
+        submenu: [
+          {
+            label: 'Add Board',
+            accelerator: 'CmdOrCtrl+N',
+            click: () => {
+              sendToMainWindow(win, 'quickboard:new-board');
+            },
+          },
+        ],
       },
     ],
   };

@@ -15,6 +15,7 @@ declare global {
       ) => () => void;
       getThemeSource: () => Promise<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>;
       setCustomTheme: (theme: 'white' | 'light' | 'sepia' | 'dark' | 'black' | null) => void;
+      onNewBoard: (handler: () => void) => () => void;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       onSaveResult: (

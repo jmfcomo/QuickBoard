@@ -68,6 +68,11 @@ contextBridge.exposeInMainWorld('quickboard', {
   setCustomTheme: (theme) => {
     ipcRenderer.send('quickboard:set-custom-theme', theme);
   },
+  onNewBoard: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:new-board', listener);
+    return () => ipcRenderer.removeListener('quickboard:new-board', listener);
+  },
   onUndo: (handler) => {
     const listener = () => handler();
     ipcRenderer.on('quickboard:undo', listener);

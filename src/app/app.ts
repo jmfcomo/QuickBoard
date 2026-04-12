@@ -5,6 +5,7 @@ import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
+import { AppStore } from 'src/data';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { SaveService } from '../services/save.service';
@@ -46,9 +47,11 @@ export class App implements OnInit, OnDestroy {
   protected readonly isElectron = !!window.quickboard;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
+  private store = inject(AppStore);
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
+  private removeAddBoardListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -66,6 +69,12 @@ export class App implements OnInit, OnDestroy {
     this.saveService.init();
 
     this.removeExportIpcListeners = this.exportIpc.init();
+
+    if(window.quickboard?.onNewBoard) {
+      this.removeAddBoardListener = window.quickboard.onNewBoard(() => {
+        this.store.addBoard();
+      });
+    }
 
     if (window.quickboard?.onUndo) {
       this.removeUndoListener = window.quickboard.onUndo(() => {
@@ -153,6 +162,7 @@ export class App implements OnInit, OnDestroy {
     this.removeThemeListener?.();
     this.removeUndoListener?.();
     this.removeRedoListener?.();
+    this.removeAddBoardListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
   }
