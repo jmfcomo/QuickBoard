@@ -73,6 +73,16 @@ contextBridge.exposeInMainWorld('quickboard', {
     ipcRenderer.on('quickboard:new-board', listener);
     return () => ipcRenderer.removeListener('quickboard:new-board', listener);
   },
+  onNewLane: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:new-lane', listener);
+    return () => ipcRenderer.removeListener('quickboard:new-lane', listener);
+  },
+  onClearBoard: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on('quickboard:clear-board', listener);
+    return () => ipcRenderer.removeListener('quickboard:clear-board', listener);
+  },
   onUndo: (handler) => {
     const listener = () => handler();
     ipcRenderer.on('quickboard:undo', listener);

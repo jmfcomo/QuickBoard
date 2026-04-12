@@ -52,6 +52,8 @@ export class App implements OnInit, OnDestroy {
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
   private removeAddBoardListener?: () => void;
+  private removeAddLaneListener?: () => void;
+  private removeClearBoardListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -73,6 +75,18 @@ export class App implements OnInit, OnDestroy {
     if(window.quickboard?.onNewBoard) {
       this.removeAddBoardListener = window.quickboard.onNewBoard(() => {
         this.store.addBoard();
+      });
+    }
+
+    if(window.quickboard?.onNewLane) {
+      this.removeAddLaneListener = window.quickboard.onNewLane(() => {
+        this.store.addAudioLane();
+      });
+    }
+    
+    if(window.quickboard?.onClearBoard) {
+      this.removeClearBoardListener = window.quickboard.onClearBoard(() => {
+        this.canvas()?.requestClearCanvas();
       });
     }
 
@@ -163,6 +177,8 @@ export class App implements OnInit, OnDestroy {
     this.removeUndoListener?.();
     this.removeRedoListener?.();
     this.removeAddBoardListener?.();
+    this.removeAddLaneListener?.();
+    this.removeClearBoardListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
   }

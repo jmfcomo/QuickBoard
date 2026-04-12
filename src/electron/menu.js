@@ -205,9 +205,23 @@ function buildMenu(app, win, hooks = {}) {
         submenu: [
           {
             label: 'Add Board',
-            accelerator: 'CmdOrCtrl+N',
+            accelerator: 'CmdOrCtrl+B',
             click: () => {
               sendToMainWindow(win, 'quickboard:new-board');
+            },
+          },
+          {
+            label: 'Add Audio Lane',
+            accelerator: 'CmdOrCtrl+N',
+            click: () => {
+              sendToMainWindow(win, 'quickboard:new-lane');
+            },
+          },
+          {
+            label: 'Clear Board',
+            accelerator: 'CmdOrCtrl+C',
+            click: () => {
+              sendToMainWindow(win, 'quickboard:clear-board');
             },
           },
         ],

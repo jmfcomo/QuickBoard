@@ -16,6 +16,8 @@ declare global {
       getThemeSource: () => Promise<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>;
       setCustomTheme: (theme: 'white' | 'light' | 'sepia' | 'dark' | 'black' | null) => void;
       onNewBoard: (handler: () => void) => () => void;
+      onNewLane: (handler: () => void) => () => void;
+      onClearBoard: (handler: () => void) => () => void;
       onUndo: (handler: () => void) => () => void;
       onRedo: (handler: () => void) => () => void;
       onSaveResult: (
