@@ -33,7 +33,11 @@ header {
 }
 
 a {
-	color: #d351e0;
+	color: #521975;
+}
+
+a:hover {
+	color: #ff45a8;
 }
 
 #quickboard {
@@ -52,10 +56,9 @@ li {
 }
 
 #downloads {
-	margin: 0 0 2em 0;
+	margin: 0 0 2em 4em;
 	display: flex;
 	column-count: 2;
-	justify-content: center;
 }
 
 #download-options {
@@ -63,6 +66,6 @@ li {
 }
 
 #download-desc {
-	margin: 0.5em 0 0 0;
+	margin: .5em 0 0 0;
 	width: 33%;
 }
