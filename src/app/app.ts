@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild, effect } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -14,13 +14,15 @@ import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
+import { Capacitor } from '@capacitor/core';
+import { NativeToolbarService } from '../services/native-toolbar.service';
 
 @Component({
   selector: 'app-root',
   host: {
     '[class.dialog-mode]': 'dialogMode() !== null',
     '(document:keydown)': 'onKeyDown($event)',
-    '[class.is-web]': '!isElectron',
+    '[class.is-web]': 'showWebToolbar',
   },
   imports: [
     CanvasComponent,
@@ -46,13 +48,24 @@ export class App implements OnInit, OnDestroy {
   private readonly windowScalingService = inject(WindowScalingService);
   protected readonly exportIpc = inject(ExportIpcService);
   protected readonly isElectron = !!window.quickboard;
+  protected readonly isIos = Capacitor.getPlatform() === 'ios';
+  protected readonly showWebToolbar = !this.isElectron && !this.isIos;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
+  private readonly nativeToolbar = inject(NativeToolbarService);
   private removeThemeListener?: () => void;
   private removeUndoListener?: () => void;
   private removeRedoListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
+
+  constructor() {
+    effect(() => {
+      if (this.isIos) {
+        this.nativeToolbar.setTitle(this.title());
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();

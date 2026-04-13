@@ -108,7 +108,6 @@ jobs:
           retention-days: 1
 
   build-ios:
-    if: false # Temporarily deactivated
     runs-on: macos-latest
 
     steps:
@@ -132,6 +131,10 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync ios
+
+      - name: Configure iPad-only target
+        run: |
+          sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2"/TARGETED_DEVICE_FAMILY = "2"/g' ios/App/App.xcodeproj/project.pbxproj
 
       - name: Install CocoaPods dependencies
         run: cd ios/App && pod install

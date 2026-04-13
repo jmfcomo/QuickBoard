@@ -1,7 +1,7 @@
 @if (!dialogMode()) {
   <div class="app">
     <!-- Non-Electron Toolbar -->
-    @if (!isElectron) {
+    @if (showWebToolbar) {
       <app-web-toolbar />
     }
 

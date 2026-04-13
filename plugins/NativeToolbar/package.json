@@ -1,0 +1,19 @@
+{
+  "name": "capacitor-native-toolbar",
+  "version": "1.0.0",
+  "description": "Native toolbar for quickboard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jmfcomo/QuickBoard"
+  },
+  "author": "QuickBoard",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}
