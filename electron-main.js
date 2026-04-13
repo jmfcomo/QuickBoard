@@ -16,6 +16,13 @@ protocol.registerSchemesAsPrivileged([
 
 let pendingFilePath = null;
 
+// Keep the app name stable everywhere, but only force a custom userData path in development.
+const USER_DATA_APP_NAME = 'QuickBoard';
+app.setName(USER_DATA_APP_NAME);
+if (!app.isPackaged) {
+  app.setPath('userData', path.join(app.getPath('appData'), USER_DATA_APP_NAME));
+}
+
 app.on('open-file', (event, filePath) => {
   event.preventDefault();
   if (filePath.toLowerCase().endsWith(appSettings.suffix)) {

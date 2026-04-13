@@ -1,5 +1,11 @@
-import appSettings from '@econfig/appsettings.json';
+import defaultSettings from '@econfig/appsettings.json';
+import {
+  deepClone,
+  deepMerge,
+  readStoredSettings,
+} from './settings-utils';
 
-console.log(appSettings);
+const runtimeSettings = deepClone(defaultSettings) as Record<string, unknown>;
+deepMerge(runtimeSettings, readStoredSettings());
 
-export { appSettings };
+export const appSettings = runtimeSettings as typeof defaultSettings;

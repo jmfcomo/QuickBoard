@@ -4,6 +4,7 @@ import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
 import { TimelineActions } from '../ui/timeline/helpers/timeline.actions';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
+import { SettingsComponent } from '../ui/dialogs/settings/settings.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
 import { AppStore } from 'src/data';
@@ -30,6 +31,7 @@ import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
     ExportProgressComponent,
     ExportSettingsComponent,
     AboutWindowComponent,
+    SettingsComponent,
     WebToolbarComponent,
   ],
   templateUrl: './app.html',
@@ -38,7 +40,7 @@ import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
   protected readonly saveService = inject(SaveService);
-  protected readonly dialogMode = signal<'about' | null>(null);
+  protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
   private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
@@ -66,8 +68,8 @@ export class App implements OnInit, OnDestroy {
     // Check if this window was opened as a dialog by the main process
     const params = new URLSearchParams(window.location.search);
     const dialog = params.get('dialog');
-    if (dialog === 'about') {
-      this.dialogMode.set(dialog);
+    if (dialog === 'about' || dialog === 'settings') {
+      this.dialogMode.set(dialog as 'about' | 'settings');
       return;
     }
 

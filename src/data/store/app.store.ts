@@ -3,7 +3,7 @@ import { signalStore, withState, withMethods, withComputed, patchState } from '@
 import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 import { CanvasDataService } from '../../services/canvas-data.service';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 export interface Board {
   id: string;

@@ -1,6 +1,6 @@
 {
   "name": "quickboard",
-  "version": "0.3.2",
+  "version": "0.4.3",
   "description": "A storyboarding tool",
   "author": {
     "name": "QuickBoard Team",
@@ -63,10 +63,6 @@
       "src/electron/**/*",
       "package.json"
     ],
-    "publish": {
-      "provider": "github",
-      "releaseType": "draft"
-    },
     "fileAssociations": [
       {
         "ext": "sbd",
@@ -76,6 +72,8 @@
         "role": "Editor"
       }
     ],
+    "publish": null,
+    "generateUpdatesFilesForAllChannels": false,
     "win": {
       "target": [
         {
@@ -85,10 +83,11 @@
           ]
         }
       ],
-      "icon": "branding/QuickBoard_icon_Windows.ico",
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "icon": "branding/QuickBoard_icon_Windows.ico"
     },
     "nsis": {
+      "artifactName": "quickboard-windows.${ext}",
+      "differentialPackage": false,
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
@@ -107,7 +106,6 @@
       ],
       "icon": "branding/QuickBoard_icon_macOSLegacy.icns",
       "category": "public.app-category.productivity",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "extraResources": [
         {
           "from": "branding/QuickBoard_icon_macOS.icon",
@@ -116,6 +114,7 @@
       ]
     },
     "dmg": {
+      "artifactName": "quickboard-mac-${arch}.${ext}",
       "writeUpdateInfo": false
     },
     "linux": {
@@ -135,10 +134,15 @@
       ],
       "icon": "branding/QuickBoard_icon_Linux.png",
       "category": "Utility",
-      "artifactName": "${name}-${version}.${ext}",
       "mimeTypes": [
         "application/x-quickboard-sbd"
       ]
+    },
+    "appImage": {
+      "artifactName": "quickboard-linux.${ext}"
+    },
+    "deb": {
+      "artifactName": "quickboard-debian.${ext}"
     }
   },
   "dependencies": {

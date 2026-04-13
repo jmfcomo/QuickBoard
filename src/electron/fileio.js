@@ -1,4 +1,4 @@
-const { dialog, ipcMain } = require('electron');
+const { dialog, ipcMain, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -6,6 +6,7 @@ let _app = null;
 let lastUsedDir = null;
 let settingsFile = null;
 let currentFilePath = null;
+let appSettingsPath = null;
 
 async function loadSettings() {
   try {
@@ -26,6 +27,9 @@ async function saveSettings() {
 async function init(appInstance) {
   _app = appInstance;
   settingsFile = path.join(_app.getPath('userData'), 'settings.json');
+  // Save app settings to userData directory instead of src (which won't exist in packaged app)
+  appSettingsPath = path.join(_app.getPath('userData'), 'appsettings.json');
+  console.log(`[Settings] Using app settings path: ${appSettingsPath}`);
   await loadSettings();
 }
 
@@ -97,6 +101,19 @@ async function loadBoardIntoRenderer(win) {
 }
 
 function registerIpcHandlers() {
+  ipcMain.on('quickboard:request-save-from-renderer', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) {
+        return;
+      }
+
+      await requestSaveFromRenderer(win);
+    } catch (err) {
+      console.error('Failed to trigger save from renderer:', err);
+    }
+  });
+
   ipcMain.on('quickboard:save-data', async (event, payload) => {
     if (!payload || !payload.filePath || typeof payload.data !== 'string') return;
 
@@ -162,6 +179,96 @@ function registerIpcHandlers() {
       } catch (e) {}
     }
   });
+
+  // App settings handlers
+  ipcMain.handle('quickboard:get-app-settings', async (event) => {
+    try {
+      const settings = await loadAppSettings();
+      if (settings) {
+        return { success: true, data: settings };
+      } else {
+        return { success: false, message: 'Failed to load settings' };
+      }
+    } catch (err) {
+      console.error('Error loading app settings:', err);
+      return { success: false, message: err.message || 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('quickboard:save-app-settings', async (event, settings) => {
+    try {
+      if (process.env.DEBUG) {
+        console.log('[Settings] Saving:', JSON.stringify(settings, null, 2));
+      }
+      const saved = await saveAppSettings(settings);
+      if (saved) {
+        if (process.env.DEBUG) {
+          console.log('[Settings] Successfully saved');
+        }
+        return { success: true };
+      } else {
+        console.error('[Settings] Failed to save');
+        return { success: false, message: 'Failed to save settings' };
+      }
+    } catch (err) {
+      console.error('[Settings] Error saving:', err);
+      return { success: false, message: err.message || 'Unknown error' };
+    }
+  });
+
+
+  ipcMain.handle('quickboard:restore-app-settings-defaults', async (event) => {
+    try {
+      const defaultsPath = path.join(
+        _app.getAppPath(),
+        'src',
+        'electron',
+        'config',
+        'appsettings-defaults.json',
+      );
+      const defaultsRaw = await fs.readFile(defaultsPath, 'utf-8');
+      const defaults = JSON.parse(defaultsRaw);
+
+      // Load current settings and merge only the keys from defaults, but also
+      // explicitly reset legacy root keys so stale values are not preserved.
+      const current = await loadAppSettings();
+      const restoredSettings = current ? { ...current, ...defaults } : { ...defaults };
+      const legacyRootKeys = ['initialDir', 'autosave', 'autosaveDuration'];
+
+      legacyRootKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+          restoredSettings[key] = defaults[key];
+        } else {
+          delete restoredSettings[key];
+        }
+      });
+
+      await saveAppSettings(restoredSettings);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error restoring app settings:', err);
+      return { success: false, message: err.message || 'Unknown error' };
+    }
+  });
+
+  ipcMain.handle('quickboard:select-folder', async (event) => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Select Folder',
+        properties: ['openDirectory'],
+      });
+
+      if (canceled || !filePaths || filePaths.length === 0) {
+        return undefined;
+      }
+
+      return filePaths[0];
+    } catch (err) {
+      console.error('Error selecting folder:', err);
+      return undefined;
+    }
+  });
 }
 
 async function loadBoardFromPath(win, filePath) {
@@ -187,6 +294,59 @@ async function loadBoardFromPath(win, filePath) {
     try {
       dialog.showErrorBox('Load Failed', `Failed to load file:\n${message}`);
     } catch (e) {}
+  }
+}
+
+// Helper function to safely set nested object value
+function setNestedValue(obj, path, value) {
+  const keys = path.split('.');
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!(key in current) || typeof current[key] !== 'object') {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+  current[keys[keys.length - 1]] = value;
+}
+
+async function loadAppSettings() {
+  try {
+    const raw = await fs.readFile(appSettingsPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    // If file doesn't exist, try to initialize from bundled defaults
+    console.log('[Settings] appsettings.json not found in userData, attempting to initialize...');
+    try {
+      const defaultPath = path.join(
+        _app.getAppPath(),
+        'src',
+        'electron',
+        'config',
+        'appsettings-defaults.json',
+      );
+      const defaultRaw = await fs.readFile(defaultPath, 'utf-8');
+      const defaults = JSON.parse(defaultRaw);
+      // Write defaults to userData
+      await saveAppSettings(defaults);
+      console.log('[Settings] Initialized appsettings.json with defaults');
+      return defaults;
+    } catch (defaultErr) {
+      console.error('[Settings] Failed to load app settings or defaults:', err, defaultErr);
+      return null;
+    }
+  }
+}
+
+async function saveAppSettings(settings) {
+  try {
+    await fs.mkdir(path.dirname(appSettingsPath), { recursive: true });
+    await fs.writeFile(appSettingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error(`[Settings] Failed to save app settings to ${appSettingsPath}:`, err);
+    return false;
   }
 }
 

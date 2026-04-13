@@ -1,5 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
-import appSettings from '@econfig/appsettings.json';
+import { appSettings } from 'src/settings-loader';
 
 @Injectable({ providedIn: 'root' })
 export class TimelineZoomService {
