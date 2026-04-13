@@ -2,10 +2,12 @@ import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } f
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
+import { TimelineActions } from '../ui/timeline/helpers/timeline.actions';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { SettingsComponent } from '../ui/dialogs/settings/settings.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
+import { AppStore } from 'src/data';
 import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { SaveService } from '../services/save.service';
@@ -48,9 +50,10 @@ export class App implements OnInit, OnDestroy {
   protected readonly isElectron = !!window.quickboard;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
+  private store = inject(AppStore);
+  private actions = inject(TimelineActions);
   private removeThemeListener?: () => void;
-  private removeUndoListener?: () => void;
-  private removeRedoListener?: () => void;
+  private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -69,15 +72,19 @@ export class App implements OnInit, OnDestroy {
 
     this.removeExportIpcListeners = this.exportIpc.init();
 
-    if (window.quickboard?.onUndo) {
-      this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.undoRedo.triggerUndo();
-      });
-    }
-
-    if (window.quickboard?.onRedo) {
-      this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.undoRedo.triggerRedo();
+    // for shortcuts attached to appmenu options (working through electron side)
+    if(window.quickboard?.onShortcut) {
+      this.removeShortcutListener = window.quickboard.onShortcut((option: string) => {
+        switch (option) {
+          case 'undo':
+            this.undoRedo.triggerUndo();
+            break;
+          case 'redo':
+            this.undoRedo.triggerRedo();
+            break;          
+          default:
+            break;
+        }
       });
     }
 
@@ -128,11 +135,6 @@ export class App implements OnInit, OnDestroy {
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
 
-    const isUndo = key === 'z' && !event.shiftKey;
-    const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
-
-    if (!isUndo && !isRedo) return;
-
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
       // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
@@ -143,18 +145,52 @@ export class App implements OnInit, OnDestroy {
     }
 
     event.preventDefault();
-    if (isUndo) {
-      this.undoRedo.triggerUndo();
-    } else {
-      this.undoRedo.triggerRedo();
-    }
+    switch (key) {
+      case 'z': {
+        if (event.shiftKey) {
+          // Redo
+          this.undoRedo.triggerRedo();
+        } else {
+          // Undo
+          this.undoRedo.triggerUndo();
+        }
+        break;
+      }
+      case 'y': {
+        this.undoRedo.triggerRedo();
+        break;
+      }
+      case 'n': {
+        if (event.shiftKey) {
+          // Add Lane
+          this.store.addAudioLane();
+        } else {
+          // Add Board
+          this.store.addBoard();
+        }
+        break;
+      }
+      case 'd': {
+        const currentBoardId = this.store.currentBoardId();
+        if (currentBoardId) {
+          this.actions.duplicateBoard(currentBoardId);
+        }
+        break;
+      }
+      case 'x': {
+        this.canvas()?.requestClearCanvas();
+        break;
+      }
+      default:
+        return;
+    };
+
   }
 
   ngOnDestroy(): void {
     this.saveService.destroy();
     this.removeThemeListener?.();
-    this.removeUndoListener?.();
-    this.removeRedoListener?.();
+    this.removeShortcutListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
   }
