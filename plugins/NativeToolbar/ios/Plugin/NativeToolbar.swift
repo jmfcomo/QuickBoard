@@ -36,10 +36,20 @@ public class NativeToolbar: CAPPlugin, CAPBridgedPlugin {
                     }
                 }
 
-                if let window = UIApplication.shared.windows.first {
-                    window.rootViewController = nav
-                    window.makeKeyAndVisible()
+                let window = root.view.window
+                    ?? UIApplication.shared.connectedScenes
+                        .compactMap { $0 as? UIWindowScene }
+                        .filter { $0.activationState == .foregroundActive }
+                        .flatMap { $0.windows }
+                        .first(where: { $0.isKeyWindow })
+                
+                guard let window = window else {
+                    call.reject("Window not found")
+                    return
                 }
+
+                window.rootViewController = nav
+                window.makeKeyAndVisible()
                 call.resolve()
             }
         }

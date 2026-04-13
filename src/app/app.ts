@@ -31,7 +31,7 @@ import { NativeToolbarService } from '../services/native-toolbar.service';
   host: {
     '[class.dialog-mode]': 'dialogMode() !== null',
     '(document:keydown)': 'onKeyDown($event)',
-    '[class.is-web]': 'showWebToolbar',
+    '[class.is-web]': 'useSafeArea',
   },
   imports: [
     CanvasComponent,
@@ -59,6 +59,7 @@ export class App implements OnInit, OnDestroy {
   protected readonly isElectron = !!window.quickboard;
   protected readonly isIos = Capacitor.getPlatform() === 'ios';
   protected readonly showWebToolbar = !this.isElectron && !this.isIos;
+  protected readonly useSafeArea = !this.isElectron;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private readonly nativeToolbar = inject(NativeToolbarService);
