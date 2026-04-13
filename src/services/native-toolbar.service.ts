@@ -8,7 +8,7 @@ export interface NativeToolbarPlugin {
 const NativeToolbar = registerPlugin<NativeToolbarPlugin>('NativeToolbar');
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NativeToolbarService {
   async setTitle(title: string): Promise<void> {

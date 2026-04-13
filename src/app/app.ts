@@ -1,4 +1,13 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild, effect } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+  effect,
+} from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
