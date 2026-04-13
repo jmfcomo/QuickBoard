@@ -135,16 +135,6 @@ export class App implements OnInit, OnDestroy {
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
 
-    // const isUndo = key === 'z' && !event.shiftKey;
-    // const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
-
-    // const addBoard = key === 'n' && !event.shiftKey;
-    // const addLane = key === 'n' && event.shiftKey;
-    // const duplicate = key === 'd';
-    // const clearBoard = key === 'x';
-
-    // if (!isUndo && !isRedo && !addBoard && !addLane && !duplicate && !clearBoard) return;
-
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
       // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
