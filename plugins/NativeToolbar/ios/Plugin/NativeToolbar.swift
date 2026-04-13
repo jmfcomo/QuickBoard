@@ -42,7 +42,7 @@ public class NativeToolbar: CAPPlugin, CAPBridgedPlugin {
                         .filter { $0.activationState == .foregroundActive }
                         .flatMap { $0.windows }
                         .first(where: { $0.isKeyWindow })
-                
+
                 guard let window = window else {
                     call.reject("Window not found")
                     return
