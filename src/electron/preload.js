@@ -71,15 +71,10 @@ contextBridge.exposeInMainWorld('quickboard', {
   setCustomTheme: (theme) => {
     ipcRenderer.send('quickboard:set-custom-theme', theme);
   },
-  onUndo: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:undo', listener);
-    return () => ipcRenderer.removeListener('quickboard:undo', listener);
-  },
-  onRedo: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:redo', listener);
-    return () => ipcRenderer.removeListener('quickboard:redo', listener);
+  onShortcut: (handler) => {
+    const listener = (_event, option) => handler(option);
+    ipcRenderer.on('quickboard:shortcut', listener);
+    return () => ipcRenderer.removeListener('quickboard:shortcut', listener);
   },
   onSaveResult: (handler) => {
     const listener = (_event, payload) => handler(payload);

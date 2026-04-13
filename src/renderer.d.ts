@@ -16,8 +16,7 @@ declare global {
       ) => () => void;
       getThemeSource: () => Promise<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>;
       setCustomTheme: (theme: 'white' | 'light' | 'sepia' | 'dark' | 'black' | null) => void;
-      onUndo: (handler: () => void) => () => void;
-      onRedo: (handler: () => void) => () => void;
+      onShortcut: (handler: (option: string) => void) => () => void;
       onSaveResult: (
         handler: (payload: { filePath: string; success: boolean; message?: string }) => void,
       ) => () => void;

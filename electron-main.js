@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeTheme, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, protocol, globalShortcut } = require('electron');
 const path = require('path');
 const appSettings = require('./src/electron/config/appsettings.json');
 const fs = require('fs/promises');
