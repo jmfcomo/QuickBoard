@@ -71,35 +71,10 @@ contextBridge.exposeInMainWorld('quickboard', {
   setCustomTheme: (theme) => {
     ipcRenderer.send('quickboard:set-custom-theme', theme);
   },
-  onNewBoard: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:new-board', listener);
-    return () => ipcRenderer.removeListener('quickboard:new-board', listener);
-  },
-  onNewLane: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:new-lane', listener);
-    return () => ipcRenderer.removeListener('quickboard:new-lane', listener);
-  },
-  onClearBoard: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:clear-board', listener);
-    return () => ipcRenderer.removeListener('quickboard:clear-board', listener);
-  },
-  onDuplicateBoard: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:duplicate-board', listener);
-    return () => ipcRenderer.removeListener('quickboard:duplicate-board', listener);
-  },
-  onUndo: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:undo', listener);
-    return () => ipcRenderer.removeListener('quickboard:undo', listener);
-  },
-  onRedo: (handler) => {
-    const listener = () => handler();
-    ipcRenderer.on('quickboard:redo', listener);
-    return () => ipcRenderer.removeListener('quickboard:redo', listener);
+  onShortcut: (handler) => {
+    const listener = (_event, option) => handler(option);
+    ipcRenderer.on('quickboard:shortcut', listener);
+    return () => ipcRenderer.removeListener('quickboard:shortcut', listener);
   },
   onSaveResult: (handler) => {
     const listener = (_event, payload) => handler(payload);

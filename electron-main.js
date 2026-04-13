@@ -69,17 +69,24 @@ function createWindow() {
   };
 
   globalShortcut.register('CmdOrCtrl+N', () => {
-    win.webContents.send('quickboard:new-board');
+    win.webContents.send('quickboard:shortcut', 'new-board');
   });
   globalShortcut.register('CmdOrCtrl+Shift+N', () => {
-    win.webContents.send('quickboard:new-lane');
+    win.webContents.send('quickboard:shortcut', 'new-track');
   });
   globalShortcut.register('CmdOrCtrl+X', () => {
-    win.webContents.send('quickboard:clear-board');
+    win.webContents.send('quickboard:shortcut', 'clear-canvas');
   });
   globalShortcut.register('CmdOrCtrl+D', () => {
-    win.webContents.send('quickboard:duplicate-board');
+    win.webContents.send('quickboard:shortcut', 'duplicate-board');
   });
+  globalShortcut.register('CmdOrCtrl+Z', () => {
+    win.webContents.send('quickboard:shortcut', 'undo');
+  });
+  globalShortcut.register('CmdOrCtrl+Shift+Z', () => {
+    win.webContents.send('quickboard:shortcut', 'redo');
+  });
+
 
   buildMenu(app, win, hooks);
 

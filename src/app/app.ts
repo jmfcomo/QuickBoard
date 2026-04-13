@@ -53,12 +53,7 @@ export class App implements OnInit, OnDestroy {
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
   private removeThemeListener?: () => void;
-  private removeUndoListener?: () => void;
-  private removeRedoListener?: () => void;
-  private removeAddBoardListener?: () => void;
-  private removeAddLaneListener?: () => void;
-  private removeClearBoardListener?: () => void;
-  private removeDuplicateBoardListener?: () => void;
+  private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -77,42 +72,34 @@ export class App implements OnInit, OnDestroy {
 
     this.removeExportIpcListeners = this.exportIpc.init();
 
-    if(window.quickboard?.onNewBoard) {
-      this.removeAddBoardListener = window.quickboard.onNewBoard(() => {
-        this.store.addBoard();
-      });
-    }
-
-    if(window.quickboard?.onNewLane) {
-      this.removeAddLaneListener = window.quickboard.onNewLane(() => {
-        this.store.addAudioLane();
-      });
-    }
-    
-    if(window.quickboard?.onClearBoard) {
-      this.removeClearBoardListener = window.quickboard.onClearBoard(() => {
-        this.canvas()?.requestClearCanvas();
-      });
-    }
-
-    if(window.quickboard?.onDuplicateBoard) {
-      this.removeDuplicateBoardListener = window.quickboard.onDuplicateBoard(() => {
-        const currentBoardId = this.store.currentBoardId();
-        if (currentBoardId) {
-          this.actions.duplicateBoard(currentBoardId);
+    if(window.quickboard?.onShortcut) {
+      this.removeShortcutListener = window.quickboard.onShortcut((option: string) => {
+        switch (option) {
+          case 'new-board':
+            this.store.addBoard();
+            break;
+          case 'new-track':
+            this.store.addAudioLane();
+            break;
+          case 'clear-canvas':
+            this.canvas()?.requestClearCanvas();
+            break;
+          case 'duplicate-board': {
+            const currentBoardId = this.store.currentBoardId();
+            if (currentBoardId) {
+              this.actions.duplicateBoard(currentBoardId);
+            }
+            break;
+          }
+          case 'undo':
+            this.undoRedo.triggerUndo();
+            break;
+          case 'redo':
+            this.undoRedo.triggerRedo();
+            break;          
+          default:
+            break;
         }
-      });
-    }
-
-    if (window.quickboard?.onUndo) {
-      this.removeUndoListener = window.quickboard.onUndo(() => {
-        this.undoRedo.triggerUndo();
-      });
-    }
-
-    if (window.quickboard?.onRedo) {
-      this.removeRedoListener = window.quickboard.onRedo(() => {
-        this.undoRedo.triggerRedo();
       });
     }
 
@@ -188,11 +175,7 @@ export class App implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.saveService.destroy();
     this.removeThemeListener?.();
-    this.removeUndoListener?.();
-    this.removeRedoListener?.();
-    this.removeAddBoardListener?.();
-    this.removeAddLaneListener?.();
-    this.removeClearBoardListener?.();
+    this.removeShortcutListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
   }
