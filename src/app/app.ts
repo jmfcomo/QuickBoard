@@ -135,15 +135,15 @@ export class App implements OnInit, OnDestroy {
     const ctrl = event.ctrlKey || event.metaKey;
     if (!ctrl) return;
 
-    const isUndo = key === 'z' && !event.shiftKey;
-    const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
+    // const isUndo = key === 'z' && !event.shiftKey;
+    // const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
 
-    const addBoard = key === 'n' && !event.shiftKey;
-    const addLane = key === 'n' && event.shiftKey;
-    const duplicate = key === 'd';
-    const clearBoard = key === 'x';
+    // const addBoard = key === 'n' && !event.shiftKey;
+    // const addLane = key === 'n' && event.shiftKey;
+    // const duplicate = key === 'd';
+    // const clearBoard = key === 'x';
 
-    if (!isUndo && !isRedo && !addBoard && !addLane && !duplicate && !clearBoard) return;
+    // if (!isUndo && !isRedo && !addBoard && !addLane && !duplicate && !clearBoard) return;
 
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
@@ -155,22 +155,46 @@ export class App implements OnInit, OnDestroy {
     }
 
     event.preventDefault();
-    if (isUndo) {
-      this.undoRedo.triggerUndo();
-    } else if(isRedo) {
-      this.undoRedo.triggerRedo();
-    } else if(addBoard) {
-      this.store.addBoard();
-    } else if(addLane) {
-      this.store.addAudioLane();
-    } else if(duplicate) {
-      const currentBoardId = this.store.currentBoardId();
-      if (currentBoardId) {
-        this.actions.duplicateBoard(currentBoardId);
+    switch (key) {
+      case 'z': {
+        if (event.shiftKey) {
+          // Redo
+          this.undoRedo.triggerRedo();
+        } else {
+          // Undo
+          this.undoRedo.triggerUndo();
+        }
+        break;
       }
-    } else if(clearBoard) {
-      this.canvas()?.requestClearCanvas();
-    }
+      case 'y': {
+        this.undoRedo.triggerRedo();
+        break;
+      }
+      case 'n': {
+        if (event.shiftKey) {
+          // Add Lane
+          this.store.addAudioLane();
+        } else {
+          // Add Board
+          this.store.addBoard();
+        }
+        break;
+      }
+      case 'd': {
+        const currentBoardId = this.store.currentBoardId();
+        if (currentBoardId) {
+          this.actions.duplicateBoard(currentBoardId);
+        }
+        break;
+      }
+      case 'x': {
+        this.canvas()?.requestClearCanvas();
+        break;
+      }
+      default:
+        return;
+    };
+
   }
 
   ngOnDestroy(): void {
