@@ -245,14 +245,14 @@ function buildMenu(app, win, hooks = {}) {
         label: 'Undo',
         accelerator: 'CmdOrCtrl+Z',
         click: () => {
-          sendToMainWindow(win, 'quickboard:undo');
+          sendToMainWindow(win, 'quickboard:shortcut', 'undo');
         },
       },
       {
         label: 'Redo',
         accelerator: 'CmdOrCtrl+Shift+Z',
         click: () => {
-          sendToMainWindow(win, 'quickboard:redo');
+          sendToMainWindow(win, 'quickboard:shortcut', 'redo');
         },
       },
     ],

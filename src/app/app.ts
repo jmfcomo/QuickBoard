@@ -72,25 +72,10 @@ export class App implements OnInit, OnDestroy {
 
     this.removeExportIpcListeners = this.exportIpc.init();
 
+    // for shortcuts attached to appmenu options (working through electron side)
     if(window.quickboard?.onShortcut) {
       this.removeShortcutListener = window.quickboard.onShortcut((option: string) => {
         switch (option) {
-          case 'new-board':
-            this.store.addBoard();
-            break;
-          case 'new-track':
-            this.store.addAudioLane();
-            break;
-          case 'clear-canvas':
-            this.canvas()?.requestClearCanvas();
-            break;
-          case 'duplicate-board': {
-            const currentBoardId = this.store.currentBoardId();
-            if (currentBoardId) {
-              this.actions.duplicateBoard(currentBoardId);
-            }
-            break;
-          }
           case 'undo':
             this.undoRedo.triggerUndo();
             break;
@@ -153,7 +138,12 @@ export class App implements OnInit, OnDestroy {
     const isUndo = key === 'z' && !event.shiftKey;
     const isRedo = (key === 'z' && event.shiftKey) || key === 'y';
 
-    if (!isUndo && !isRedo) return;
+    const addBoard = key === 'n' && !event.shiftKey;
+    const addLane = key === 'n' && event.shiftKey;
+    const duplicate = key === 'd';
+    const clearBoard = key === 'x';
+
+    if (!isUndo && !isRedo && !addBoard && !addLane && !duplicate && !clearBoard) return;
 
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
@@ -167,8 +157,19 @@ export class App implements OnInit, OnDestroy {
     event.preventDefault();
     if (isUndo) {
       this.undoRedo.triggerUndo();
-    } else {
+    } else if(isRedo) {
       this.undoRedo.triggerRedo();
+    } else if(addBoard) {
+      this.store.addBoard();
+    } else if(addLane) {
+      this.store.addAudioLane();
+    } else if(duplicate) {
+      const currentBoardId = this.store.currentBoardId();
+      if (currentBoardId) {
+        this.actions.duplicateBoard(currentBoardId);
+      }
+    } else if(clearBoard) {
+      this.canvas()?.requestClearCanvas();
     }
   }
 
