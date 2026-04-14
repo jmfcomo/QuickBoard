@@ -36,12 +36,15 @@ export class TimelineEditor implements AfterViewInit {
 
   @ViewChild('timelineContent') timelineContent!: ElementRef;
   @ViewChild('scrollContainer') scrollContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('playhead') playhead!: ElementRef<HTMLDivElement>;
 
   readonly scale = this.zoom.scale;
   containerWidth = signal(800);
   isScrubbing = signal(false);
 
   private wasPlaying = false;
+  private playheadAnimation?: Animation;
+  private animationStartRealTime = 0;
 
   playheadPosition = computed(() => this.store.currentTime() * this.scale());
 
@@ -55,6 +58,65 @@ export class TimelineEditor implements AfterViewInit {
       const isPlaying = this.store.isPlaying();
       if ((isPlaying || !this.isScrubbing()) && this.scrollContainer?.nativeElement) {
         this.scrollToPlayhead(playheadPos);
+      }
+    });
+
+    effect(() => {
+      const isPlaying = this.store.isPlaying();
+      const currentTime = this.store.currentTime();
+      const totalDuration = this.store.totalDuration();
+      const scale = this.scale();
+      const el = this.playhead?.nativeElement;
+
+      if (!el) return;
+
+      if (!isPlaying) {
+        if (this.playheadAnimation) {
+          this.playheadAnimation.cancel();
+          this.playheadAnimation = undefined;
+        }
+        el.style.transform = `translate3d(${currentTime * scale}px, 0, 0)`;
+        return;
+      }
+
+      let needsRestart = false;
+
+      if (!this.playheadAnimation) {
+        needsRestart = true;
+      } else {
+        const animatedMs = (this.playheadAnimation.currentTime as number) || 0;
+        const expectedTime = this.animationStartRealTime + animatedMs / 1000;
+
+        if (Math.abs(currentTime - expectedTime) > 0.15) {
+          needsRestart = true;
+        }
+      }
+
+      if (needsRestart) {
+        if (this.playheadAnimation) {
+          this.playheadAnimation.cancel();
+          this.playheadAnimation = undefined;
+        }
+
+        const timeRemaining = totalDuration - currentTime;
+        this.animationStartRealTime = currentTime;
+
+        if (timeRemaining > 0) {
+          const startX = currentTime * scale;
+          const endX = totalDuration * scale;
+
+          this.playheadAnimation = el.animate(
+            [
+              { transform: `translate3d(${startX}px, 0, 0)` },
+              { transform: `translate3d(${endX}px, 0, 0)` },
+            ],
+            {
+              duration: timeRemaining * 1000,
+              easing: 'linear',
+              fill: 'forwards',
+            },
+          );
+        }
       }
     });
   }

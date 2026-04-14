@@ -84,10 +84,11 @@
   position: absolute;
   top: 0;
   bottom: 0;
+  left: 0;
   width: 1px;
   z-index: 20;
   pointer-events: none;
-  will-change: left;
+  will-change: transform;
 }
 
 .playhead-head {
