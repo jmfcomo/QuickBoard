@@ -27,10 +27,12 @@ type ToolOption = Readonly<{
 })
 export class ToolsBarComponent implements OnDestroy {
   readonly activeTool = input.required<string>();
+  readonly isCanvasFullscreen = input(false);
 
   readonly toolSelected = output<string>();
   readonly imageSelected = output<File>();
   readonly clearCanvasRequested = output<void>();
+  readonly canvasFullscreenToggled = output<void>();
 
   readonly tools: readonly ToolOption[] = [{ id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' }];
   readonly drawTools: readonly ToolOption[] = [
@@ -282,6 +284,11 @@ export class ToolsBarComponent implements OnDestroy {
   public requestClearCanvas(): void {
     this.hideTooltip();
     this.clearCanvasRequested.emit();
+  }
+
+  public toggleCanvasFullscreen(): void {
+    this.hideTooltip();
+    this.canvasFullscreenToggled.emit();
   }
 
   public showTooltip(event: MouseEvent, label: string): void {

@@ -100,6 +100,15 @@
   overflow: hidden;
 }
 
+.app.canvas-fullscreen .editors {
+  flex: 1 1 auto;
+}
+
+.app.canvas-fullscreen .editors app-canvas {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
 app-timeline {
   flex: 1 1 auto;
   width: 100%;

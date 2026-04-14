@@ -7,6 +7,8 @@ import {
   computed,
   viewChild,
   inject,
+  input,
+  output,
   PLATFORM_ID,
   effect,
 } from '@angular/core';
@@ -40,6 +42,9 @@ import { appSettings } from 'src/settings-loader';
   styleUrls: ['./canvas.component.css'],
 })
 export class CanvasComponent implements AfterViewInit, OnDestroy {
+  readonly isCanvasFullscreen = input(false);
+  readonly canvasFullscreenToggled = output<void>();
+
   private readonly defaultCanvasSize = {
     width: appSettings.board.width,
     height: appSettings.board.height,
@@ -112,6 +117,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
+  private lastFitAvailableHostWidth = 0;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
@@ -473,36 +479,71 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     if (!this.lc) return;
 
     const container = this.canvasContainer().nativeElement;
-    const height = container.clientHeight;
-    if (height <= 0 || height === this.lastFitHeight) return;
-    this.lastFitHeight = height;
-
-    const correctWidth = Math.floor(
-      (height * this.defaultCanvasSize.width) / this.defaultCanvasSize.height,
-    );
     const host = this.el.nativeElement as HTMLElement;
+    const height = container.clientHeight;
+    const availableHostWidth = this.getAvailableHostWidth(host);
+
+    if (height <= 0 || availableHostWidth <= 0) return;
+    if (
+      Math.abs(height - this.lastFitHeight) < 0.5 &&
+      Math.abs(availableHostWidth - this.lastFitAvailableHostWidth) < 0.5
+    ) {
+      return;
+    }
+
+    this.lastFitHeight = height;
+    this.lastFitAvailableHostWidth = availableHostWidth;
+
     const toolsBar = host.querySelector<HTMLElement>('.tools-bar');
 
     const flexRow = host.querySelector<HTMLElement>('.canvas-container');
-    const flexRowStyles = flexRow ? window.getComputedStyle(flexRow) : null;
-    const gapValue = flexRowStyles
-      ? flexRowStyles.columnGap && flexRowStyles.columnGap !== 'normal'
-        ? flexRowStyles.columnGap
-        : flexRowStyles.gap
-      : null;
-    const gap = Number.parseFloat(gapValue || '0') || 0;
+    const gap = flexRow ? this.getFlexGap(flexRow) : 0;
 
     const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;
-    host.style.width = correctWidth + toolsBarWidth + 'px';
+    const availableCanvasWidth = Math.max(1, availableHostWidth - toolsBarWidth);
 
-    const scale = height / this.defaultCanvasSize.height;
+    const heightScale = height / this.defaultCanvasSize.height;
+    const widthScale = availableCanvasWidth / this.defaultCanvasSize.width;
+    const scale = Math.min(heightScale, widthScale);
     if (!Number.isFinite(scale) || scale <= 0) return;
+
+    const fittedCanvasWidth = Math.floor(this.defaultCanvasSize.width * scale);
+    host.style.width = Math.ceil(fittedCanvasWidth + toolsBarWidth) + 'px';
 
     if (this.lc.respondToSizeChange) {
       this.lc.respondToSizeChange();
     }
 
     this.lc.setZoom(scale);
+  }
+
+  private getAvailableHostWidth(host: HTMLElement): number {
+    const parent = host.parentElement as HTMLElement | null;
+    if (!parent) {
+      return host.clientWidth;
+    }
+
+    let availableWidth = parent.clientWidth;
+    const scriptPane = parent.querySelector<HTMLElement>('app-script');
+    if (!scriptPane) {
+      return availableWidth;
+    }
+
+    const scriptStyles = window.getComputedStyle(scriptPane);
+    if (scriptStyles.display === 'none') {
+      return availableWidth;
+    }
+
+    const reservedScriptWidth = Number.parseFloat(scriptStyles.minWidth || '0') || 0;
+    availableWidth -= reservedScriptWidth + this.getFlexGap(parent);
+    return Math.max(0, availableWidth);
+  }
+
+  private getFlexGap(element: HTMLElement): number {
+    const styles = window.getComputedStyle(element);
+    const gapValue =
+      styles.columnGap && styles.columnGap !== 'normal' ? styles.columnGap : styles.gap;
+    return Number.parseFloat(gapValue || '0') || 0;
   }
 
   private syncOnionLayerRect(): void {
@@ -596,6 +637,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     } else {
       this.confirmClearCanvas();
     }
+  }
+
+  public toggleCanvasFullscreen(): void {
+    this.canvasFullscreenToggled.emit();
   }
 
   public cancelClearCanvas(): void {

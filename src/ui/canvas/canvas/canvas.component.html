@@ -12,9 +12,11 @@
 <div class="canvas-container">
   <app-tools-bar
     [activeTool]="activeTool()"
+    [isCanvasFullscreen]="isCanvasFullscreen()"
     (toolSelected)="setTool($event)"
     (imageSelected)="handleImageFile($event)"
     (clearCanvasRequested)="requestClearCanvas()"
+    (canvasFullscreenToggled)="toggleCanvasFullscreen()"
   ></app-tools-bar>
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage (dragover)="onDragOver($event)" (drop)="onDrop($event)">
