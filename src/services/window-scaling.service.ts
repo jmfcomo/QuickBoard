@@ -101,6 +101,10 @@ export class WindowScalingService {
       return;
     }
 
+    if (app.classList.contains('canvas-fullscreen')) {
+      return;
+    }
+
     const totalHeight = app.getBoundingClientRect().height;
     if (totalHeight <= 0) {
       return;
