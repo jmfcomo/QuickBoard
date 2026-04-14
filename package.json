@@ -94,29 +94,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "QuickBoard"
     },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "branding/QuickBoard_icon_macOSLegacy.icns",
-      "category": "public.app-category.productivity",
-      "extraResources": [
-        {
-          "from": "branding/QuickBoard_icon_macOS.icon",
-          "to": "QuickBoard_icon_macOS.icon"
-        }
-      ]
-    },
-    "dmg": {
-      "artifactName": "quickboard-mac-${arch}.${ext}",
-      "writeUpdateInfo": false
-    },
     "linux": {
       "target": [
         {
