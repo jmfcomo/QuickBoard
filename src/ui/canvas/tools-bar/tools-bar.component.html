@@ -110,6 +110,7 @@
         (mouseenter)="showTooltip($event, isCanvasFullscreen() ? 'Exit Full Screen Canvas' : 'Full Screen Canvas')"
         (mouseleave)="hideTooltip()"
         [attr.aria-label]="isCanvasFullscreen() ? 'Exit Full Screen Canvas' : 'Full Screen Canvas'"
+        [attr.aria-pressed]="isCanvasFullscreen()"
       >
         <span class="fullscreen-toggle-icon" [class.exit-icon]="isCanvasFullscreen()" aria-hidden="true">
           <span class="triangle triangle-a"></span>
