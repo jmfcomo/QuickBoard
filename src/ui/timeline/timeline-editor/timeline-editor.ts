@@ -45,6 +45,8 @@ export class TimelineEditor implements AfterViewInit {
   private wasPlaying = false;
   private playheadAnimation?: Animation;
   private animationStartRealTime = 0;
+  private lastAnimationScale = 0;
+  private lastAnimationTotalDuration = 0;
 
   playheadPosition = computed(() => this.store.currentTime() * this.scale());
 
@@ -87,7 +89,11 @@ export class TimelineEditor implements AfterViewInit {
         const animatedMs = (this.playheadAnimation.currentTime as number) || 0;
         const expectedTime = this.animationStartRealTime + animatedMs / 1000;
 
-        if (Math.abs(currentTime - expectedTime) > 0.15) {
+        if (
+          Math.abs(currentTime - expectedTime) > 0.15 ||
+          scale !== this.lastAnimationScale ||
+          totalDuration !== this.lastAnimationTotalDuration
+        ) {
           needsRestart = true;
         }
       }
@@ -105,6 +111,9 @@ export class TimelineEditor implements AfterViewInit {
           const startX = currentTime * scale;
           const endX = totalDuration * scale;
 
+          this.lastAnimationScale = scale;
+          this.lastAnimationTotalDuration = totalDuration;
+
           this.playheadAnimation = el.animate(
             [
               { transform: `translate3d(${startX}px, 0, 0)` },
@@ -116,6 +125,8 @@ export class TimelineEditor implements AfterViewInit {
               fill: 'forwards',
             },
           );
+        } else {
+          el.style.transform = `translate3d(${totalDuration * scale}px, 0, 0)`;
         }
       }
     });
@@ -128,7 +139,13 @@ export class TimelineEditor implements AfterViewInit {
       this.containerWidth.set(entries[0].contentRect.width);
     });
     observer.observe(el);
-    this.destroyRef.onDestroy(() => observer.disconnect());
+    this.destroyRef.onDestroy(() => {
+      observer.disconnect();
+      if (this.playheadAnimation) {
+        this.playheadAnimation.cancel();
+        this.playheadAnimation = undefined;
+      }
+    });
   }
 
   startScrub(event: MouseEvent) {
