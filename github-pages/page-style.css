@@ -9,6 +9,8 @@ header {
 	margin: auto;
 	border-bottom: #95529c solid 5px;
 	padding-left: 2%;
+	padding-top: 20px;
+	margin-bottom: 0;
 	overflow: hidden;
 }
 
@@ -23,13 +25,9 @@ header {
 	padding-right: 2%;
 }
 
-#left-header {
-	float: left;
-}
-
-#right-header {
-	float: right;
-	margin-top: 6vh;
+#right-header p {
+	margin: 0;
+	font-size: 2em;
 }
 
 a {
