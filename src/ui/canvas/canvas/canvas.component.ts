@@ -25,8 +25,9 @@ import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brus
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
-import { ZoomClientPoint, ZoomTool } from '../tools/zoom';
+import { ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
+import { CanvasViewportController } from './canvas-viewport-controller';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
@@ -54,8 +55,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
-  readonly isZoomKeepOn = signal<boolean>(appSettings.canvas.zoomKeepOn ?? true);
-  readonly canvasZoomLevel = signal<number>(1);
+  private readonly viewport = new CanvasViewportController({
+    activeTool: () => this.activeTool(),
+    syncViewportRects: () => this.syncOnionLayerRect(),
+    zoomKeepOnDefault: appSettings.canvas.zoomKeepOn ?? true,
+    zoomClickStep: appSettings.canvas.zoomClickStep,
+  });
+  readonly isZoomKeepOn = this.viewport.zoomKeepOn;
+  readonly canvasZoomLevel = this.viewport.zoomLevel;
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -121,24 +128,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private lastFitAvailableHostWidth = 0;
-  private readonly minZoomLevel = 1;
-  private readonly maxZoomLevel = 1000;
-  private readonly maxCanvasScale = 10;
-  private readonly clickZoomLevelStep = this.normalizeZoomClickStep(appSettings.canvas.zoomClickStep);
-  private minCanvasScale = 1;
-  private pinchTouchDistance: number | null = null;
-  private isMiddleMousePanning = false;
-  private middleMousePanStart: ZoomClientPoint | null = null;
-  private middleMousePanStartPosition: { x: number; y: number } | null = null;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
-  private readonly onCanvasWheel = (event: WheelEvent) => this.handleCanvasWheel(event);
-  private readonly onCanvasTouchStart = (event: TouchEvent) => this.handleCanvasTouchStart(event);
-  private readonly onCanvasTouchMove = (event: TouchEvent) => this.handleCanvasTouchMove(event);
-  private readonly onCanvasTouchEnd = () => this.handleCanvasTouchEnd();
-  private readonly onCanvasMouseDown = (event: MouseEvent) => this.handleCanvasMouseDown(event);
-  private readonly onWindowMouseMove = (event: MouseEvent) => this.handleWindowMouseMove(event);
-  private readonly onWindowMouseUp = (event: MouseEvent) => this.handleWindowMouseUp(event);
-  private readonly onWindowBlur = () => this.stopMiddleMousePan();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
 
@@ -233,7 +223,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Clean up LiterallyCanvas instance and event listeners
     if (this.lc) {
-      this.detachZoomGestureListeners();
+      this.viewport.detach();
       this.lc.teardown();
       this.lc = null;
     }
@@ -278,7 +268,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
-    this.attachZoomGestureListeners();
+    this.viewport.attach(this.lc);
 
     container.addEventListener(
       'mousedown',
@@ -389,8 +379,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       'zoom',
       new ZoomTool(
         this.lc,
-        (deltaLevel, point) => this.adjustCanvasZoomLevel(deltaLevel, point),
-        this.clickZoomLevelStep,
+        (deltaLevel, point) => this.viewport.adjustZoomLevel(deltaLevel, point),
+        this.viewport.getClickZoomStep(),
       ),
     );
 
@@ -495,233 +485,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObserver.observe(host);
   }
 
-  private attachZoomGestureListeners(): void {
-    if (!this.lc) {
-      return;
-    }
-
-    const canvas = this.lc.canvas;
-    canvas.addEventListener('mousedown', this.onCanvasMouseDown, true);
-    canvas.addEventListener('wheel', this.onCanvasWheel, { passive: false });
-    canvas.addEventListener('touchstart', this.onCanvasTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', this.onCanvasTouchMove, { passive: false });
-    canvas.addEventListener('touchend', this.onCanvasTouchEnd);
-    canvas.addEventListener('touchcancel', this.onCanvasTouchEnd);
-  }
-
-  private detachZoomGestureListeners(): void {
-    if (!this.lc) {
-      return;
-    }
-
-    this.stopMiddleMousePan();
-
-    const canvas = this.lc.canvas;
-    canvas.removeEventListener('mousedown', this.onCanvasMouseDown, true);
-    canvas.removeEventListener('wheel', this.onCanvasWheel);
-    canvas.removeEventListener('touchstart', this.onCanvasTouchStart);
-    canvas.removeEventListener('touchmove', this.onCanvasTouchMove);
-    canvas.removeEventListener('touchend', this.onCanvasTouchEnd);
-    canvas.removeEventListener('touchcancel', this.onCanvasTouchEnd);
-  }
-
-  private isZoomGestureEnabled(): boolean {
-    return this.activeTool() === 'zoom' || this.isZoomKeepOn();
-  }
-
-  private canPanAtCurrentZoom(): boolean {
-    return !!this.lc && this.canvasZoomLevel() > 1;
-  }
-
-  private handleCanvasWheel(event: WheelEvent): void {
-    if (!this.lc) {
-      return;
-    }
-
-    // Trackpad pinch arrives as ctrl+wheel; external mouse wheels are line-based deltas.
-    const isPinchGesture = event.ctrlKey;
-    const isMouseWheel = !isPinchGesture && event.deltaMode === WheelEvent.DOM_DELTA_LINE;
-    const isTrackpadScroll = !isPinchGesture && event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
-
-    if (isTrackpadScroll && this.canPanAtCurrentZoom()) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.panCanvasByDeltas(event.deltaX, event.deltaY);
-      return;
-    }
-
-    if (!this.isZoomGestureEnabled()) {
-      return;
-    }
-
-    if (!isPinchGesture && !isMouseWheel) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const delta = Number.isFinite(event.deltaY) ? event.deltaY : 0;
-    if (delta === 0) {
-      return;
-    }
-
-    const clampedDelta = Math.max(-50, Math.min(50, delta));
-    const sensitivity = isPinchGesture ? 0.016 : 0.22;
-    const factor = Math.exp(-clampedDelta * sensitivity);
-
-    this.setCanvasScale(this.lc.scale * factor, { x: event.clientX, y: event.clientY });
-  }
-
-  private handleCanvasMouseDown(event: MouseEvent): void {
-    if (event.button !== 1 || !this.canPanAtCurrentZoom() || !this.lc) {
-      return;
-    }
-
-    this.isMiddleMousePanning = true;
-    this.middleMousePanStart = {
-      x: event.clientX,
-      y: event.clientY,
-    };
-    this.middleMousePanStartPosition = {
-      x: this.lc.position.x,
-      y: this.lc.position.y,
-    };
-
-    this.lc.canvas.style.cursor = 'grabbing';
-    window.addEventListener('mousemove', this.onWindowMouseMove);
-    window.addEventListener('mouseup', this.onWindowMouseUp);
-    window.addEventListener('blur', this.onWindowBlur);
-
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  private handleWindowMouseMove(event: MouseEvent): void {
-    if (
-      !this.isMiddleMousePanning ||
-      !this.lc ||
-      !this.middleMousePanStart ||
-      !this.middleMousePanStartPosition ||
-      !this.lc.setPan
-    ) {
-      return;
-    }
-
-    const dx = event.clientX - this.middleMousePanStart.x;
-    const dy = event.clientY - this.middleMousePanStart.y;
-    const backingScale = this.lc.backingScale || 1;
-
-    this.lc.setPan(
-      this.middleMousePanStartPosition.x + dx * backingScale,
-      this.middleMousePanStartPosition.y + dy * backingScale,
-    );
-    this.syncOnionLayerRect();
-
-    event.preventDefault();
-  }
-
-  private handleWindowMouseUp(event: MouseEvent): void {
-    if (event.button !== 1) {
-      return;
-    }
-
-    this.stopMiddleMousePan();
-  }
-
-  private stopMiddleMousePan(): void {
-    if (!this.isMiddleMousePanning) {
-      return;
-    }
-
-    this.isMiddleMousePanning = false;
-    this.middleMousePanStart = null;
-    this.middleMousePanStartPosition = null;
-
-    if (this.lc) {
-      this.lc.canvas.style.cursor = this.activeTool() === 'zoom' ? 'zoom-in' : 'default';
-    }
-
-    window.removeEventListener('mousemove', this.onWindowMouseMove);
-    window.removeEventListener('mouseup', this.onWindowMouseUp);
-    window.removeEventListener('blur', this.onWindowBlur);
-  }
-
-  private handleCanvasTouchStart(event: TouchEvent): void {
-    if (!this.isZoomGestureEnabled() || event.touches.length !== 2) {
-      this.pinchTouchDistance = null;
-      return;
-    }
-
-    this.pinchTouchDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
-  }
-
-  private handleCanvasTouchMove(event: TouchEvent): void {
-    if (!this.lc || !this.isZoomGestureEnabled() || event.touches.length !== 2) {
-      this.pinchTouchDistance = null;
-      return;
-    }
-
-    const currentDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
-    const previousDistance = this.pinchTouchDistance;
-
-    if (!previousDistance || previousDistance <= 0 || currentDistance <= 0) {
-      this.pinchTouchDistance = currentDistance;
-      return;
-    }
-
-    event.preventDefault();
-
-    const factor = Math.pow(currentDistance / previousDistance, 1.35);
-    const midpoint = this.getTouchMidpoint(event.touches[0], event.touches[1]);
-    this.setCanvasScale(this.lc.scale * factor, midpoint);
-
-    this.pinchTouchDistance = currentDistance;
-  }
-
-  private handleCanvasTouchEnd(): void {
-    this.pinchTouchDistance = null;
-  }
-
-  private getTouchDistance(first: Touch, second: Touch): number {
-    const dx = first.clientX - second.clientX;
-    const dy = first.clientY - second.clientY;
-    return Math.hypot(dx, dy);
-  }
-
-  private getTouchMidpoint(first: Touch, second: Touch): ZoomClientPoint {
-    return {
-      x: (first.clientX + second.clientX) / 2,
-      y: (first.clientY + second.clientY) / 2,
-    };
-  }
-
-  private panCanvasByDeltas(deltaX: number, deltaY: number): void {
-    if (!this.lc) {
-      return;
-    }
-
-    if (this.lc.pan) {
-      this.lc.pan(deltaX, deltaY);
-    } else if (this.lc.setPan) {
-      const backingScale = this.lc.backingScale || 1;
-      this.lc.setPan(
-        this.lc.position.x - deltaX * backingScale,
-        this.lc.position.y - deltaY * backingScale,
-      );
-    }
-
-    this.syncOnionLayerRect();
-  }
-
-  private normalizeZoomClickStep(value: number | undefined): number {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-      return 12;
-    }
-
-    return Math.max(1, Math.round(value));
-  }
-
   private scheduleCanvasFit(): void {
     if (!this.lc) return;
 
@@ -775,8 +538,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.respondToSizeChange();
     }
 
-    this.minCanvasScale = scale;
-    this.setCanvasScale(this.zoomLevelToScale(this.canvasZoomLevel()));
+    this.viewport.applyFitScale(scale);
   }
 
   private getAvailableHostWidth(host: HTMLElement): number {
@@ -856,129 +618,17 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  public setCanvasZoomLevel(level: number, point?: ZoomClientPoint): void {
-    if (!this.lc || !Number.isFinite(level)) {
-      return;
-    }
-
-    const clampedLevel = this.clampZoomLevel(level);
-    this.setCanvasScale(this.zoomLevelToScale(clampedLevel), point);
+  public setCanvasZoomLevel(level: number): void {
+    this.viewport.setZoomLevel(level);
   }
 
   public setCanvasZoomLevelFromSlider(position: number): void {
-    if (!Number.isFinite(position)) {
-      return;
-    }
-
-    const bounded = Math.max(0, Math.min(100, position));
-    const level = Math.round(Math.pow(this.maxZoomLevel, bounded / 100));
-    this.setCanvasZoomLevel(level);
+    this.viewport.setZoomLevelFromSlider(position);
   }
 
   public setZoomKeepOn(keepOn: boolean): void {
-    const normalized = !!keepOn;
-    this.isZoomKeepOn.set(normalized);
-    appSettings.canvas.zoomKeepOn = normalized;
-  }
-
-  private adjustCanvasZoomLevel(deltaLevel: number, point: ZoomClientPoint): void {
-    this.setCanvasZoomLevel(this.canvasZoomLevel() + deltaLevel, point);
-  }
-
-  private setCanvasScale(scale: number, point?: ZoomClientPoint): void {
-    if (!this.lc) {
-      return;
-    }
-
-    const minScale = this.minCanvasScale;
-    const maxScale = Math.max(minScale, this.maxCanvasScale);
-    const targetScale = Math.max(minScale, Math.min(maxScale, scale));
-
-    if (
-      point &&
-      this.lc.clientCoordsToDrawingCoords &&
-      this.lc.drawingCoordsToClientCoords &&
-      this.lc.setPan
-    ) {
-      const rect = this.lc.canvas.getBoundingClientRect();
-      const localX = point.x - rect.left;
-      const localY = point.y - rect.top;
-      const isInsideCanvas =
-        localX >= 0 && localX <= rect.width && localY >= 0 && localY <= rect.height;
-
-      if (isInsideCanvas) {
-        const drawingPoint = this.lc.clientCoordsToDrawingCoords(localX, localY);
-        this.lc.setZoom(targetScale);
-        const clientPointAfterZoom = this.lc.drawingCoordsToClientCoords(
-          drawingPoint.x,
-          drawingPoint.y,
-        );
-        const backingScale = this.lc.backingScale || 1;
-
-        this.lc.setPan(
-          this.lc.position.x + localX * backingScale - clientPointAfterZoom.x,
-          this.lc.position.y + localY * backingScale - clientPointAfterZoom.y,
-        );
-
-        this.canvasZoomLevel.set(this.scaleToZoomLevel(this.lc.scale));
-        this.syncOnionLayerRect();
-        return;
-      }
-    }
-
-    this.lc.setZoom(targetScale);
-    this.canvasZoomLevel.set(this.scaleToZoomLevel(this.lc.scale));
-    this.syncOnionLayerRect();
-  }
-
-  private clampZoomLevel(level: number): number {
-    return Math.max(this.minZoomLevel, Math.min(this.maxZoomLevel, Math.round(level)));
-  }
-
-  private zoomLevelToScale(level: number): number {
-    const minScale = this.minCanvasScale;
-    const baselineScale = Math.max(1, minScale);
-    const maxScale = Math.max(baselineScale, this.maxCanvasScale);
-    const clampedLevel = this.clampZoomLevel(level);
-
-    if (clampedLevel <= 100) {
-      const range = 100 - this.minZoomLevel;
-      if (range <= 0 || baselineScale <= minScale) {
-        return minScale;
-      }
-
-      const t = (clampedLevel - this.minZoomLevel) / range;
-      return minScale + t * (baselineScale - minScale);
-    }
-
-    if (maxScale <= baselineScale) {
-      return baselineScale;
-    }
-
-    const normalized = (clampedLevel - 100) / (this.maxZoomLevel - 100);
-    return baselineScale + normalized * (maxScale - baselineScale);
-  }
-
-  private scaleToZoomLevel(scale: number): number {
-    const minScale = this.minCanvasScale;
-    const baselineScale = Math.max(1, minScale);
-    const maxScale = Math.max(baselineScale, this.maxCanvasScale);
-    const clampedScale = Math.max(minScale, Math.min(maxScale, scale));
-
-    if (clampedScale <= baselineScale || maxScale <= baselineScale) {
-      const range = baselineScale - minScale;
-      if (range <= 0) {
-        return this.clampZoomLevel(100);
-      }
-
-      const t = (clampedScale - minScale) / range;
-      const level = this.minZoomLevel + t * (100 - this.minZoomLevel);
-      return this.clampZoomLevel(level);
-    }
-
-    const normalized = (clampedScale - baselineScale) / (maxScale - baselineScale);
-    const level = 100 + normalized * (this.maxZoomLevel - 100);
-    return this.clampZoomLevel(level);
+    this.viewport.setZoomKeepOn(keepOn);
+    appSettings.canvas.zoomKeepOn = this.viewport.zoomKeepOn();
   }
 
   public setBrushSpacing(spacing: number): void {
