@@ -15,11 +15,7 @@
         }
       </div>
 
-      <div
-        class="timeline-playhead"
-        [style.left.px]="playheadPosition()"
-        (mousedown)="startScrub($event)"
-      >
+      <div #playhead class="timeline-playhead" (mousedown)="startScrub($event)">
         <div class="playhead-head"></div>
         <div class="playhead-line"></div>
       </div>
