@@ -92,7 +92,13 @@ packager({
       const archMatch = path.basename(appDir).match(/darwin-(\w+)$/);
       if (!archMatch) continue;
       const arch = archMatch[1];
-      const dmgPath = path.join(releaseDir, `quickboard-mac-${arch}.dmg`);
+      let dmgName = `quickboard-mac-${arch}.dmg`;
+      if (arch === 'arm64') {
+        dmgName = 'quickboard-mac.dmg';
+      } else if (arch === 'x64') {
+        dmgName = 'quickboard-mac-intel.dmg';
+      }
+      const dmgPath = path.join(releaseDir, dmgName);
       console.log(`Creating ${path.basename(dmgPath)}...`);
       execSync(
         `hdiutil create -volname "QuickBoard" -srcfolder "${appDir}" -ov -format UDZO "${dmgPath}"`,
