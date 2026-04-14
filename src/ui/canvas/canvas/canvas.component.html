@@ -1,9 +1,11 @@
 <app-properties-bar
   [activeTool]="activeTool()"
+  [zoomLevel]="canvasZoomLevel()"
   [strokeSize]="strokeSize()"
   [brushSpacing]="brushSpacing()"
   [colorTolerance]="colorTolerance()"
   [colorPickers]="colorPickers"
+  (zoomLevelChange)="setCanvasZoomLevel($event)"
   (strokeSizeChange)="setStrokeSize($event)"
   (strokeSizeFromSliderChange)="setStrokeSizeFromSlider($event)"
   (brushSpacingChange)="setBrushSpacing($event)"

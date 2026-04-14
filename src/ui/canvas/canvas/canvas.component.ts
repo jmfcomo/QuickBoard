@@ -25,6 +25,7 @@ import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brus
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
+import { ZoomClientPoint, ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
@@ -53,6 +54,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
+  readonly canvasZoomLevel = signal<number>(1);
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -118,6 +120,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private resizeRafId: number | null = null;
   private lastFitHeight = 0;
   private lastFitAvailableHostWidth = 0;
+  private readonly minZoomLevel = 1;
+  private readonly maxZoomLevel = 100;
+  private readonly maxCanvasScale = 1;
+  private readonly clickZoomLevelStep = 6;
+  private minCanvasScale = 1;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
@@ -359,6 +366,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.toolInstances.set('polygon', new PolygonTool(this.lc));
     }
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
+    this.toolInstances.set(
+      'zoom',
+      new ZoomTool(
+        this.lc,
+        (deltaLevel, point) => this.adjustCanvasZoomLevel(deltaLevel, point),
+        this.clickZoomLevelStep,
+      ),
+    );
 
     const objectEraser = this.canvasUndoRedo.instrumentObjectEraser(
       new ObjectEraser(this.lc),
@@ -514,7 +529,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.respondToSizeChange();
     }
 
-    this.lc.setZoom(scale);
+    this.minCanvasScale = scale;
+    this.setCanvasScale(this.zoomLevelToScale(this.canvasZoomLevel()));
   }
 
   private getAvailableHostWidth(host: HTMLElement): number {
@@ -592,6 +608,96 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
     }
+  }
+
+  public setCanvasZoomLevel(level: number, point?: ZoomClientPoint): void {
+    if (!this.lc || !Number.isFinite(level)) {
+      return;
+    }
+
+    const clampedLevel = this.clampZoomLevel(level);
+    this.setCanvasScale(this.zoomLevelToScale(clampedLevel), point);
+  }
+
+  private adjustCanvasZoomLevel(deltaLevel: number, point: ZoomClientPoint): void {
+    this.setCanvasZoomLevel(this.canvasZoomLevel() + deltaLevel, point);
+  }
+
+  private setCanvasScale(scale: number, point?: ZoomClientPoint): void {
+    if (!this.lc) {
+      return;
+    }
+
+    const minScale = this.minCanvasScale;
+    const maxScale = Math.max(minScale, this.maxCanvasScale);
+    const targetScale = Math.max(minScale, Math.min(maxScale, scale));
+
+    if (
+      point &&
+      this.lc.clientCoordsToDrawingCoords &&
+      this.lc.drawingCoordsToClientCoords &&
+      this.lc.setPan
+    ) {
+      const rect = this.lc.canvas.getBoundingClientRect();
+      const localX = point.x - rect.left;
+      const localY = point.y - rect.top;
+      const isInsideCanvas =
+        localX >= 0 && localX <= rect.width && localY >= 0 && localY <= rect.height;
+
+      if (isInsideCanvas) {
+        const drawingPoint = this.lc.clientCoordsToDrawingCoords(localX, localY);
+        this.lc.setZoom(targetScale);
+        const clientPointAfterZoom = this.lc.drawingCoordsToClientCoords(
+          drawingPoint.x,
+          drawingPoint.y,
+        );
+        const backingScale = this.lc.backingScale || 1;
+
+        this.lc.setPan(
+          this.lc.position.x + localX * backingScale - clientPointAfterZoom.x,
+          this.lc.position.y + localY * backingScale - clientPointAfterZoom.y,
+        );
+
+        this.canvasZoomLevel.set(this.scaleToZoomLevel(this.lc.scale));
+        this.syncOnionLayerRect();
+        return;
+      }
+    }
+
+    this.lc.setZoom(targetScale);
+    this.canvasZoomLevel.set(this.scaleToZoomLevel(this.lc.scale));
+    this.syncOnionLayerRect();
+  }
+
+  private clampZoomLevel(level: number): number {
+    return Math.max(this.minZoomLevel, Math.min(this.maxZoomLevel, Math.round(level)));
+  }
+
+  private zoomLevelToScale(level: number): number {
+    const minScale = this.minCanvasScale;
+    const maxScale = Math.max(minScale, this.maxCanvasScale);
+
+    if (maxScale <= minScale) {
+      return minScale;
+    }
+
+    const normalized =
+      (this.clampZoomLevel(level) - this.minZoomLevel) / (this.maxZoomLevel - this.minZoomLevel);
+
+    return minScale + normalized * (maxScale - minScale);
+  }
+
+  private scaleToZoomLevel(scale: number): number {
+    const minScale = this.minCanvasScale;
+    const maxScale = Math.max(minScale, this.maxCanvasScale);
+
+    if (maxScale <= minScale) {
+      return this.maxZoomLevel;
+    }
+
+    const normalized = (scale - minScale) / (maxScale - minScale);
+    const level = this.minZoomLevel + normalized * (this.maxZoomLevel - this.minZoomLevel);
+    return this.clampZoomLevel(level);
   }
 
   public setBrushSpacing(spacing: number): void {

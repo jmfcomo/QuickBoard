@@ -20,6 +20,8 @@ export interface LCInstance {
   scale: number;
   position: { x: number; y: number };
   getRenderScale(): number;
+  clientCoordsToDrawingCoords?(x: number, y: number): { x: number; y: number };
+  drawingCoordsToClientCoords?(x: number, y: number): { x: number; y: number };
   undo(): void;
   redo(): void;
   undoStack: unknown[];
@@ -34,6 +36,9 @@ export interface LCInstance {
   setColor(type: string, color: string): void;
   setImageSize(width: number, height: number): void;
   setZoom(scale: number): void;
+  setPan?(x: number, y: number): void;
+  pan?(x: number, y: number): void;
+  zoom?(amount: number): void;
   respondToSizeChange?: () => void;
   setShapesInProgress(shapes: unknown[]): void;
   saveShape(shape: unknown): void;
