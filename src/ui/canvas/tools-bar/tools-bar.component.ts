@@ -34,10 +34,7 @@ export class ToolsBarComponent implements OnDestroy {
   readonly clearCanvasRequested = output<void>();
   readonly canvasFullscreenToggled = output<void>();
 
-  readonly tools: readonly ToolOption[] = [
-    { id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' },
-    { id: 'zoom', label: 'Zoom', icon: '🔍' },
-  ];
+  readonly tools: readonly ToolOption[] = [{ id: 'bucket-fill', label: 'Bucket Fill', icon: '🪣' }];
   readonly drawTools: readonly ToolOption[] = [
     { id: 'pencil', label: 'Pencil', icon: '✏️' },
     { id: 'brush', label: 'Brush', icon: '🖌️' },

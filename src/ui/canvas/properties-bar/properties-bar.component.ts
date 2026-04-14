@@ -16,12 +16,15 @@ export interface ColorPicker {
 export class PropertiesBarComponent {
   readonly activeTool = input.required<string>();
   readonly zoomLevel = input.required<number>();
+  readonly zoomKeepOn = input.required<boolean>();
   readonly strokeSize = input.required<number>();
   readonly brushSpacing = input.required<number>();
   readonly colorTolerance = input.required<number>();
   readonly colorPickers = input.required<ColorPicker[]>();
 
   readonly zoomLevelChange = output<number>();
+  readonly zoomLevelFromSliderChange = output<number>();
+  readonly zoomKeepOnChange = output<boolean>();
   readonly strokeSizeChange = output<number>();
   readonly strokeSizeFromSliderChange = output<number>();
   readonly brushSpacingChange = output<number>();
@@ -43,5 +46,11 @@ export class PropertiesBarComponent {
     const v = this.strokeSize();
     if (v <= 1) return 0;
     return Math.min(100, Math.round(Math.log(v) / Math.log(500) * 100));
+  });
+
+  readonly zoomLevelSliderPos = computed(() => {
+    const v = Math.max(1, this.zoomLevel());
+    if (v <= 1) return 0;
+    return Math.min(100, Math.round((Math.log(v) / Math.log(1000)) * 100));
   });
 }

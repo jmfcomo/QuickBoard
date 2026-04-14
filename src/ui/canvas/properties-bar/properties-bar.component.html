@@ -4,15 +4,15 @@
       <div class="property-group">
         <span class="property-label">Zoom</span>
         <input
-          type="range" min="1" max="100" step="1"
-          [value]="zoomLevel()"
-          (input)="zoomLevelChange.emit(+$any($event.target).value)"
-          [style.--percent]="zoomLevel() + '%'"
+          type="range" min="0" max="100" step="1"
+          [value]="zoomLevelSliderPos()"
+          (input)="zoomLevelFromSliderChange.emit(+$any($event.target).value)"
+          [style.--percent]="zoomLevelSliderPos() + '%'"
           class="property-slider"
         >
         <div class="number-input-wrapper">
           <input
-            type="number" min="1" max="100"
+            type="number" min="1" max="1000"
             [value]="zoomLevel()"
             (change)="zoomLevelChange.emit(+$any($event.target).value)"
             class="property-number"
@@ -22,6 +22,18 @@
             <button class="stepper-btn down" (click)="zoomLevelChange.emit(zoomLevel() - 1)" tabindex="-1" aria-label="Decrease"></button>
           </div>
         </div>
+      </div>
+
+      <div class="property-group">
+        <label class="property-checkbox-label">
+          <input
+            type="checkbox"
+            class="property-checkbox"
+            [checked]="zoomKeepOn()"
+            (change)="zoomKeepOnChange.emit($any($event.target).checked)"
+          >
+          <span class="property-label">Keep On</span>
+        </label>
       </div>
     }
     @if (showStrokeSize()) {

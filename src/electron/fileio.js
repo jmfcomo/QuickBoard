@@ -29,7 +29,6 @@ async function init(appInstance) {
   settingsFile = path.join(_app.getPath('userData'), 'settings.json');
   // Save app settings to userData directory instead of src (which won't exist in packaged app)
   appSettingsPath = path.join(_app.getPath('userData'), 'appsettings.json');
-  console.log(`[Settings] Using app settings path: ${appSettingsPath}`);
   await loadSettings();
 }
 

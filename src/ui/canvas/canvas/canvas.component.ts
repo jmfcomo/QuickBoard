@@ -54,6 +54,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
+  readonly isZoomKeepOn = signal<boolean>(appSettings.canvas.zoomKeepOn ?? true);
   readonly canvasZoomLevel = signal<number>(1);
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
@@ -121,11 +122,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private lastFitHeight = 0;
   private lastFitAvailableHostWidth = 0;
   private readonly minZoomLevel = 1;
-  private readonly maxZoomLevel = 100;
-  private readonly maxCanvasScale = 1;
-  private readonly clickZoomLevelStep = 6;
+  private readonly maxZoomLevel = 1000;
+  private readonly maxCanvasScale = 10;
+  private readonly clickZoomLevelStep = Math.max(
+    1,
+    Math.round(appSettings.canvas.zoomClickStep ?? 12),
+  );
   private minCanvasScale = 1;
+  private pinchTouchDistance: number | null = null;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
+  private readonly onCanvasWheel = (event: WheelEvent) => this.handleCanvasWheel(event);
+  private readonly onCanvasTouchStart = (event: TouchEvent) => this.handleCanvasTouchStart(event);
+  private readonly onCanvasTouchMove = (event: TouchEvent) => this.handleCanvasTouchMove(event);
+  private readonly onCanvasTouchEnd = () => this.handleCanvasTouchEnd();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
 
@@ -220,6 +229,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Clean up LiterallyCanvas instance and event listeners
     if (this.lc) {
+      this.detachZoomGestureListeners();
       this.lc.teardown();
       this.lc = null;
     }
@@ -264,6 +274,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
+    this.attachZoomGestureListeners();
 
     container.addEventListener(
       'mousedown',
@@ -476,6 +487,113 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObserver.observe(host);
   }
 
+  private attachZoomGestureListeners(): void {
+    if (!this.lc) {
+      return;
+    }
+
+    const canvas = this.lc.canvas;
+    canvas.addEventListener('wheel', this.onCanvasWheel, { passive: false });
+    canvas.addEventListener('touchstart', this.onCanvasTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', this.onCanvasTouchMove, { passive: false });
+    canvas.addEventListener('touchend', this.onCanvasTouchEnd);
+    canvas.addEventListener('touchcancel', this.onCanvasTouchEnd);
+  }
+
+  private detachZoomGestureListeners(): void {
+    if (!this.lc) {
+      return;
+    }
+
+    const canvas = this.lc.canvas;
+    canvas.removeEventListener('wheel', this.onCanvasWheel);
+    canvas.removeEventListener('touchstart', this.onCanvasTouchStart);
+    canvas.removeEventListener('touchmove', this.onCanvasTouchMove);
+    canvas.removeEventListener('touchend', this.onCanvasTouchEnd);
+    canvas.removeEventListener('touchcancel', this.onCanvasTouchEnd);
+  }
+
+  private isZoomGestureEnabled(): boolean {
+    return this.activeTool() === 'zoom' || this.isZoomKeepOn();
+  }
+
+  private handleCanvasWheel(event: WheelEvent): void {
+    if (!this.lc || !this.isZoomGestureEnabled()) {
+      return;
+    }
+
+    // Trackpad pinch arrives as ctrl+wheel; external mouse wheels are line-based deltas.
+    const isPinchGesture = event.ctrlKey;
+    const isMouseWheel = !isPinchGesture && event.deltaMode === WheelEvent.DOM_DELTA_LINE;
+
+    if (!isPinchGesture && !isMouseWheel) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const delta = Number.isFinite(event.deltaY) ? event.deltaY : 0;
+    if (delta === 0) {
+      return;
+    }
+
+    const clampedDelta = Math.max(-50, Math.min(50, delta));
+    const sensitivity = isPinchGesture ? 0.016 : 0.22;
+    const factor = Math.exp(-clampedDelta * sensitivity);
+
+    this.setCanvasScale(this.lc.scale * factor, { x: event.clientX, y: event.clientY });
+  }
+
+  private handleCanvasTouchStart(event: TouchEvent): void {
+    if (!this.isZoomGestureEnabled() || event.touches.length !== 2) {
+      this.pinchTouchDistance = null;
+      return;
+    }
+
+    this.pinchTouchDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
+  }
+
+  private handleCanvasTouchMove(event: TouchEvent): void {
+    if (!this.lc || !this.isZoomGestureEnabled() || event.touches.length !== 2) {
+      this.pinchTouchDistance = null;
+      return;
+    }
+
+    const currentDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
+    const previousDistance = this.pinchTouchDistance;
+
+    if (!previousDistance || previousDistance <= 0 || currentDistance <= 0) {
+      this.pinchTouchDistance = currentDistance;
+      return;
+    }
+
+    event.preventDefault();
+
+    const factor = Math.pow(currentDistance / previousDistance, 1.35);
+    const midpoint = this.getTouchMidpoint(event.touches[0], event.touches[1]);
+    this.setCanvasScale(this.lc.scale * factor, midpoint);
+
+    this.pinchTouchDistance = currentDistance;
+  }
+
+  private handleCanvasTouchEnd(): void {
+    this.pinchTouchDistance = null;
+  }
+
+  private getTouchDistance(first: Touch, second: Touch): number {
+    const dx = first.clientX - second.clientX;
+    const dy = first.clientY - second.clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  private getTouchMidpoint(first: Touch, second: Touch): ZoomClientPoint {
+    return {
+      x: (first.clientX + second.clientX) / 2,
+      y: (first.clientY + second.clientY) / 2,
+    };
+  }
+
   private scheduleCanvasFit(): void {
     if (!this.lc) return;
 
@@ -619,6 +737,22 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.setCanvasScale(this.zoomLevelToScale(clampedLevel), point);
   }
 
+  public setCanvasZoomLevelFromSlider(position: number): void {
+    if (!Number.isFinite(position)) {
+      return;
+    }
+
+    const bounded = Math.max(0, Math.min(100, position));
+    const level = Math.round(Math.pow(this.maxZoomLevel, bounded / 100));
+    this.setCanvasZoomLevel(level);
+  }
+
+  public setZoomKeepOn(keepOn: boolean): void {
+    const normalized = !!keepOn;
+    this.isZoomKeepOn.set(normalized);
+    appSettings.canvas.zoomKeepOn = normalized;
+  }
+
   private adjustCanvasZoomLevel(deltaLevel: number, point: ZoomClientPoint): void {
     this.setCanvasZoomLevel(this.canvasZoomLevel() + deltaLevel, point);
   }
@@ -675,28 +809,47 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   private zoomLevelToScale(level: number): number {
     const minScale = this.minCanvasScale;
-    const maxScale = Math.max(minScale, this.maxCanvasScale);
+    const baselineScale = Math.max(1, minScale);
+    const maxScale = Math.max(baselineScale, this.maxCanvasScale);
+    const clampedLevel = this.clampZoomLevel(level);
 
-    if (maxScale <= minScale) {
-      return minScale;
+    if (clampedLevel <= 100) {
+      const range = 100 - this.minZoomLevel;
+      if (range <= 0 || baselineScale <= minScale) {
+        return minScale;
+      }
+
+      const t = (clampedLevel - this.minZoomLevel) / range;
+      return minScale + t * (baselineScale - minScale);
     }
 
-    const normalized =
-      (this.clampZoomLevel(level) - this.minZoomLevel) / (this.maxZoomLevel - this.minZoomLevel);
+    if (maxScale <= baselineScale) {
+      return baselineScale;
+    }
 
-    return minScale + normalized * (maxScale - minScale);
+    const normalized = (clampedLevel - 100) / (this.maxZoomLevel - 100);
+    return baselineScale + normalized * (maxScale - baselineScale);
   }
 
   private scaleToZoomLevel(scale: number): number {
     const minScale = this.minCanvasScale;
-    const maxScale = Math.max(minScale, this.maxCanvasScale);
+    const baselineScale = Math.max(1, minScale);
+    const maxScale = Math.max(baselineScale, this.maxCanvasScale);
+    const clampedScale = Math.max(minScale, Math.min(maxScale, scale));
 
-    if (maxScale <= minScale) {
-      return this.maxZoomLevel;
+    if (clampedScale <= baselineScale || maxScale <= baselineScale) {
+      const range = baselineScale - minScale;
+      if (range <= 0) {
+        return this.clampZoomLevel(100);
+      }
+
+      const t = (clampedScale - minScale) / range;
+      const level = this.minZoomLevel + t * (100 - this.minZoomLevel);
+      return this.clampZoomLevel(level);
     }
 
-    const normalized = (scale - minScale) / (maxScale - minScale);
-    const level = this.minZoomLevel + normalized * (this.maxZoomLevel - this.minZoomLevel);
+    const normalized = (clampedScale - baselineScale) / (maxScale - baselineScale);
+    const level = 100 + normalized * (this.maxZoomLevel - 100);
     return this.clampZoomLevel(level);
   }
 
