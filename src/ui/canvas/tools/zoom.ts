@@ -33,12 +33,8 @@ export class ZoomTool implements LCTool {
   constructor(
     private readonly lc: LCInstance,
     private readonly adjustZoom: ZoomAdjustHandler,
-    private readonly clickStep = 6,
+    private readonly clickStep = 12,
   ) {}
-
-  willBecomeActive(): void {
-    // No-op
-  }
 
   didBecomeActive(): void {
     this.lc.canvas.style.cursor = 'zoom-in';
@@ -50,9 +46,5 @@ export class ZoomTool implements LCTool {
     this.lc.canvas.removeEventListener('mousedown', this.onMouseDown);
     this.lc.canvas.removeEventListener('contextmenu', this.onContextMenu);
     this.lc.canvas.style.cursor = 'default';
-  }
-
-  didBecomeInactive(): void {
-    // No-op
   }
 }

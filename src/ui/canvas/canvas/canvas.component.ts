@@ -124,17 +124,21 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly minZoomLevel = 1;
   private readonly maxZoomLevel = 1000;
   private readonly maxCanvasScale = 10;
-  private readonly clickZoomLevelStep = Math.max(
-    1,
-    Math.round(appSettings.canvas.zoomClickStep ?? 12),
-  );
+  private readonly clickZoomLevelStep = this.normalizeZoomClickStep(appSettings.canvas.zoomClickStep);
   private minCanvasScale = 1;
   private pinchTouchDistance: number | null = null;
+  private isMiddleMousePanning = false;
+  private middleMousePanStart: ZoomClientPoint | null = null;
+  private middleMousePanStartPosition: { x: number; y: number } | null = null;
   private readonly onWindowResize = () => this.scheduleCanvasFit();
   private readonly onCanvasWheel = (event: WheelEvent) => this.handleCanvasWheel(event);
   private readonly onCanvasTouchStart = (event: TouchEvent) => this.handleCanvasTouchStart(event);
   private readonly onCanvasTouchMove = (event: TouchEvent) => this.handleCanvasTouchMove(event);
   private readonly onCanvasTouchEnd = () => this.handleCanvasTouchEnd();
+  private readonly onCanvasMouseDown = (event: MouseEvent) => this.handleCanvasMouseDown(event);
+  private readonly onWindowMouseMove = (event: MouseEvent) => this.handleWindowMouseMove(event);
+  private readonly onWindowMouseUp = (event: MouseEvent) => this.handleWindowMouseUp(event);
+  private readonly onWindowBlur = () => this.stopMiddleMousePan();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
 
@@ -278,7 +282,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     container.addEventListener(
       'mousedown',
-      () => {
+      (event: MouseEvent) => {
+        if (event.button !== 0) {
+          return;
+        }
+
         if (this.lc) {
           this.canvasUndoRedo.markStrokeStart(this.lc);
         }
@@ -493,6 +501,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     const canvas = this.lc.canvas;
+    canvas.addEventListener('mousedown', this.onCanvasMouseDown, true);
     canvas.addEventListener('wheel', this.onCanvasWheel, { passive: false });
     canvas.addEventListener('touchstart', this.onCanvasTouchStart, { passive: false });
     canvas.addEventListener('touchmove', this.onCanvasTouchMove, { passive: false });
@@ -505,7 +514,10 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    this.stopMiddleMousePan();
+
     const canvas = this.lc.canvas;
+    canvas.removeEventListener('mousedown', this.onCanvasMouseDown, true);
     canvas.removeEventListener('wheel', this.onCanvasWheel);
     canvas.removeEventListener('touchstart', this.onCanvasTouchStart);
     canvas.removeEventListener('touchmove', this.onCanvasTouchMove);
@@ -517,14 +529,30 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     return this.activeTool() === 'zoom' || this.isZoomKeepOn();
   }
 
+  private canPanAtCurrentZoom(): boolean {
+    return !!this.lc && this.canvasZoomLevel() > 1;
+  }
+
   private handleCanvasWheel(event: WheelEvent): void {
-    if (!this.lc || !this.isZoomGestureEnabled()) {
+    if (!this.lc) {
       return;
     }
 
     // Trackpad pinch arrives as ctrl+wheel; external mouse wheels are line-based deltas.
     const isPinchGesture = event.ctrlKey;
     const isMouseWheel = !isPinchGesture && event.deltaMode === WheelEvent.DOM_DELTA_LINE;
+    const isTrackpadScroll = !isPinchGesture && event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
+
+    if (isTrackpadScroll && this.canPanAtCurrentZoom()) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.panCanvasByDeltas(event.deltaX, event.deltaY);
+      return;
+    }
+
+    if (!this.isZoomGestureEnabled()) {
+      return;
+    }
 
     if (!isPinchGesture && !isMouseWheel) {
       return;
@@ -543,6 +571,80 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const factor = Math.exp(-clampedDelta * sensitivity);
 
     this.setCanvasScale(this.lc.scale * factor, { x: event.clientX, y: event.clientY });
+  }
+
+  private handleCanvasMouseDown(event: MouseEvent): void {
+    if (event.button !== 1 || !this.canPanAtCurrentZoom() || !this.lc) {
+      return;
+    }
+
+    this.isMiddleMousePanning = true;
+    this.middleMousePanStart = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+    this.middleMousePanStartPosition = {
+      x: this.lc.position.x,
+      y: this.lc.position.y,
+    };
+
+    this.lc.canvas.style.cursor = 'grabbing';
+    window.addEventListener('mousemove', this.onWindowMouseMove);
+    window.addEventListener('mouseup', this.onWindowMouseUp);
+    window.addEventListener('blur', this.onWindowBlur);
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  private handleWindowMouseMove(event: MouseEvent): void {
+    if (
+      !this.isMiddleMousePanning ||
+      !this.lc ||
+      !this.middleMousePanStart ||
+      !this.middleMousePanStartPosition ||
+      !this.lc.setPan
+    ) {
+      return;
+    }
+
+    const dx = event.clientX - this.middleMousePanStart.x;
+    const dy = event.clientY - this.middleMousePanStart.y;
+    const backingScale = this.lc.backingScale || 1;
+
+    this.lc.setPan(
+      this.middleMousePanStartPosition.x + dx * backingScale,
+      this.middleMousePanStartPosition.y + dy * backingScale,
+    );
+    this.syncOnionLayerRect();
+
+    event.preventDefault();
+  }
+
+  private handleWindowMouseUp(event: MouseEvent): void {
+    if (event.button !== 1) {
+      return;
+    }
+
+    this.stopMiddleMousePan();
+  }
+
+  private stopMiddleMousePan(): void {
+    if (!this.isMiddleMousePanning) {
+      return;
+    }
+
+    this.isMiddleMousePanning = false;
+    this.middleMousePanStart = null;
+    this.middleMousePanStartPosition = null;
+
+    if (this.lc) {
+      this.lc.canvas.style.cursor = this.activeTool() === 'zoom' ? 'zoom-in' : 'default';
+    }
+
+    window.removeEventListener('mousemove', this.onWindowMouseMove);
+    window.removeEventListener('mouseup', this.onWindowMouseUp);
+    window.removeEventListener('blur', this.onWindowBlur);
   }
 
   private handleCanvasTouchStart(event: TouchEvent): void {
@@ -592,6 +694,32 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       x: (first.clientX + second.clientX) / 2,
       y: (first.clientY + second.clientY) / 2,
     };
+  }
+
+  private panCanvasByDeltas(deltaX: number, deltaY: number): void {
+    if (!this.lc) {
+      return;
+    }
+
+    if (this.lc.pan) {
+      this.lc.pan(deltaX, deltaY);
+    } else if (this.lc.setPan) {
+      const backingScale = this.lc.backingScale || 1;
+      this.lc.setPan(
+        this.lc.position.x - deltaX * backingScale,
+        this.lc.position.y - deltaY * backingScale,
+      );
+    }
+
+    this.syncOnionLayerRect();
+  }
+
+  private normalizeZoomClickStep(value: number | undefined): number {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return 12;
+    }
+
+    return Math.max(1, Math.round(value));
   }
 
   private scheduleCanvasFit(): void {

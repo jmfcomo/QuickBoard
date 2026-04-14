@@ -1,5 +1,4 @@
-import { Component, input, output, computed } from '@angular/core';
-import { WritableSignal } from '@angular/core';
+import { Component, WritableSignal, computed, input, output } from '@angular/core';
 
 export interface ColorPicker {
   label: string;
