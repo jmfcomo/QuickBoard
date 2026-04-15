@@ -120,9 +120,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Add iOS platform
-        run: npx cap add ios
-
       - name: Build Angular app for mobile
         run: npm run build:mobile
 
