@@ -100,6 +100,19 @@ function registerIpcHandlers() {
       return { success: false, message };
     }
   });
+
+  ipcMain.on('quickboard:request-export-from-renderer', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) {
+        return;
+      }
+
+      await exportRequest(win);
+    } catch (err) {
+      console.error('Failed to trigger export from renderer:', err);
+    }
+  })
 }
 
 module.exports = { init, exportRequest, registerIpcHandlers };

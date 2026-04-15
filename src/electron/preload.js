@@ -62,6 +62,12 @@ contextBridge.exposeInMainWorld('quickboard', {
   requestSave: () => {
     ipcRenderer.send('quickboard:request-save-from-renderer');
   },
+  requestSaveAs: () => {
+    ipcRenderer.send('quickboard:request-save-as-from-renderer');
+  },
+  loadIn: () => {
+    ipcRenderer.send('quickboard:load-board-into-renderer');
+  },
   onThemeChanged: (handler) => {
     const listener = (_event, theme) => handler(theme);
     ipcRenderer.on('quickboard:theme-changed', listener);
@@ -80,6 +86,9 @@ contextBridge.exposeInMainWorld('quickboard', {
     const listener = (_event, payload) => handler(payload);
     ipcRenderer.on('quickboard:save-result', listener);
     return () => ipcRenderer.removeListener('quickboard:save-result', listener);
+  },
+  requestExport: () => {
+    ipcRenderer.send('quickboard:request-export-from-renderer');
   },
   onRequestExport: (handler) => {
     const listener = (_event, payload) => handler(payload);

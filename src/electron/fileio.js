@@ -113,6 +113,32 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.on('quickboard:request-save-as-from-renderer', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) {
+        return;
+      }
+
+      await requestSaveAsFromRenderer(win);
+    } catch (err) {
+      console.error('Failed to trigger save-as from renderer:', err);
+    }
+  });
+
+  ipcMain.on('quickboard:load-board-into-renderer', async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || win.isDestroyed()) {
+        return;
+      }
+
+      await loadBoardIntoRenderer(win);
+    } catch (err) {
+      console.error('Failed to trigger load into renderer:', err);
+    }
+  });
+
   ipcMain.on('quickboard:save-data', async (event, payload) => {
     if (!payload || !payload.filePath || typeof payload.data !== 'string') return;
 

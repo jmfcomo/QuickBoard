@@ -137,6 +137,7 @@ function buildMenu(app, win, hooks = {}) {
       { type: 'separator' },
       {
         label: 'Export...',
+        accelerator: 'CmdOrCtrl+E',
         click: () => {
           if (typeof hooks.onExport === 'function') {
             const target = resolveMainWindow(win);

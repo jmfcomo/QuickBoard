@@ -16,6 +16,7 @@ import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
+import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-root',
@@ -53,6 +54,7 @@ export class App implements OnInit, OnDestroy {
   private readonly playback = inject(PlaybackService);
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
+  private settings = appSettings;
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
@@ -185,10 +187,31 @@ export class App implements OnInit, OnDestroy {
         }
         break;
       }
-      case 'x': {
-        this.canvas()?.requestClearCanvas();
+      case 'backspace': {
+        if (event.shiftKey) {
+          this.canvas()?.requestClearCanvas();
+        } else {
+          const currentBoardId = this.store.currentBoardId();
+          if (currentBoardId) {
+            this.actions.deleteBoard(currentBoardId);
+          }
+        }
         break;
       }
+      case 's': {
+        if (event.shiftKey) {
+          window.quickboard?.requestSaveAs();
+        } else {
+          window.quickboard?.requestSave();
+        }
+        break;
+      }
+      case 'o': 
+        window.quickboard?.loadIn();
+        break;
+      case 'e':
+        window.quickboard?.requestExport();
+        break;
       default:
         return;
     };
