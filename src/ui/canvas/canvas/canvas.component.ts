@@ -25,7 +25,9 @@ import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brus
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
 import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
+import { ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
+import { CanvasViewportController } from './canvas-viewport-controller';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
@@ -53,6 +55,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
+  private readonly viewport = new CanvasViewportController({
+    activeTool: () => this.activeTool(),
+    syncViewportRects: () => this.syncOnionLayerRect(),
+    zoomKeepOnDefault: appSettings.canvas.zoomKeepOn ?? true,
+    zoomClickStep: appSettings.canvas.zoomClickStep,
+  });
+  readonly isZoomKeepOn = this.viewport.zoomKeepOn;
+  readonly canvasZoomLevel = this.viewport.zoomLevel;
   private readonly toolSizeMap = signal<Record<string, number>>({
     pencil: 5,
     brush: 5,
@@ -213,6 +223,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     // Clean up LiterallyCanvas instance and event listeners
     if (this.lc) {
+      this.viewport.detach();
       this.lc.teardown();
       this.lc = null;
     }
@@ -257,10 +268,15 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.lc = LC.init(container, {
       imageURLPrefix: 'assets/lc-images',
     });
+    this.viewport.attach(this.lc);
 
     container.addEventListener(
       'mousedown',
-      () => {
+      (event: MouseEvent) => {
+        if (event.button !== 0) {
+          return;
+        }
+
         if (this.lc) {
           this.canvasUndoRedo.markStrokeStart(this.lc);
         }
@@ -359,6 +375,14 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.toolInstances.set('polygon', new PolygonTool(this.lc));
     }
     this.toolInstances.set('bucket-fill', new BucketFill(this.lc));
+    this.toolInstances.set(
+      'zoom',
+      new ZoomTool(
+        this.lc,
+        (deltaLevel, point) => this.viewport.adjustZoomLevel(deltaLevel, point),
+        this.viewport.getClickZoomStep(),
+      ),
+    );
 
     const objectEraser = this.canvasUndoRedo.instrumentObjectEraser(
       new ObjectEraser(this.lc),
@@ -514,7 +538,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.respondToSizeChange();
     }
 
-    this.lc.setZoom(scale);
+    this.viewport.applyFitScale(scale);
   }
 
   private getAvailableHostWidth(host: HTMLElement): number {
@@ -592,6 +616,19 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.setTool(tool);
       this.activeTool.set(toolId);
     }
+  }
+
+  public setCanvasZoomLevel(level: number): void {
+    this.viewport.setZoomLevel(level);
+  }
+
+  public setCanvasZoomLevelFromSlider(position: number): void {
+    this.viewport.setZoomLevelFromSlider(position);
+  }
+
+  public setZoomKeepOn(keepOn: boolean): void {
+    this.viewport.setZoomKeepOn(keepOn);
+    appSettings.canvas.zoomKeepOn = this.viewport.zoomKeepOn();
   }
 
   public setBrushSpacing(spacing: number): void {

@@ -104,6 +104,18 @@
 
       <button
         class="tool-button"
+        [class.active]="activeTool() === 'zoom'"
+        type="button"
+        (click)="toolSelected.emit('zoom')"
+        (mouseenter)="showTooltip($event, 'Zoom')"
+        (mouseleave)="hideTooltip()"
+        aria-label="Zoom"
+      >
+        🔍
+      </button>
+
+      <button
+        class="tool-button"
         [class.active]="isCanvasFullscreen()"
         type="button"
         (click)="toggleCanvasFullscreen()"

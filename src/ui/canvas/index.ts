@@ -23,4 +23,5 @@ export { CanvasUndoRedoService } from './undo-redo';
 export { CanvasPersistenceService } from './persistence';
 
 // Tools
-export { Brush, BucketFill, ObjectEraser } from './tools';
+export { Brush, BucketFill, ObjectEraser, ZoomTool } from './tools';
+export type { ZoomClientPoint } from './tools';

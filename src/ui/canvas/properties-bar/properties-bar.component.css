@@ -11,6 +11,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 2px 2px;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .properties-context {
@@ -39,6 +41,19 @@
 
 .property-slider {
   width: 120px;
+}
+
+.property-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.property-checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--border-active);
 }
 
 .number-input-wrapper {
