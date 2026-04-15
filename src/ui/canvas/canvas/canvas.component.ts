@@ -34,6 +34,9 @@ import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-canvas',
+  host: {
+    '(document:keydown)': 'onKeyDown($event)'
+  },
   imports: [
     ClearCanvasConfirmComponent,
     PropertiesBarComponent,
@@ -246,6 +249,32 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.clear();
 
     this.canvasPersistence.clearPendingPreviewRegeneration();
+  }
+
+  onKeyDown(event: KeyboardEvent): void {
+    const key = event.key.toLowerCase();
+    switch (key) {
+      case 's':
+        this.activeTool.set('select');
+        break;
+      case 'i':
+        this.activeTool.set('image');
+        break;
+      case 'd':
+        this.activeTool.set('pencil');
+        break;
+      case 'h':
+        this.activeTool.set('rectangle');
+        break;
+      case 'e':
+        this.activeTool.set('eraser');
+        break;
+      case 'f':
+        this.activeTool.set('bucket-fill');
+        break;
+      default: 
+        break;
+    }
   }
 
   private initializeCanvas(): void {
