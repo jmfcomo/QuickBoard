@@ -11,6 +11,7 @@ import {
   output,
   PLATFORM_ID,
   effect,
+  DOCUMENT,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
@@ -134,6 +135,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly onWindowResize = () => this.scheduleCanvasFit();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
+  readonly toolbar = viewChild(ToolsBarComponent);
+  private document = inject(DOCUMENT);
 
   constructor() {
     effect(() => {
@@ -253,28 +256,117 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
+    if(event.ctrlKey) return;
+
     switch (key) {
       case 's':
-        this.activeTool.set('select');
+        this.switchTools('select');
         break;
-      case 'i':
-        this.activeTool.set('image');
+      case 'i': {
+        this.switchTools('image');
+        const input = this.document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e: Event) => {
+          const target = e.target as HTMLInputElement;
+          if (target.files && target.files.length > 0) {
+            this.toolbar()?.imageSelected.emit(target.files[0]);
+          }
+        };
+        input.click();
         break;
+      }
       case 'd':
-        this.activeTool.set('pencil');
+        this.switchTools('pencil');
         break;
       case 'h':
-        this.activeTool.set('rectangle');
+        this.switchTools('rectangle');
         break;
       case 'e':
-        this.activeTool.set('eraser');
+        this.switchTools('eraser');
         break;
       case 'f':
-        this.activeTool.set('bucket-fill');
+        this.switchTools('bucket-fill');
         break;
+      case 'enter': {
+        event.preventDefault();
+
+        if(this.toolbar()?.isDrawToolActive()) {
+          const option = this.toolbar()?.selectedDrawToolOption();
+          if(option?.id === 'pencil') {
+            this.switchTools('brush');
+          } else {
+            this.switchTools('pencil');
+          }
+        } else if (this.toolbar()?.isEditToolActive()) {
+          const option = this.toolbar()?.selectedEditToolOption();
+          if(option?.id === 'select') {
+            this.switchTools('image');
+            this.toolbar()?.onActiveSubmenuSelect('image');
+          } else {
+            this.switchTools('select');
+          }
+        } else if (this.toolbar()?.isShapeToolActive()) {
+          const option = this.toolbar()?.selectedShapeTool();
+          switch(option?.id) {
+            case 'rectangle':
+              this.switchTools('circle');
+              break;
+            case 'circle':
+              this.switchTools('polygon');
+              break;
+            default:
+              this.switchTools('rectangle');
+          }
+        } else if (this.toolbar()?.isEraserToolActive()){
+          const option = this.toolbar()?.selectedEraserToolOption();
+          if(option?.id === 'eraser') {
+            this.switchTools('object-eraser');
+          } else {
+            this.switchTools('eraser');
+          }
+        } else if (this.activeTool() === 'zoom') {
+          const zoomCenter = this.lc?.canvas?.getBoundingClientRect
+            ? (() => {
+                const rect = this.lc!.canvas.getBoundingClientRect();
+                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+              })()
+            : { x: this.canvasContainer().nativeElement.offsetLeft + this.canvasContainer().nativeElement.offsetWidth / 2, 
+              y: this.canvasContainer().nativeElement.offsetTop + this.canvasContainer().nativeElement.offsetHeight / 2  };
+
+          if (event.shiftKey) {
+            this.viewport.adjustZoomLevel(-this.viewport.getClickZoomStep(), zoomCenter);
+          } else {
+            this.viewport.adjustZoomLevel(this.viewport.getClickZoomStep(), zoomCenter);
+          }
+        }
+        break;
+      }
+      case 'tab': {
+        event.preventDefault();
+        if(this.toolbar()?.isDrawToolActive()) {
+          this.switchTools(this.toolbar()?.selectedShapeTool()?.id as string);
+        } else if (this.toolbar()?.isShapeToolActive()) {
+          this.switchTools(this.toolbar()?.selectedEraserToolOption()?.id as string);
+        } else if (this.toolbar()?.isEraserToolActive()) {
+          this.switchTools('bucket-fill');
+        } else if (this.toolbar()?.isEditToolActive()) {
+          this.switchTools(this.toolbar()?.selectedDrawToolOption()?.id as string);
+        } else if (this.activeTool() === 'bucket-fill') {
+           this.switchTools('zoom');
+        } else if (this.activeTool() === 'zoom') {
+          this.switchTools('select'); 
+        }
+        break;
+      }
       default: 
         break;
     }
+  }
+
+  private switchTools(tool: string): void {
+    this.activeTool.set(tool);
+    this.toolbar()?.toolSelected.emit(tool);
   }
 
   private initializeCanvas(): void {
