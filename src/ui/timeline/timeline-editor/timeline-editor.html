@@ -7,7 +7,12 @@
   <div class="timeline-inner">
     <app-timeline-controls />
     <div #timelineContent class="timeline-content" [style.width.px]="totalWidth()">
-      <div class="timeline-ruler" aria-hidden="true" (click)="onRulerClick($event)">
+      <div
+        class="timeline-ruler"
+        aria-hidden="true"
+        (click)="onRulerClick($event)"
+        (touchstart)="onRulerClick($event)"
+      >
         @for (tick of rulerTicks(); track tick.time) {
           <div class="timeline-tick" [class.origin]="tick.time === 0" [style.left.px]="tick.left">
             <span class="tick-label">{{ tick.label }}</span>
@@ -15,7 +20,12 @@
         }
       </div>
 
-      <div #playhead class="timeline-playhead" (mousedown)="startScrub($event)">
+      <div
+        #playhead
+        class="timeline-playhead"
+        (mousedown)="startScrub($event)"
+        (touchstart)="startScrub($event)"
+      >
         <div class="playhead-head"></div>
         <div class="playhead-line"></div>
       </div>

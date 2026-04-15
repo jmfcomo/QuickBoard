@@ -11,6 +11,9 @@ import { UndoRedoService } from '../../../services/undo-redo.service';
   host: {
     '(document:mousemove)': 'onMouseMove($event)',
     '(document:mouseup)': 'onMouseUp()',
+    '(document:touchmove)': 'onTouchMove($event)',
+    '(document:touchend)': 'onTouchEnd()',
+    '(document:touchcancel)': 'onTouchEnd()',
   },
 })
 export class AudioTracksComponent {
@@ -112,6 +115,23 @@ export class AudioTracksComponent {
       event.preventDefault();
       this.handleAudioClipDragMove(event);
     }
+  }
+
+  onTouchMove(event: TouchEvent) {
+    if (this._volumeDragging) {
+      if (event.cancelable) event.preventDefault();
+      this.handleVolumeDragMove(event);
+    } else if (this._audioTrimming) {
+      if (event.cancelable) event.preventDefault();
+      this.handleAudioTrimMove(event);
+    } else if (this._audioDragging) {
+      if (event.cancelable) event.preventDefault();
+      this.handleAudioClipDragMove(event);
+    }
+  }
+
+  onTouchEnd() {
+    this.onMouseUp();
   }
 
   async onMouseUp(): Promise<void> {
@@ -353,7 +373,10 @@ export class AudioTracksComponent {
             fileName: bufferEntry.fileName,
           };
         })
-        .filter((entry): entry is { trackSnapshot: AudioTrack; buffer: ArrayBuffer; fileName: string } => !!entry);
+        .filter(
+          (entry): entry is { trackSnapshot: AudioTrack; buffer: ArrayBuffer; fileName: string } =>
+            !!entry,
+        );
 
       if (snapshots.length > 0) {
         this.undoRedo.record({
@@ -400,13 +423,13 @@ export class AudioTracksComponent {
     this.audio.removeLane(laneIndex);
   }
 
-  startAudioClipDrag(event: MouseEvent, trackId: string, currentStartTime: number) {
-    event.preventDefault();
+  startAudioClipDrag(event: MouseEvent | TouchEvent, trackId: string, currentStartTime: number) {
+    if (event.cancelable) event.preventDefault();
     event.stopPropagation();
     const track = this.store.audioTracks().find((t) => t.id === trackId);
     this._audioDragging = true;
     this._audioDragTrackId = trackId;
-    this._audioDragStartX = event.clientX;
+    this._audioDragStartX = 'touches' in event ? event.touches[0].clientX : event.clientX;
     this._audioDragOriginalStartTime = currentStartTime;
     this._audioDragOriginalLane = track?.laneIndex ?? 0;
     this.audioDragTrackId.set(trackId);
@@ -414,15 +437,15 @@ export class AudioTracksComponent {
     this.hoveredClipId.set(null);
   }
 
-  startAudioTrim(event: MouseEvent, trackId: string, edge: 'left' | 'right') {
-    event.preventDefault();
+  startAudioTrim(event: MouseEvent | TouchEvent, trackId: string, edge: 'left' | 'right') {
+    if (event.cancelable) event.preventDefault();
     event.stopPropagation();
     const track = this.store.audioTracks().find((t) => t.id === trackId);
     if (!track) return;
     this._audioTrimming = true;
     this._audioTrimTrackId = trackId;
     this._audioTrimEdge = edge;
-    this._audioTrimStartX = event.clientX;
+    this._audioTrimStartX = 'touches' in event ? event.touches[0].clientX : event.clientX;
     this._audioTrimOriginalStartTime = track.startTime;
     this._audioTrimOriginalDuration = track.duration;
     this._audioTrimOriginalTrimStart = track.trimStart;
@@ -430,9 +453,10 @@ export class AudioTracksComponent {
     this.audioTrimTrackId.set(trackId);
   }
 
-  private handleAudioTrimMove(event: MouseEvent) {
+  private handleAudioTrimMove(event: MouseEvent | TouchEvent) {
     if (!this._audioTrimTrackId) return;
-    const deltaX = event.clientX - this._audioTrimStartX;
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const deltaX = clientX - this._audioTrimStartX;
     const deltaSec = this.snap(deltaX / this.scale());
     const MIN = this.MIN_DURATION;
 
@@ -470,14 +494,16 @@ export class AudioTracksComponent {
     }
   }
 
-  private handleAudioClipDragMove(event: MouseEvent) {
+  private handleAudioClipDragMove(event: MouseEvent | TouchEvent) {
     if (!this._audioDragTrackId) return;
-    const deltaX = event.clientX - this._audioDragStartX;
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+    const deltaX = clientX - this._audioDragStartX;
     const deltaSec = this.snap(deltaX / this.scale());
     const newStartTime = Math.max(0, this.snap(this._audioDragOriginalStartTime + deltaSec));
     this.audio.updatePlayerStartTime(this._audioDragTrackId, newStartTime);
 
-    const el = document.elementFromPoint(event.clientX, event.clientY);
+    const el = document.elementFromPoint(clientX, clientY);
     const laneEl = el?.closest('[data-lane-index]');
     if (laneEl) {
       const idx = parseInt(laneEl.getAttribute('data-lane-index') ?? '', 10);
@@ -487,8 +513,8 @@ export class AudioTracksComponent {
     }
   }
 
-  startVolumeDrag(event: MouseEvent, trackId: string) {
-    event.preventDefault();
+  startVolumeDrag(event: MouseEvent | TouchEvent, trackId: string) {
+    if (event.cancelable) event.preventDefault();
     event.stopPropagation();
 
     const clipElement = (event.currentTarget as HTMLElement).closest('.audio-clip');
@@ -499,17 +525,22 @@ export class AudioTracksComponent {
     this._volumeDragRect = clipElement.getBoundingClientRect();
     const track = this.store.audioTracks().find((t) => t.id === trackId);
     this._volumeOriginalTrackVolume = track?.volume ?? 1;
-    this._volumeOriginalLaneVolume =
-      track ? (this.store.audioLaneMixers()[track.laneIndex]?.volume ?? 1) : 1;
+    this._volumeOriginalLaneVolume = track
+      ? (this.store.audioLaneMixers()[track.laneIndex]?.volume ?? 1)
+      : 1;
     this.volumeDragTrackId.set(trackId);
     this.handleVolumeDragMove(event);
   }
 
-  private handleVolumeDragMove(event: MouseEvent) {
+  private handleVolumeDragMove(event: MouseEvent | TouchEvent) {
     if (!this._volumeDragging || !this._volumeTrackId || !this._volumeDragRect) return;
-    const y = event.clientY - this._volumeDragRect.top;
+    const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+    const y = clientY - this._volumeDragRect.top;
     const paddedHeight = Math.max(1, this._volumeDragRect.height - this.VOLUME_LINE_PADDING_PX * 2);
-    const clampedY = Math.max(this.VOLUME_LINE_PADDING_PX, Math.min(y, this._volumeDragRect.height - this.VOLUME_LINE_PADDING_PX));
+    const clampedY = Math.max(
+      this.VOLUME_LINE_PADDING_PX,
+      Math.min(y, this._volumeDragRect.height - this.VOLUME_LINE_PADDING_PX),
+    );
     const ratio = 1 - (clampedY - this.VOLUME_LINE_PADDING_PX) / paddedHeight;
     const volume = Math.max(0, Math.min(1, ratio));
     this.audio.setTrackVolume(this._volumeTrackId, volume);
@@ -527,7 +558,7 @@ export class AudioTracksComponent {
     return `${Math.round(Math.max(0, Math.min(1, volume)) * 100)}%`;
   }
 
-  private getLaneInsertTime(laneIndex: number): number {
+  getLaneInsertTime(laneIndex: number): number {
     const laneTracks = this.store
       .audioTracks()
       .filter((t) => t.laneIndex === laneIndex)

@@ -13,6 +13,9 @@ import { appSettings } from 'src/settings-loader';
   host: {
     '(document:mousemove)': 'onMouseMove($event)',
     '(document:mouseup)': 'onMouseUp()',
+    '(document:touchmove)': 'onTouchMove($event)',
+    '(document:touchend)': 'onTouchEnd()',
+    '(document:touchcancel)': 'onTouchEnd()',
   },
 })
 export class BoardsTrackComponent {
@@ -57,14 +60,14 @@ export class BoardsTrackComponent {
     this.actions.duplicateBoard(boardId);
   }
 
-  startResize(event: MouseEvent, boardId: string, edge: 'left' | 'right') {
-    event.preventDefault();
+  startResize(event: MouseEvent | TouchEvent, boardId: string, edge: 'left' | 'right') {
+    if (event.cancelable) event.preventDefault();
     event.stopPropagation();
 
     this.isResizing.set(true);
     this.resizingBoardId.set(boardId);
     this.resizeEdge.set(edge);
-    this.resizeStartX = event.clientX;
+    this.resizeStartX = 'touches' in event ? event.touches[0].clientX : event.clientX;
 
     const board = this.store.boards().find((b) => b.id === boardId);
     this.resizeStartDuration = board?.duration ?? 3;
@@ -85,6 +88,12 @@ export class BoardsTrackComponent {
   onMouseMove(event: MouseEvent) {
     if (!this.isResizing()) return;
     event.preventDefault();
+    this.handleResizeDrag(event);
+  }
+
+  onTouchMove(event: TouchEvent) {
+    if (!this.isResizing()) return;
+    if (event.cancelable) event.preventDefault();
     this.handleResizeDrag(event);
   }
 
@@ -123,13 +132,18 @@ export class BoardsTrackComponent {
     }
   }
 
+  onTouchEnd() {
+    this.onMouseUp();
+  }
+
   private snap(value: number): number {
     const precision = this.SNAP_PRECISION;
     return Math.round(value / precision) * precision;
   }
 
-  private handleResizeDrag(event: MouseEvent) {
-    const deltaX = event.clientX - this.resizeStartX;
+  private handleResizeDrag(event: MouseEvent | TouchEvent) {
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const deltaX = clientX - this.resizeStartX;
     const deltaSec = this.snap(deltaX / this.scale());
     const boardId = this.resizingBoardId();
     if (!boardId) return;
@@ -156,11 +170,17 @@ export class BoardsTrackComponent {
     }
   }
 
-  // ─── Drag / drop ─────────────────────────────────────────────────
+  // Drag drop
+
+  onBoardTouchStart(event: TouchEvent, boardId: string, boardIndex: number) {
+    if (this.isResizing() || this.store.isPlaying()) return;
+    this.drag.startTouchDrag(event, boardId, boardIndex);
+  }
 
   onDragStart(event: DragEvent, boardId: string, boardIndex: number) {
     this.drag.startDrag(event, boardId, boardIndex);
   }
+
 
   onDragOver(event: DragEvent, boardId: string) {
     this.drag.handleDragOver(event, boardId);
