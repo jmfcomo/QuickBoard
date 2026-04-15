@@ -143,7 +143,112 @@ export class App implements OnInit, OnDestroy {
     }
 
     const ctrl = event.ctrlKey || event.metaKey;
-    if (!ctrl) return;
+    if (!ctrl) {
+      switch(key) {
+        case 's':
+          this.canvas()?.switchTools('select');
+          break;
+        case 'i': {
+          this.canvas()?.switchTools('image');
+          const input = this.canvas()?.document.createElement('input') as HTMLInputElement;
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.onchange = (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            if (target.files && target.files.length > 0) {
+              this.canvas()?.toolbar()?.imageSelected.emit(target.files[0]);
+            }
+          };
+          input.click();
+          break;
+        }
+        case 'd':
+          this.canvas()?.switchTools('pencil');
+          break;
+        case 'h':
+          this.canvas()?.switchTools('rectangle');
+          break;
+        case 'e':
+          this.canvas()?.switchTools('eraser');
+          break;
+        case 'f':
+          this.canvas()?.switchTools('bucket-fill');
+          break;
+        case 'enter': {
+          event.preventDefault();
+
+          if(this.canvas()?.toolbar()?.isDrawToolActive()) {
+            const option = this.canvas()?.toolbar()?.selectedDrawToolOption();
+            if(option?.id === 'pencil') {
+              this.canvas()?.switchTools('brush');
+            } else {
+              this.canvas()?.switchTools('pencil');
+            }
+          } else if (this.canvas()?.toolbar()?.isEditToolActive()) {
+            const option = this.canvas()?.toolbar()?.selectedEditToolOption();
+            if(option?.id === 'select') {
+              this.canvas()?.switchTools('image');
+              this.canvas()?.toolbar()?.onActiveSubmenuSelect('image');
+            } else {
+              this.canvas()?.switchTools('select');
+            }
+          } else if (this.canvas()?.toolbar()?.isShapeToolActive()) {
+            const option = this.canvas()?.toolbar()?.selectedShapeTool();
+            switch(option?.id) {
+              case 'rectangle':
+                this.canvas()?.switchTools('circle');
+                break;
+              case 'circle':
+                this.canvas()?.switchTools('polygon');
+                break;
+              default:
+                this.canvas()?.switchTools('rectangle');
+            }
+          } else if (this.canvas()?.toolbar()?.isEraserToolActive()){
+            const option = this.canvas()?.toolbar()?.selectedEraserToolOption();
+            if(option?.id === 'eraser') {
+              this.canvas()?.switchTools('object-eraser');
+            } else {
+              this.canvas()?.switchTools('eraser');
+            }
+          } else if (this.canvas()?.activeTool() === 'zoom') {
+            const zoomCenter = this.canvas()?.lc?.canvas?.getBoundingClientRect
+              ? (() => {
+                  const rect = this.canvas()?.lc!.canvas.getBoundingClientRect();
+                  return { x: (rect as DOMRect).left + (rect as DOMRect).width / 2, y: (rect as DOMRect).top + (rect as DOMRect).height / 2 };
+                })()
+              : { x: this.canvas()?.canvasContainer().nativeElement.offsetLeft as number + (this.canvas()?.canvasContainer().nativeElement.offsetWidth as number) / 2, 
+                y: this.canvas()?.canvasContainer().nativeElement.offsetTop as number + (this.canvas()?.canvasContainer().nativeElement.offsetHeight as number) / 2  };
+
+            if (event.shiftKey) {
+              this.canvas()?.viewport.adjustZoomLevel(-(this.canvas()?.viewport.getClickZoomStep() as number), zoomCenter);
+            } else {
+              this.canvas()?.viewport.adjustZoomLevel(this.canvas()?.viewport.getClickZoomStep() as number, zoomCenter);
+            }
+          }
+          break;
+        }
+        case 'tab': {
+          event.preventDefault();
+          if(this.canvas()?.toolbar()?.isDrawToolActive()) {
+            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedShapeTool()?.id as string);
+          } else if (this.canvas()?.toolbar()?.isShapeToolActive()) {
+            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedEraserToolOption()?.id as string);
+          } else if (this.canvas()?.toolbar()?.isEraserToolActive()) {
+            this.canvas()?.switchTools('bucket-fill');
+          } else if (this.canvas()?.toolbar()?.isEditToolActive()) {
+            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedDrawToolOption()?.id as string);
+          } else if (this.canvas()?.activeTool() === 'bucket-fill') {
+            this.canvas()?.switchTools('zoom');
+          } else if (this.canvas()?.activeTool() === 'zoom') {
+            this.canvas()?.switchTools('select'); 
+          }
+          break;
+        } 
+        default:
+          return;
+      }
+    }
 
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
