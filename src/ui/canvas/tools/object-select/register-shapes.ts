@@ -1,6 +1,6 @@
 import { resolveAccentBorderColor, resolveAccentColor } from './cursors';
 
-export function registerImprovedSelectShapes(LC: Record<string, unknown>): void {
+export function registerObjectSelectShapes(LC: Record<string, unknown>): void {
   if (
     !LC ||
     typeof LC['defineShape'] !== 'function' ||

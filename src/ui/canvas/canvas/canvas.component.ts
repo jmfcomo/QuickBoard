@@ -24,7 +24,7 @@ import { CanvasUndoRedoService } from '../undo-redo/canvas-undo-redo.service';
 import { Brush, ensureSquareBrushShapeRegistered } from '../../canvas/tools/brush';
 import { ObjectEraser } from '../../canvas/tools/objecteraser';
 import { BucketFill } from '../tools/bucketfill';
-import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/improved-select';
+import { ObjectSelectShape, registerObjectSelectShapes } from '../tools/object-select';
 import { ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { CanvasViewportController } from './canvas-viewport-controller';
@@ -262,7 +262,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    registerImprovedSelectShapes(LC as any);
+    registerObjectSelectShapes(LC as any);
 
     // Initialize Literally Canvas — container is already at the correct size
     this.lc = LC.init(container, {
@@ -359,7 +359,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     // Initialize tool instances
-    this.toolInstances.set('select', new ImprovedSelectShape(this.lc));
+    this.toolInstances.set('object-select', new ObjectSelectShape(this.lc));
     this.toolInstances.set('pencil', new LC.tools.Pencil(this.lc));
     this.toolInstances.set('eraser', new LC.tools.Eraser(this.lc));
     this.toolInstances.set('brush', new Brush(this.lc));
@@ -426,9 +426,9 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     this.canvasUndoRedo.beginBoardLoad();
 
-    const selectTool = this.toolInstances.get('select') as ImprovedSelectShape;
-    if (selectTool && typeof selectTool.clearSelection === 'function') {
-      selectTool.clearSelection(this.lc);
+    const objectSelectTool = this.toolInstances.get('object-select') as ObjectSelectShape;
+    if (objectSelectTool && typeof objectSelectTool.clearSelection === 'function') {
+      objectSelectTool.clearSelection(this.lc);
     }
 
     // Clear canvas
@@ -603,18 +603,21 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   public setTool(toolId: string): void {
-    if (!this.lc || !this.toolInstances.has(toolId)) return;
+    if (!this.lc) return;
 
-    const tool = this.toolInstances.get(toolId);
+    const resolvedToolId = toolId === 'select' ? 'object-select' : toolId;
+    if (!this.toolInstances.has(resolvedToolId)) return;
+
+    const tool = this.toolInstances.get(resolvedToolId);
     if (tool) {
-      if (tool.strokeWidth !== undefined && toolId !== 'object-eraser') {
-        tool.strokeWidth = this.toolSizeMap()[toolId] ?? 5;
+      if (tool.strokeWidth !== undefined && resolvedToolId !== 'object-eraser') {
+        tool.strokeWidth = this.toolSizeMap()[resolvedToolId] ?? 5;
       }
-      if (toolId === 'brush') {
+      if (resolvedToolId === 'brush') {
         (tool as Brush).spacing = this.brushSpacing();
       }
       this.lc.setTool(tool);
-      this.activeTool.set(toolId);
+      this.activeTool.set(resolvedToolId);
     }
   }
 
@@ -839,7 +842,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         });
 
         this.lc.saveShape(imageShape);
-        this.setTool('select');
+        this.setTool('object-select');
       };
       img.src = src;
     };

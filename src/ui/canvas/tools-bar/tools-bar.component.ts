@@ -49,14 +49,14 @@ export class ToolsBarComponent implements OnDestroy {
     { id: 'object-eraser', label: 'Object Eraser', icon: '🧹' },
   ];
   readonly editTools: readonly ToolOption[] = [
-    { id: 'select', label: 'Select', icon: '👆' },
+    { id: 'object-select', label: 'Object Select', icon: '👆' },
     { id: 'image', label: 'Image', icon: '🖼️' },
   ];
 
   readonly selectedDrawTool = signal<'pencil' | 'brush'>('pencil');
   readonly selectedShape = signal<'rectangle' | 'circle' | 'polygon'>('rectangle');
   readonly selectedEraserTool = signal<'eraser' | 'object-eraser'>('eraser');
-  readonly selectedEditTool = signal<'select' | 'image'>('select');
+  readonly selectedEditTool = signal<'object-select' | 'image'>('object-select');
   readonly openToolSubmenu = signal<ToolGroupKey | null>(null);
   readonly toolSubmenuTop = signal(0);
 
@@ -354,8 +354,8 @@ export class ToolsBarComponent implements OnDestroy {
     return toolId === 'rectangle' || toolId === 'circle' || toolId === 'polygon';
   }
 
-  private isEditTool(toolId: string): toolId is 'select' | 'image' {
-    return toolId === 'select' || toolId === 'image';
+  private isEditTool(toolId: string): toolId is 'object-select' | 'image' {
+    return toolId === 'object-select' || toolId === 'image';
   }
 
   private getSelectedToolForGroup(group: ToolGroupKey): string {

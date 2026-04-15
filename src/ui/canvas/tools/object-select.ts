@@ -1,15 +1,15 @@
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
-import { getResizeCursorForAngle, getRotateCursor } from './improved-select/cursors';
-import { getGlobalPoint, ptToLocal, setGlobalPointAnchor } from './improved-select/geometry';
-import { registerImprovedSelectShapes } from './improved-select/register-shapes';
-import { TransformAction } from './improved-select/transform-action';
-import { ImageHandleMode } from './improved-select/types';
+import { getResizeCursorForAngle, getRotateCursor } from './object-select/cursors';
+import { getGlobalPoint, ptToLocal, setGlobalPointAnchor } from './object-select/geometry';
+import { registerObjectSelectShapes } from './object-select/register-shapes';
+import { TransformAction } from './object-select/transform-action';
+import { ImageHandleMode } from './object-select/types';
 
-export { registerImprovedSelectShapes };
+export { registerObjectSelectShapes };
 
-export class ImprovedSelectShape implements LCTool {
-  name = 'SelectShape';
-  iconName = 'select';
+export class ObjectSelectShape implements LCTool {
+  name = 'ObjectSelectShape';
+  iconName = 'object-select';
   usesSimpleAPI = false;
 
   private readonly selectCanvas = document.createElement('canvas');

@@ -24,7 +24,7 @@ const AVAILABLE_TOOLS = [
   { id: 'polygon', label: 'Polygon' },
   { id: 'eraser', label: 'Eraser' },
   { id: 'object-eraser', label: 'Object Eraser' },
-  { id: 'select', label: 'Select' },
+  { id: 'object-select', label: 'Object Select' },
   { id: 'image', label: 'Image' },
 ];
 
@@ -135,7 +135,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly defaultStrokeColor = signal<string>(this.getSafeSettingValue('canvas.defaultStrokeColor', '#000000') as string);
   readonly defaultFillColor = signal<string>(this.getSafeSettingValue('canvas.defaultFillColor', '#ffffff') as string);
   readonly defaultBackgroundColor = signal<string>(this.getSafeSettingValue('canvas.defaultBackgroundColor', '#ffffff') as string);
-  readonly defaultTool = signal<string>(this.getSafeSettingValue('canvas.defaultTool', 'pencil') as string);
+  readonly defaultTool = signal<string>(
+    this.normalizeDefaultToolId(this.getSafeSettingValue('canvas.defaultTool', 'pencil')),
+  );
   readonly showClearCanvasWarning = signal<boolean>(this.getSafeSettingValue('canvas.showClearCanvasWarning', true) as boolean);
   readonly minZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.minZoom', 2) as number);
   readonly maxZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.maxZoom', 2500) as number);
@@ -292,6 +294,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     return fallback;
   }
 
+  private normalizeDefaultToolId(value: unknown): string {
+    if (value === 'select') {
+      return 'object-select';
+    }
+
+    return typeof value === 'string' ? value : 'pencil';
+  }
+
   private readonly autoSaveEffect = effect(
     () => {
       if (!this.settingsHydrated()) {
@@ -418,7 +428,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.defaultBackgroundColor.set(
         getValue(settings, 'canvas.defaultBackgroundColor', '#ffffff') as string,
       );
-      this.defaultTool.set(getValue(settings, 'canvas.defaultTool', 'pencil') as string);
+      this.defaultTool.set(
+        this.normalizeDefaultToolId(getValue(settings, 'canvas.defaultTool', 'pencil')),
+      );
       this.showClearCanvasWarning.set(
         getValue(settings, 'canvas.showClearCanvasWarning', true) as boolean,
       );
