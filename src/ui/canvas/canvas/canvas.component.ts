@@ -845,4 +845,18 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     };
     reader.readAsDataURL(file);
   }
+
+  public persistCurrentBoard(): void {
+    if (!this.lc || !this.currentBoardId) return;
+
+    const snapshot = this.lc.getSnapshot();
+    const shapes = [...this.lc.shapes];
+    const backgroundShapes = [...this.lc.backgroundShapes];
+
+    this.canvasDataService.setCanvasData(this.currentBoardId, {
+      shapes,
+      backgroundShapes,
+      snapshot,
+    });
+  }
 }

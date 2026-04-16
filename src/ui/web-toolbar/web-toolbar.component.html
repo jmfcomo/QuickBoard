@@ -3,7 +3,7 @@
     <button class="menu-root-btn" (click)="toggleMenu('file', $event)">File</button>
     @if (activeMenu() === 'file') {
       <div class="menu-dropdown">
-        <button (click)="fileInput.click(); closeMenu()">Load</button>
+        <button (click)="triggerLoad(); closeMenu()">Load</button>
         <button (click)="triggerMobileSave(); closeMenu()">Save</button>
         <button (click)="triggerMobileSaveAs(); closeMenu()">Save As...</button>
         @if (isElectron) {
@@ -78,11 +78,4 @@
       </div>
     }
   </div>
-  <input
-    #fileInput
-    type="file"
-    style="display: none"
-    accept=".sbd"
-    (change)="triggerMobileLoad($event)"
-  />
 </div>

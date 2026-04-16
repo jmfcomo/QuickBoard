@@ -127,12 +127,18 @@ export class SbdService {
     this.store.loadFromJson(json);
   }
 
-  async loadSbdZip(base64Content: string): Promise<void> {
-    // Decode base64 → binary.
-    const binaryStr = atob(base64Content);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+  async loadSbdZip(content: string | Uint8Array): Promise<void> {
+    let bytes: Uint8Array;
+
+    if (content instanceof Uint8Array) {
+      bytes = content;
+    } else {
+      // Decode base64 → binary.
+      const binaryStr = atob(content);
+      bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
     }
 
     const zip = await JSZip.loadAsync(bytes);
