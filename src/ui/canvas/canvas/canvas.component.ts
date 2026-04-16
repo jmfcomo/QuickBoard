@@ -845,14 +845,4 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     };
     reader.readAsDataURL(file);
   }
-
-  public persistCurrentBoard(): void {
-    if (!this.lc || !this.currentBoardId) return;
-    this.canvasPersistence.persistCurrentBoardData(
-      this.lc,
-      this.currentBoardId,
-      this.currentBoardId,
-      true,
-    );
-  }
 }

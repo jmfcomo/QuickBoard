@@ -115,7 +115,7 @@ export class PlatformFileService {
           path: tmpPath,
           directory: Directory.Cache,
         }).catch((deleteError) => {
-          console.warn('Failed to cleanup temporary shared file', deleteError);
+          console.warn(`Failed to cleanup temporary shared file: ${tmpPath}`, deleteError);
         });
       }
     }
