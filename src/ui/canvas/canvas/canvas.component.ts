@@ -848,15 +848,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   public persistCurrentBoard(): void {
     if (!this.lc || !this.currentBoardId) return;
-
-    const snapshot = this.lc.getSnapshot();
-    const shapes = [...this.lc.shapes];
-    const backgroundShapes = [...this.lc.backgroundShapes];
-
-    this.canvasDataService.setCanvasData(this.currentBoardId, {
-      shapes,
-      backgroundShapes,
-      snapshot,
-    });
+    this.canvasPersistence.persistCurrentBoardData(
+      this.lc,
+      this.currentBoardId,
+      this.currentBoardId,
+      true,
+    );
   }
 }

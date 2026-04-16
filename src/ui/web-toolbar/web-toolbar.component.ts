@@ -74,17 +74,11 @@ export class WebToolbarComponent {
   }
 
   triggerMobileAbout(): void {
-    window.open('?dialog=about', '_blank', 'width=320,height=260');
+    window.open('?dialog=about', '_blank', 'width=320,height=260,noopener,noreferrer');
   }
 
   async triggerMobileSave(): Promise<void> {
     try {
-      // Trigger canvas persist before building the zip to ensure current board is saved
-      const canvasComponent = document.querySelector('app-canvas');
-      if (canvasComponent && 'persistCurrentBoard' in canvasComponent) {
-        (canvasComponent as unknown as { persistCurrentBoard: () => void }).persistCurrentBoard();
-      }
-
       const zipData = await this.sbd.buildSbdZip();
       const fileName = (this.exportIpc.defaultPrefix() || 'project') + '.sbd';
       await this.platformFile.saveFile(zipData, fileName);
@@ -121,6 +115,6 @@ export class WebToolbarComponent {
   }
 
   triggerSettings(): void {
-    window.open('?dialog=settings', '_blank', 'width=750,height=700');
+    window.open('?dialog=settings', '_blank', 'width=750,height=700,noopener,noreferrer');
   }
 }

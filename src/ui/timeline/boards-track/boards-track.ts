@@ -92,9 +92,15 @@ export class BoardsTrackComponent {
   }
 
   onTouchMove(event: TouchEvent) {
-    if (!this.isResizing()) return;
-    if (event.cancelable) event.preventDefault();
-    this.handleResizeDrag(event);
+    if (this.isResizing()) {
+      if (event.cancelable) event.preventDefault();
+      this.handleResizeDrag(event);
+      return;
+    }
+
+    if (this.drag.isTouchDragInProgress()) {
+      this.drag.handleTouchMove(event);
+    }
   }
 
   onMouseUp() {
@@ -133,7 +139,14 @@ export class BoardsTrackComponent {
   }
 
   onTouchEnd() {
-    this.onMouseUp();
+    if (this.isResizing()) {
+      this.onMouseUp();
+      return;
+    }
+
+    if (this.drag.isTouchDragInProgress()) {
+      this.drag.handleTouchEnd();
+    }
   }
 
   private snap(value: number): number {
@@ -180,7 +193,6 @@ export class BoardsTrackComponent {
   onDragStart(event: DragEvent, boardId: string, boardIndex: number) {
     this.drag.startDrag(event, boardId, boardIndex);
   }
-
 
   onDragOver(event: DragEvent, boardId: string) {
     this.drag.handleDragOver(event, boardId);

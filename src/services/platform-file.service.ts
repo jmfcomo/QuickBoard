@@ -76,20 +76,6 @@ export class PlatformFileService {
     }
     const base64 = btoa(binary);
 
-    // Write to a temporary cache location first
-    const tmpPath = `tmp_${fileName}`;
-    await Filesystem.writeFile({
-      path: tmpPath,
-      data: base64,
-      directory: Directory.Cache,
-    });
-
-    // Get the URI so we can share it
-    const { uri } = await Filesystem.getUri({
-      path: tmpPath,
-      directory: Directory.Cache,
-    });
-
     try {
       // On Android, we can attempt to save to the Documents folder directly
       // using the Filesystem API. This avoids the share sheet requirement.
@@ -104,12 +90,34 @@ export class PlatformFileService {
       window.alert(`Saved to Documents/${fileName}`);
     } catch (e) {
       console.warn('Direct file save failed, falling back to share sheet', e);
-      // Let the OS share sheet handle where to save it as a fallback
-      await Share.share({
-        title: `Save ${fileName}`,
-        url: uri,
-        dialogTitle: `Save ${fileName}`,
+
+      const tmpPath = `tmp_${fileName}`;
+      await Filesystem.writeFile({
+        path: tmpPath,
+        data: base64,
+        directory: Directory.Cache,
       });
+
+      const { uri } = await Filesystem.getUri({
+        path: tmpPath,
+        directory: Directory.Cache,
+      });
+
+      // Let the OS share sheet handle where to save it as a fallback
+      try {
+        await Share.share({
+          title: `Save ${fileName}`,
+          url: uri,
+          dialogTitle: `Save ${fileName}`,
+        });
+      } finally {
+        await Filesystem.deleteFile({
+          path: tmpPath,
+          directory: Directory.Cache,
+        }).catch((deleteError) => {
+          console.warn('Failed to cleanup temporary shared file', deleteError);
+        });
+      }
     }
   }
 

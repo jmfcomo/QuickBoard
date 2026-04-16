@@ -84,30 +84,11 @@ export class TimelineDrag {
   handleDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    this.applyDropFromCurrentState();
+  }
 
-    const draggedBoardId = this.draggingBoardId();
-    if (!draggedBoardId) {
-      this.resetDragState();
-      return;
-    }
-
-    const insertIndex = this.dragInsertIndex();
-    const startIndex = this.dragStartIndex;
-
-    if (insertIndex !== -1 && startIndex !== -1) {
-      let targetIndex = insertIndex;
-
-      if (startIndex < insertIndex) {
-        targetIndex = insertIndex - 1;
-      }
-
-      if (targetIndex !== startIndex) {
-        this.store.reorderBoards(startIndex, targetIndex);
-        this.actions.recordReorder(startIndex, targetIndex);
-      }
-    }
-
-    this.resetDragState();
+  isTouchDragInProgress(): boolean {
+    return this.longPressTimer !== null || this.isLongPressActivated || !!this.draggingBoardId();
   }
 
   handleDragEnd(event: DragEvent): void {
@@ -182,8 +163,7 @@ export class TimelineDrag {
     this.longPressTimer = null;
 
     if (this.isLongPressActivated && this.draggingBoardId()) {
-      const mockEvent = new DragEvent('drop', { cancelable: true });
-      this.handleDrop(mockEvent);
+      this.applyDropFromCurrentState();
     } else {
       this.resetDragState();
     }
@@ -196,6 +176,32 @@ export class TimelineDrag {
     this.dragOverBoardId.set(null);
     this.dragInsertIndex.set(-1);
     this.dragStartIndex = -1;
+  }
+
+  private applyDropFromCurrentState(): void {
+    const draggedBoardId = this.draggingBoardId();
+    if (!draggedBoardId) {
+      this.resetDragState();
+      return;
+    }
+
+    const insertIndex = this.dragInsertIndex();
+    const startIndex = this.dragStartIndex;
+
+    if (insertIndex !== -1 && startIndex !== -1) {
+      let targetIndex = insertIndex;
+
+      if (startIndex < insertIndex) {
+        targetIndex = insertIndex - 1;
+      }
+
+      if (targetIndex !== startIndex) {
+        this.store.reorderBoards(startIndex, targetIndex);
+        this.actions.recordReorder(startIndex, targetIndex);
+      }
+    }
+
+    this.resetDragState();
   }
 
   shouldShowSpaceBefore(boardIndex: number): boolean {
