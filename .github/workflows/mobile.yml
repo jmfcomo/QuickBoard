@@ -45,6 +45,9 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Generate Android icons
+        run: npx @capacitor/assets generate --android --assetPath branding/capacitor
+
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
