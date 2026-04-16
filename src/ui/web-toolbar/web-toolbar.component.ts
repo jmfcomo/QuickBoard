@@ -44,7 +44,7 @@ export class WebToolbarComponent {
 
   async triggerMobileSaveAs(): Promise<void> {
     const isModernWeb = !window.quickboard && 'showSaveFilePicker' in window;
-    
+
     if (isModernWeb) {
       // Modern browsers handle the naming/location via the native Save As dialog already
       await this.triggerMobileSave();
@@ -53,7 +53,7 @@ export class WebToolbarComponent {
 
     const newName = window.prompt(
       'Enter file name without extension:',
-      this.exportIpc.defaultPrefix() || 'project',
+      this.exportIpc.defaultPrefix() || 'project'
     );
     if (newName) {
       this.exportIpc.setProjectName(newName);

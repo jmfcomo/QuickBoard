@@ -49,7 +49,7 @@ export class SbdService {
         (track: { id: string; name: string; url: string }) => {
           const ext = track.name.includes('.') ? track.name.split('.').pop() : 'audio';
           return { ...track, url: `audio/${track.id}.${ext}` };
-        },
+        }
       );
     }
     if (Array.isArray(rawJson.boards)) {
@@ -100,7 +100,7 @@ export class SbdService {
                     }
                   }
                   return shape;
-                }),
+                })
               );
             }
 
@@ -108,8 +108,8 @@ export class SbdService {
               ...board,
               previewUrl: previewExtUrl,
             };
-          },
-        ),
+          }
+        )
       );
     }
     zip.file('project.json', JSON.stringify(rawJson, null, 2));
@@ -188,11 +188,11 @@ export class SbdService {
                     }
                   }
                   return shape;
-                }),
+                })
               );
             }
-          },
-        ),
+          }
+        )
       );
     }
 
@@ -210,7 +210,7 @@ export class SbdService {
         const ext = track.url.split('.').pop() ?? 'audio';
         const mime = MIME_TYPES[ext] ?? 'audio/mpeg';
         blobMap.set(track.id, new Blob([arrayBuffer], { type: mime }));
-      }),
+      })
     );
 
     // Restore store state then reload Tone.js players from the extracted blobs.

@@ -161,7 +161,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             this.lc,
             this.currentBoardId,
             this.currentBoardId,
-            true,
+            true
           );
           this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
           this._canvasDirty = false;
@@ -281,7 +281,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           this.canvasUndoRedo.markStrokeStart(this.lc);
         }
       },
-      { capture: true },
+      { capture: true }
     );
 
     ensureSquareBrushShapeRegistered();
@@ -352,8 +352,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
             id,
             this.currentBoardId,
             include,
-            options,
-          ),
+            options
+          )
         );
       }
     });
@@ -380,8 +380,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       new ZoomTool(
         this.lc,
         (deltaLevel, point) => this.viewport.adjustZoomLevel(deltaLevel, point),
-        this.viewport.getClickZoomStep(),
-      ),
+        this.viewport.getClickZoomStep()
+      )
     );
 
     const objectEraser = this.canvasUndoRedo.instrumentObjectEraser(
@@ -392,8 +392,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
           id,
           this.currentBoardId,
           include,
-          options,
-        ),
+          options
+        )
     );
     this.toolInstances.set('object-eraser', objectEraser);
 
@@ -405,7 +405,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     // Apply default stroke size to all tools that support it; object-eraser is fixed at 1
     this.toolInstances.forEach((tool, id) => {
       if (tool.strokeWidth !== undefined) {
-        tool.strokeWidth = id === 'object-eraser' ? 1 : (this.toolSizeMap()[id] ?? 5);
+        tool.strokeWidth = id === 'object-eraser' ? 1 : this.toolSizeMap()[id] ?? 5;
       }
     });
 
@@ -697,7 +697,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.lc,
         boardIdAtClear,
         this.currentBoardId,
-        true,
+        true
       );
     }
 
@@ -770,7 +770,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.lc,
         this.currentBoardId,
         this.currentBoardId,
-        true,
+        true
       );
     }
   }
@@ -787,7 +787,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.lc,
         this.currentBoardId,
         this.currentBoardId,
-        true,
+        true
       );
     }
   }
