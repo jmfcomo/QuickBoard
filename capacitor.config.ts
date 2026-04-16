@@ -1,7 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.quickboard.app',
+  appId: 'com.SavannahWalters.QuickBoard',
+  //okay this obviously isn't ideal but this is what Apple is looking for during builds
   appName: 'QuickBoard',
   webDir: 'dist/browser',
   server: {
