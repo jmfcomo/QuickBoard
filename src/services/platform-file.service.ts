@@ -90,12 +90,27 @@ export class PlatformFileService {
       directory: Directory.Cache,
     });
 
-    // Let the OS share sheet handle where to save it
-    await Share.share({
-      title: `Save ${fileName}`,
-      url: uri,
-      dialogTitle: `Save ${fileName}`,
-    });
+    try {
+      // On Android, we can attempt to save to the Documents folder directly
+      // using the Filesystem API. This avoids the share sheet requirement.
+      await Filesystem.writeFile({
+        path: fileName,
+        data: base64,
+        directory: Directory.Documents,
+        recursive: true
+      });
+      
+      // If we made it here, notify the user where it was saved
+      window.alert(`Saved to Documents/${fileName}`);
+    } catch (e) {
+      console.warn('Direct file save failed, falling back to share sheet', e);
+      // Let the OS share sheet handle where to save it as a fallback
+      await Share.share({
+        title: `Save ${fileName}`,
+        url: uri,
+        dialogTitle: `Save ${fileName}`,
+      });
+    }
   }
 
   private async saveWeb(data: Uint8Array, fileName: string): Promise<void> {
