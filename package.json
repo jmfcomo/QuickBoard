@@ -94,29 +94,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "QuickBoard"
     },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "branding/QuickBoard_icon_macOSLegacy.icns",
-      "category": "public.app-category.productivity",
-      "extraResources": [
-        {
-          "from": "branding/QuickBoard_icon_macOS.icon",
-          "to": "QuickBoard_icon_macOS.icon"
-        }
-      ]
-    },
-    "dmg": {
-      "artifactName": "quickboard-mac-${arch}.${ext}",
-      "writeUpdateInfo": false
-    },
     "linux": {
       "target": [
         {
@@ -175,10 +152,10 @@
     "@angular/build": "^21.1.1",
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
-    "@capacitor/android": "^6.2.0",
-    "@capacitor/cli": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
-    "@capacitor/ios": "^6.2.0",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@electron/packager": "^19.1.0",
     "@types/node": "^25.2.0",
     "angular-eslint": "21.1.0",

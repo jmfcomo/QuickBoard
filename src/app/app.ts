@@ -50,6 +50,7 @@ import { NativeToolbarService } from '../services/native-toolbar.service';
 })
 export class App implements OnInit, OnDestroy {
   protected readonly title = signal('QuickBoard');
+  protected readonly isCanvasFullscreen = signal(false);
   protected readonly saveService = inject(SaveService);
   protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
@@ -118,6 +119,13 @@ export class App implements OnInit, OnDestroy {
 
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  toggleCanvasFullscreen(): void {
+    this.isCanvasFullscreen.update((fullscreen) => !fullscreen);
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
   }
 
   private isEditableTarget(event: KeyboardEvent): boolean {

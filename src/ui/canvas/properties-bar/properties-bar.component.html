@@ -1,5 +1,41 @@
 <div class="properties-bar">
   <div class="properties-context">
+    @if (showZoomLevel()) {
+      <div class="property-group">
+        <span class="property-label">Zoom</span>
+        <input
+          type="range" min="0" max="100" step="1"
+          [value]="zoomLevelSliderPos()"
+          (input)="zoomLevelFromSliderChange.emit(+$any($event.target).value)"
+          [style.--percent]="zoomLevelSliderPos() + '%'"
+          class="property-slider"
+        >
+        <div class="number-input-wrapper">
+          <input
+            type="number" min="1" max="1000"
+            [value]="zoomLevel()"
+            (change)="zoomLevelChange.emit(+$any($event.target).value)"
+            class="property-number"
+          >
+          <div class="number-steppers">
+            <button class="stepper-btn up" (click)="zoomLevelChange.emit(zoomLevel() + 1)" tabindex="-1" aria-label="Increase"></button>
+            <button class="stepper-btn down" (click)="zoomLevelChange.emit(zoomLevel() - 1)" tabindex="-1" aria-label="Decrease"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="property-group">
+        <label class="property-checkbox-label">
+          <input
+            type="checkbox"
+            class="property-checkbox"
+            [checked]="zoomKeepOn()"
+            (change)="zoomKeepOnChange.emit($any($event.target).checked)"
+          >
+          <span class="property-label">Keep On</span>
+        </label>
+      </div>
+    }
     @if (showStrokeSize()) {
       <div class="property-group">
         <span class="property-label">{{ propertyLabel() }}</span>
@@ -73,20 +109,22 @@
       </div>
     }
   </div>
-  <div class="properties-colors">
-    @for (picker of colorPickers(); track picker.label) {
-      <div class="color-section">
-        <span class="color-label">{{ picker.label }}</span>
-        <div class="color-picker-container">
-          <input type="color" [value]="picker.signal()" (input)="picker.setter($any($event.target).value)" class="color-input">
-          <div class="color-preview" [class.transparent-checker]="picker.signal() === 'transparent'" [style.background-color]="picker.signal()"></div>
+  @if (showColorPickers()) {
+    <div class="properties-colors">
+      @for (picker of colorPickers(); track picker.label) {
+        <div class="color-section">
+          <span class="color-label">{{ picker.label }}</span>
+          <div class="color-picker-container">
+            <input type="color" [value]="picker.signal()" (input)="picker.setter($any($event.target).value)" class="color-input">
+            <div class="color-preview" [class.transparent-checker]="picker.signal() === 'transparent'" [style.background-color]="picker.signal()"></div>
+          </div>
+          <div class="quick-colors">
+            @for (color of picker.quickColors; track color) {
+              <button (click)="picker.setter(color)" class="quick-color-btn" [class.transparent-checker]="color === 'transparent'" [style.background-color]="color === 'transparent' ? null : color" [attr.aria-label]="picker.label + ': ' + color" type="button"></button>
+            }
+          </div>
         </div>
-        <div class="quick-colors">
-          @for (color of picker.quickColors; track color) {
-            <button (click)="picker.setter(color)" class="quick-color-btn" [class.transparent-checker]="color === 'transparent'" [style.background-color]="color === 'transparent' ? null : color" [attr.aria-label]="picker.label + ': ' + color" type="button"></button>
-          }
-        </div>
-      </div>
-    }
-  </div>
+      }
+    </div>
+  }
 </div>

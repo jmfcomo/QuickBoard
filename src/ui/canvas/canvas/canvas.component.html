@@ -1,9 +1,14 @@
 <app-properties-bar
   [activeTool]="activeTool()"
+  [zoomLevel]="canvasZoomLevel()"
+  [zoomKeepOn]="isZoomKeepOn()"
   [strokeSize]="strokeSize()"
   [brushSpacing]="brushSpacing()"
   [colorTolerance]="colorTolerance()"
   [colorPickers]="colorPickers"
+  (zoomLevelChange)="setCanvasZoomLevel($event)"
+  (zoomLevelFromSliderChange)="setCanvasZoomLevelFromSlider($event)"
+  (zoomKeepOnChange)="setZoomKeepOn($event)"
   (strokeSizeChange)="setStrokeSize($event)"
   (strokeSizeFromSliderChange)="setStrokeSizeFromSlider($event)"
   (brushSpacingChange)="setBrushSpacing($event)"
@@ -12,9 +17,11 @@
 <div class="canvas-container">
   <app-tools-bar
     [activeTool]="activeTool()"
+    [isCanvasFullscreen]="isCanvasFullscreen()"
     (toolSelected)="setTool($event)"
     (imageSelected)="handleImageFile($event)"
     (clearCanvasRequested)="requestClearCanvas()"
+    (canvasFullscreenToggled)="toggleCanvasFullscreen()"
   ></app-tools-bar>
   <div class="canvas-right">
     <div class="canvas-stage" #canvasStage (dragover)="onDragOver($event)" (drop)="onDrop($event)">

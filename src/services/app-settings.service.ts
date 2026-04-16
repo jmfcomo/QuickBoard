@@ -34,6 +34,8 @@ export interface AppSettings {
     defaultFillColor: string;
     defaultBackgroundColor: string;
     defaultTool: string;
+    zoomKeepOn?: boolean;
+    zoomClickStep?: number;
     showClearCanvasWarning: boolean;
   };
   timeline: {

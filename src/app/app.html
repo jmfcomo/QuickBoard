@@ -1,5 +1,5 @@
 @if (!dialogMode()) {
-  <div class="app">
+  <div class="app" [class.canvas-fullscreen]="isCanvasFullscreen()">
     <!-- Non-Electron Toolbar -->
     @if (showWebToolbar) {
       <app-web-toolbar />
@@ -9,18 +9,25 @@
       {{ saveService.saveStatus() }}
     </div>
     <div class="editors">
-      <app-canvas></app-canvas>
-      <app-script></app-script>
+      <app-canvas
+        [isCanvasFullscreen]="isCanvasFullscreen()"
+        (canvasFullscreenToggled)="toggleCanvasFullscreen()"
+      ></app-canvas>
+      @if (!isCanvasFullscreen()) {
+        <app-script></app-script>
+      }
     </div>
-    <button
-      type="button"
-      class="resize-handle"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Resize timeline"
-      (mousedown)="onResizeMouseDown($event)"
-    ></button>
-    <app-timeline></app-timeline>
+    @if (!isCanvasFullscreen()) {
+      <button
+        type="button"
+        class="resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize timeline"
+        (mousedown)="onResizeMouseDown($event)"
+      ></button>
+      <app-timeline></app-timeline>
+    }
   </div>
 
   <app-export-settings

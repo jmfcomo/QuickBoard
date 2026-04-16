@@ -88,18 +88,48 @@
       </button>
     }
 
-    <div class="separator"></div>
+    <div class="bottom-tools">
+      <div class="separator"></div>
 
-    <button
-      class="tool-button"
-      type="button"
-      (click)="requestClearCanvas()"
-      (mouseenter)="showTooltip($event, 'Clear Canvas')"
-      (mouseleave)="hideTooltip()"
-      aria-label="Clear Canvas"
-    >
-      🗑️
-    </button>
+      <button
+        class="tool-button"
+        type="button"
+        (click)="requestClearCanvas()"
+        (mouseenter)="showTooltip($event, 'Clear Canvas')"
+        (mouseleave)="hideTooltip()"
+        aria-label="Clear Canvas"
+      >
+        🗑️
+      </button>
+
+      <button
+        class="tool-button"
+        [class.active]="activeTool() === 'zoom'"
+        type="button"
+        (click)="toolSelected.emit('zoom')"
+        (mouseenter)="showTooltip($event, 'Zoom')"
+        (mouseleave)="hideTooltip()"
+        aria-label="Zoom"
+      >
+        🔍
+      </button>
+
+      <button
+        class="tool-button"
+        [class.active]="isCanvasFullscreen()"
+        type="button"
+        (click)="toggleCanvasFullscreen()"
+        (mouseenter)="showTooltip($event, isCanvasFullscreen() ? 'Exit Full Screen Canvas' : 'Full Screen Canvas')"
+        (mouseleave)="hideTooltip()"
+        [attr.aria-label]="isCanvasFullscreen() ? 'Exit Full Screen Canvas' : 'Full Screen Canvas'"
+        [attr.aria-pressed]="isCanvasFullscreen()"
+      >
+        <span class="fullscreen-toggle-icon" [class.exit-icon]="isCanvasFullscreen()" aria-hidden="true">
+          <span class="triangle triangle-a"></span>
+          <span class="triangle triangle-b"></span>
+        </span>
+      </button>
+    </div>
   </div>
 
   @if (openToolSubmenu()) {
