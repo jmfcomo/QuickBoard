@@ -97,9 +97,9 @@ export class PlatformFileService {
         path: fileName,
         data: base64,
         directory: Directory.Documents,
-        recursive: true
+        recursive: true,
       });
-      
+
       // If we made it here, notify the user where it was saved
       window.alert(`Saved to Documents/${fileName}`);
     } catch (e) {
