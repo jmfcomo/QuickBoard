@@ -2,15 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>method</key>
-    <string>app-store</string>
-    <key>teamID</key>
-    <string>KN5LT5X435</string>
-    <key>compileBitcode</key>
-    <false/>
-    <key>uploadBitcode</key>
-    <false/>
-    <key>uploadSymbols</key>
-    <true/>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>KN5LT5X435</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.SavannahWalters.QuickBoard</key>
+		<string>QuickBoard Distribution (App Store & TestFlight)</string>
+	</dict>
 </dict>
 </plist>
