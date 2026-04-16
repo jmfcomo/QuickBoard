@@ -10,11 +10,7 @@
 /release
 
 # Capacitor
-/android
-/ios
-*.apk
-*.aab
-*.ipa
+
 
 # Node
 /node_modules
