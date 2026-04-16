@@ -11,7 +11,7 @@
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.SavannahWalters.QuickBoard</key>
-		<string>QuickBoard Distribution (App Store & TestFlight)</string>
+		<string>QuickBoard Distribution (App Store &amp; TestFlight)</string>
 	</dict>
 </dict>
 </plist>
