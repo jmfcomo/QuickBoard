@@ -1,4 +1,4 @@
-<div class="mobile-toolbar">
+﻿<div class="mobile-toolbar">
   <div class="menu-dropdown-container">
     <button class="menu-root-btn" (click)="toggleMenu('file', $event)">File</button>
     @if (activeMenu() === 'file') {
@@ -10,6 +10,8 @@
           <div class="menu-separator"></div>
           <button (click)="triggerMobileExport(); closeMenu()">Export...</button>
         }
+        <div class="menu-separator"></div>
+        <button (click)="triggerSettings(); closeMenu()">Settings</button>
       </div>
     }
   </div>
@@ -27,12 +29,12 @@
     @if (activeMenu() === 'view') {
       <div class="menu-dropdown">
         <div class="menu-label">Appearance</div>
-        <button (click)="setTheme('system'); closeMenu()">System</button>
-        <button (click)="setTheme('white'); closeMenu()">White</button>
-        <button (click)="setTheme('light'); closeMenu()">Light</button>
-        <button (click)="setTheme('sepia'); closeMenu()">Sepia</button>
-        <button (click)="setTheme('dark'); closeMenu()">Dark</button>
-        <button (click)="setTheme('black'); closeMenu()">Black</button>
+        <button (click)="setTheme('system'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'system' ? 'visible' : 'hidden'">&#10003;</span> System</button>
+        <button (click)="setTheme('white'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'white' ? 'visible' : 'hidden'">&#10003;</span> White</button>
+        <button (click)="setTheme('light'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'light' ? 'visible' : 'hidden'">&#10003;</span> Light</button>
+        <button (click)="setTheme('sepia'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'sepia' ? 'visible' : 'hidden'">&#10003;</span> Sepia</button>
+        <button (click)="setTheme('dark'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'dark' ? 'visible' : 'hidden'">&#10003;</span> Dark</button>
+        <button (click)="setTheme('black'); closeMenu()"><span class="check" [style.visibility]="currentTheme() === 'black' ? 'visible' : 'hidden'">&#10003;</span> Black</button>
       </div>
     }
   </div>

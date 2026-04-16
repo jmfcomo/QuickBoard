@@ -21,6 +21,7 @@ export class WebToolbarComponent {
 
   readonly activeMenu = signal<string | null>(null);
   readonly isElectron = !!window.quickboard;
+  readonly currentTheme = this.themeService.currentTheme;
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
@@ -63,9 +64,7 @@ export class WebToolbarComponent {
   }
 
   triggerMobileAbout(): void {
-    window.alert(
-      'QuickBoard\nA simple, web-based digital whiteboard for rough animation and sketching.',
-    );
+    window.open('?dialog=about', '_blank', 'width=320,height=260');
   }
 
   async triggerMobileSave(): Promise<void> {
@@ -138,5 +137,9 @@ export class WebToolbarComponent {
     const list = this.sbd['store'].boards();
     this.exportIpc.settingsBoardCount.set(list.length);
     this.exportIpc.settingsVisible.set(true);
+  }
+
+  triggerSettings(): void {
+    window.open('?dialog=settings', '_blank', 'width=750,height=700');
   }
 }

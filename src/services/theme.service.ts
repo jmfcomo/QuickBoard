@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { appSettings } from 'src/settings-loader';
 
 type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
@@ -8,6 +8,8 @@ export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'qb-theme';
   private mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   private lastCustomThemeSent: Theme | null | undefined;
+  
+  readonly currentTheme = signal<Theme>('system');
 
   initTheme(): () => void {
     const storedTheme = this.getStoredTheme();
@@ -43,6 +45,7 @@ export class ThemeService {
   applyTheme(source: Theme): void {
     const root = document.documentElement;
     localStorage.setItem(this.THEME_STORAGE_KEY, source);
+    this.currentTheme.set(source);
 
     const customTheme = source === 'system' ? null : source;
     if (customTheme !== this.lastCustomThemeSent) {
