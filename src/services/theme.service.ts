@@ -8,7 +8,7 @@ export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'qb-theme';
   private mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   private lastCustomThemeSent: Theme | null | undefined;
-  
+
   readonly currentTheme = signal<Theme>('system');
 
   initTheme(): () => void {
@@ -55,7 +55,7 @@ export class ThemeService {
 
     let activeTheme = source;
     if (source === 'system') {
-      activeTheme = this.mediaQuery.matches 
+      activeTheme = this.mediaQuery.matches
         ? (appSettings.theme.systemDarkTheme as Theme)
         : (appSettings.theme.systemLightTheme as Theme);
     }
