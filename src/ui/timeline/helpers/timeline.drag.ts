@@ -136,7 +136,9 @@ export class TimelineDrag {
       const deltaX = Math.abs(touch.clientX - this.touchStartX);
       const deltaY = Math.abs(touch.clientY - this.touchStartY);
       if (deltaX > 20 || deltaY > 20) {
-        clearTimeout(this.longPressTimer);
+        if (this.longPressTimer !== null) {
+          clearTimeout(this.longPressTimer);
+        }
         this.longPressTimer = null;
         this.resetDragState();
       }
@@ -174,7 +176,9 @@ export class TimelineDrag {
   }
 
   handleTouchEnd(): void {
-    clearTimeout(this.longPressTimer);
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+    }
     this.longPressTimer = null;
 
     if (this.isLongPressActivated && this.draggingBoardId()) {
