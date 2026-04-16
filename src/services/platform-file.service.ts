@@ -117,14 +117,14 @@ export class PlatformFileService {
     // Attempt File System Access API for native "Save As"
     if ('showSaveFilePicker' in window) {
       try {
-        const picker = (window as unknown as { 
-          showSaveFilePicker: (opts: unknown) => Promise<{ 
-            createWritable: () => Promise<{ 
-              write: (d: Uint8Array) => Promise<void>; 
-              close: () => Promise<void>; 
-            }> 
-          }> 
-        });
+        const picker = window as unknown as {
+          showSaveFilePicker: (opts: unknown) => Promise<{
+            createWritable: () => Promise<{
+              write: (d: Uint8Array) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+          }>;
+        };
         const handle = await picker.showSaveFilePicker({
           suggestedName: fileName,
           types: [
