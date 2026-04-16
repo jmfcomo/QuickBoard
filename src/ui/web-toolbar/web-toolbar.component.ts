@@ -81,8 +81,8 @@ export class WebToolbarComponent {
     try {
       // Trigger canvas persist before building the zip to ensure current board is saved
       const canvasComponent = document.querySelector('app-canvas');
-      if (canvasComponent && (canvasComponent as any).persistCurrentBoard) {
-        (canvasComponent as any).persistCurrentBoard();
+      if (canvasComponent && 'persistCurrentBoard' in canvasComponent) {
+        (canvasComponent as unknown as { persistCurrentBoard: () => void }).persistCurrentBoard();
       }
 
       const zipData = await this.sbd.buildSbdZip();

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 
 /**
@@ -117,7 +117,15 @@ export class PlatformFileService {
     // Attempt File System Access API for native "Save As"
     if ('showSaveFilePicker' in window) {
       try {
-        const handle = await (window as any).showSaveFilePicker({
+        const picker = (window as unknown as { 
+          showSaveFilePicker: (opts: unknown) => Promise<{ 
+            createWritable: () => Promise<{ 
+              write: (d: Uint8Array) => Promise<void>; 
+              close: () => Promise<void>; 
+            }> 
+          }> 
+        });
+        const handle = await picker.showSaveFilePicker({
           suggestedName: fileName,
           types: [
             {
@@ -138,7 +146,7 @@ export class PlatformFileService {
     }
 
     // Standard download fallback
-    const blob = new Blob([data as any], { type: 'application/octet-stream' });
+    const blob = new Blob([data as unknown as ArrayBuffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
