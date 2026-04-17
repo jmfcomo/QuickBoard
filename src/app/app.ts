@@ -28,6 +28,7 @@ import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 import { appSettings } from 'src/settings-loader';
 import { Capacitor } from '@capacitor/core';
 import { NativeToolbarService } from '../services/native-toolbar.service';
+import { AppShortcutsService } from 'src/services';
 
 @Component({
   selector: 'app-root',
@@ -70,6 +71,7 @@ export class App implements OnInit, OnDestroy {
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
   private settings = appSettings;
+  private readonly shortcuts = inject(AppShortcutsService);
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
@@ -150,8 +152,6 @@ export class App implements OnInit, OnDestroy {
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
 
-    const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
-
     if (key === 'escape' && this.exportIpc.settingsVisible()) {
       event.preventDefault();
       this.exportIpc.onSettingsCancel();
@@ -177,208 +177,11 @@ export class App implements OnInit, OnDestroy {
     }
 
     const ctrl = event.ctrlKey || event.metaKey;
-    // actions without ctrl/cmd key
+    // actions depending on ctrl/cmd key is active
     if (!ctrl) {
-      switch(key) {
-        case 's':
-          this.canvas()?.switchTools('select');
-          break;
-        case 'i': {
-          this.canvas()?.switchTools('image');
-          const input = this.canvas()?.document.createElement('input') as HTMLInputElement;
-          input.type = 'file';
-          input.accept = 'image/*';
-          input.onchange = (e: Event) => {
-            const target = e.target as HTMLInputElement;
-            if (target.files && target.files.length > 0) {
-              this.canvas()?.toolbar()?.imageSelected.emit(target.files[0]);
-            }
-          };
-          input.click();
-          break;
-        }
-        case 'd':
-          this.canvas()?.switchTools('pencil');
-          break;
-        case 'h':
-          this.canvas()?.switchTools('rectangle');
-          break;
-        case 'e':
-          this.canvas()?.switchTools('eraser');
-          break;
-        case 'f':
-          this.canvas()?.switchTools('bucket-fill');
-          break;
-        case 'enter': {
-          event.preventDefault();
-          if(this.canvas()?.toolbar()?.isDrawToolActive()) {
-            const option = this.canvas()?.toolbar()?.selectedDrawToolOption();
-            if(option?.id === 'pencil') {
-              this.canvas()?.switchTools('brush');
-            } else {
-              this.canvas()?.switchTools('pencil');
-            }
-          } else if (this.canvas()?.toolbar()?.isEditToolActive()) {
-            const option = this.canvas()?.toolbar()?.selectedEditToolOption();
-            if(option?.id === 'select') {
-              this.canvas()?.switchTools('image');
-              this.canvas()?.toolbar()?.onActiveSubmenuSelect('image');
-            } else {
-              this.canvas()?.switchTools('select');
-            }
-          } else if (this.canvas()?.toolbar()?.isShapeToolActive()) {
-            const option = this.canvas()?.toolbar()?.selectedShapeTool();
-            switch(option?.id) {
-              case 'rectangle':
-                this.canvas()?.switchTools('circle');
-                break;
-              case 'circle':
-                this.canvas()?.switchTools('polygon');
-                break;
-              default:
-                this.canvas()?.switchTools('rectangle');
-            }
-          } else if (this.canvas()?.toolbar()?.isEraserToolActive()){
-            const option = this.canvas()?.toolbar()?.selectedEraserToolOption();
-            if(option?.id === 'eraser') {
-              this.canvas()?.switchTools('object-eraser');
-            } else {
-              this.canvas()?.switchTools('eraser');
-            }
-          } else if (this.canvas()?.activeTool() === 'zoom') {
-            const zoomCenter = this.canvas()?.lc?.canvas?.getBoundingClientRect
-              ? (() => {
-                  const rect = this.canvas()?.lc!.canvas.getBoundingClientRect();
-                  return { x: (rect as DOMRect).left + (rect as DOMRect).width / 2, y: (rect as DOMRect).top + (rect as DOMRect).height / 2 };
-                })()
-              : { x: this.canvas()?.canvasContainer().nativeElement.offsetLeft as number + (this.canvas()?.canvasContainer().nativeElement.offsetWidth as number) / 2, 
-                y: this.canvas()?.canvasContainer().nativeElement.offsetTop as number + (this.canvas()?.canvasContainer().nativeElement.offsetHeight as number) / 2  };
-
-            if (event.shiftKey) {
-              this.canvas()?.viewport.adjustZoomLevel(-(this.canvas()?.viewport.getClickZoomStep() as number), zoomCenter);
-            } else {
-              this.canvas()?.viewport.adjustZoomLevel(this.canvas()?.viewport.getClickZoomStep() as number, zoomCenter);
-            }
-          }
-          break;
-        }
-        case 'tab': {
-          event.preventDefault();
-          if(this.canvas()?.toolbar()?.isDrawToolActive()) {
-            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedShapeTool()?.id as string);
-          } else if (this.canvas()?.toolbar()?.isShapeToolActive()) {
-            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedEraserToolOption()?.id as string);
-          } else if (this.canvas()?.toolbar()?.isEraserToolActive()) {
-            this.canvas()?.switchTools('bucket-fill');
-          } else if (this.canvas()?.toolbar()?.isEditToolActive()) {
-            this.canvas()?.switchTools(this.canvas()?.toolbar()?.selectedDrawToolOption()?.id as string);
-          } else if (this.canvas()?.activeTool() === 'bucket-fill') {
-            this.canvas()?.switchTools('zoom');
-          } else if (this.canvas()?.activeTool() === 'zoom') {
-            this.canvas()?.switchTools('select'); 
-          }
-          break;
-        } 
-        case '.': {
-          const nextBoardIndex = Math.min(this.store.boards().length - 1,currentIndex + 1);
-          const nextBoardID = this.store.boards()[nextBoardIndex].id;
-          this.store.setCurrentBoard(nextBoardID);
-          break;
-        }
-        case ',': {
-          const prevBoardIndex = Math.max(0,currentIndex - 1);
-          const prevBoardID = this.store.boards()[prevBoardIndex].id;
-          this.store.setCurrentBoard(prevBoardID);
-          break;
-        }
-        case 'arrowright': {
-          event.preventDefault();
-          this.store.setCurrentTime(this.store.currentTime() + 1);
-          this.playback.seek(this.store.currentTime());
-          break;
-        }
-        case 'arrowleft': {
-          event.preventDefault();
-          this.store.setCurrentTime(this.store.currentTime() - 1);
-          this.playback.seek(this.store.currentTime());
-          break;
-        }
-        default:
-          return;
-      }
+      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent);
     } else {
-      // actions with ctrl/cmd key
-      event.preventDefault();
-      switch (key) {
-        case 'z': {
-          if (event.shiftKey) {
-            // Redo
-            this.undoRedo.triggerRedo();
-          } else {
-            // Undo
-            this.undoRedo.triggerUndo();
-          }
-          break;
-        }
-        case 'y': {
-          this.undoRedo.triggerRedo();
-          break;
-        }
-        case 'n': {
-          if (event.shiftKey) {
-            // Add Lane
-            this.store.addAudioLane();
-          } else {
-            // Add Board
-            this.store.addBoard();
-          }
-          break;
-        }
-        case 'd': {
-          const currentBoardId = this.store.currentBoardId();
-          if (currentBoardId) {
-            this.actions.duplicateBoard(currentBoardId);
-          }
-          break;
-        }
-        case 'backspace': {
-          if (event.shiftKey) {
-            this.canvas()?.requestClearCanvas();
-          } else {
-            const currentBoardId = this.store.currentBoardId();
-            if (currentBoardId) {
-              this.actions.deleteBoard(currentBoardId);
-            }
-          }
-          break;
-        }
-        case 's': {
-          if (event.shiftKey) {
-            window.quickboard?.requestSaveAs();
-          } else {
-            window.quickboard?.requestSave();
-          }
-          break;
-        }
-        case 'o': 
-          window.quickboard?.loadIn();
-          break;
-        case 'e':
-          window.quickboard?.requestExport();
-          break;
-        case '.': {
-            const lastBoard = this.store.boards()[this.store.boards().length - 1].id;
-            this.store.setCurrentBoard(lastBoard);
-            break;
-          }
-        case ',': {
-            const firstBoard = this.store.boards()[0].id;
-            this.store.setCurrentBoard(firstBoard);
-            break;
-        }
-        default:
-          return;
-      };
+      this.shortcuts.onCtrlKeyShortcuts(event, this.canvas() as CanvasComponent);
     }
   }
 
