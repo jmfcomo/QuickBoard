@@ -179,9 +179,9 @@ export class App implements OnInit, OnDestroy {
     const ctrl = event.ctrlKey || event.metaKey;
     // actions depending on ctrl/cmd key is active
     if (!ctrl) {
-      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent);
+      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
     } else {
-      this.shortcuts.onCtrlKeyShortcuts(event, this.canvas() as CanvasComponent);
+      this.shortcuts.onCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
     }
   }
 

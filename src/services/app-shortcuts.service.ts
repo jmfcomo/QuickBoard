@@ -13,8 +13,8 @@ export class AppShortcutsService {
     private readonly undoRedo = inject(UndoRedoService);
     private readonly actions = inject(TimelineActions);
 
-    onNotCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent) {
-        const key = event.key;
+    onNotCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent, shift: boolean) {
+        const key = event.key.toLowerCase();
         const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
 
         event.preventDefault();
@@ -48,7 +48,7 @@ export class AppShortcutsService {
           case 'f':
             canvas.switchTools('bucket-fill');
             break;
-          case 'Enter': {
+          case 'enter': {
             event.preventDefault();
             if(canvas.toolbar()?.isDrawToolActive()) {
               const option = canvas.toolbar()?.selectedDrawToolOption();
@@ -93,7 +93,7 @@ export class AppShortcutsService {
                 : { x: canvas.canvasContainer().nativeElement.offsetLeft as number + (canvas.canvasContainer().nativeElement.offsetWidth as number) / 2, 
                   y: canvas.canvasContainer().nativeElement.offsetTop as number + (canvas.canvasContainer().nativeElement.offsetHeight as number) / 2  };
 
-              if (event.shiftKey) {
+              if (shift) {
                 canvas.viewport.adjustZoomLevel(-(canvas.viewport.getClickZoomStep() as number), zoomCenter);
               } else {
                 canvas.viewport.adjustZoomLevel(canvas.viewport.getClickZoomStep() as number, zoomCenter);
@@ -101,7 +101,7 @@ export class AppShortcutsService {
             }
             break;
           }
-          case 'Tab': {
+          case 'tab': {
             event.preventDefault();
             if(canvas.toolbar()?.isDrawToolActive()) {
               canvas.switchTools(canvas.toolbar()?.selectedShapeTool()?.id as string);
@@ -130,13 +130,13 @@ export class AppShortcutsService {
             this.store.setCurrentBoard(prevBoardID);
             break;
           }
-          case 'ArrowRight': {
+          case 'arrowright': {
             event.preventDefault();
             this.store.setCurrentTime(this.store.currentTime() + 1);
             this.playback.seek(this.store.currentTime());
             break;
           }
-          case 'ArrowLeft': {
+          case 'arrowleft': {
             event.preventDefault();
             this.store.setCurrentTime(this.store.currentTime() - 1);
             this.playback.seek(this.store.currentTime());
@@ -147,31 +147,29 @@ export class AppShortcutsService {
           }
     }
 
-    onCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent) {
+    onCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent, shift: boolean) {
       // actions with ctrl/cmd key
-      const key = event.key;
+      const key = event.key.toLowerCase();
+
       event.preventDefault();
       switch (key) {
         case 'z': {
-          if (event.shiftKey) {
-            // Redo
+          if(shift) {
             this.undoRedo.triggerRedo();
+            break;
           } else {
-            // Undo
-            this.undoRedo.triggerUndo();
+            this.undoRedo.triggerUndo();          
+            break;
           }
-          break;
         }
         case 'y': {
           this.undoRedo.triggerRedo();
           break;
         }
         case 'n': {
-          if (event.shiftKey) {
-            // Add Lane
+          if (shift) {
             this.store.addAudioLane();
           } else {
-            // Add Board
             this.store.addBoard();
           }
           break;
@@ -184,7 +182,7 @@ export class AppShortcutsService {
           break;
         }
         case 'backspace': {
-          if (event.shiftKey) {
+          if (shift) {
             canvas.requestClearCanvas();
           } else {
             const currentBoardId = this.store.currentBoardId();
@@ -195,7 +193,7 @@ export class AppShortcutsService {
           break;
         }
         case 's': {
-          if (event.shiftKey) {
+          if (shift) {
             window.quickboard?.requestSaveAs();
           } else {
             window.quickboard?.requestSave();
