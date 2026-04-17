@@ -4,6 +4,7 @@ import { UndoRedoService } from '../../services/undo-redo.service';
 import { ExportIpcService } from '../../services/export-ipc.service';
 import { ThemeService } from '../../services/theme.service';
 import { SaveService } from '../../services/save.service';
+import { PlatformFileService } from '../../services/platform-file.service';
 
 @Component({
   standalone: true,
@@ -18,9 +19,11 @@ export class WebToolbarComponent {
   private readonly exportIpc = inject(ExportIpcService);
   private readonly themeService = inject(ThemeService);
   private readonly saveService = inject(SaveService);
+  private readonly platformFile = inject(PlatformFileService);
 
   readonly activeMenu = signal<string | null>(null);
   readonly isElectron = !!window.quickboard;
+  readonly currentTheme = this.themeService.currentTheme;
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
@@ -40,9 +43,17 @@ export class WebToolbarComponent {
   }
 
   async triggerMobileSaveAs(): Promise<void> {
+    const isModernWeb = !window.quickboard && 'showSaveFilePicker' in window;
+
+    if (isModernWeb) {
+      // Modern browsers handle the naming/location via the native Save As dialog already
+      await this.triggerMobileSave();
+      return;
+    }
+
     const newName = window.prompt(
       'Enter file name without extension:',
-      this.exportIpc.defaultPrefix() || 'project',
+      this.exportIpc.defaultPrefix() || 'project'
     );
     if (newName) {
       this.exportIpc.setProjectName(newName);
@@ -63,21 +74,14 @@ export class WebToolbarComponent {
   }
 
   triggerMobileAbout(): void {
-    window.alert(
-      'QuickBoard\nA simple, web-based digital whiteboard for rough animation and sketching.',
-    );
+    window.open('?dialog=about', '_blank', 'width=320,height=260,noopener,noreferrer');
   }
 
   async triggerMobileSave(): Promise<void> {
     try {
       const zipData = await this.sbd.buildSbdZip();
-      const blob = new Blob([new Uint8Array(zipData)], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = (this.exportIpc.defaultPrefix() || 'project') + '.sbd';
-      a.click();
-      URL.revokeObjectURL(url);
+      const fileName = (this.exportIpc.defaultPrefix() || 'project') + '.sbd';
+      await this.platformFile.saveFile(zipData, fileName);
       this.saveService.saveStatus.set('Saved!');
       setTimeout(() => {
         if (this.saveService.saveStatus() === 'Saved!') {
@@ -90,53 +94,27 @@ export class WebToolbarComponent {
     }
   }
 
-  private readFileAsBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        if (typeof reader.result !== 'string') {
-          reject(new Error('Failed to read file as base64.'));
-          return;
-        }
-
-        const commaIndex = reader.result.indexOf(',');
-        if (commaIndex === -1) {
-          reject(new Error('Invalid file data.'));
-          return;
-        }
-
-        resolve(reader.result.slice(commaIndex + 1));
-      };
-
-      reader.onerror = () => {
-        reject(reader.error ?? new Error('Failed to read file.'));
-      };
-
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async triggerMobileLoad(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
+  async triggerLoad(): Promise<void> {
     try {
-      const base64 = await this.readFileAsBase64(file);
-      await this.sbd.loadSbdZip(base64);
+      const result = await this.platformFile.pickAndReadFile('.sbd');
+      if (!result) return;
+      await this.sbd.loadSbdZip(result.data);
       this.undoRedo.clear();
-      const stem = file.name.replace(/\.[^.]+$/, '');
+      const stem = result.name.replace(/\.[^.]+$/, '');
       if (stem) this.exportIpc.setProjectName(stem);
     } catch (e) {
       console.error('Load failed', e);
       window.alert('Failed to load file: ' + (e instanceof Error ? e.message : String(e)));
     }
-    input.value = '';
   }
 
   triggerMobileExport(): void {
     const list = this.sbd['store'].boards();
     this.exportIpc.settingsBoardCount.set(list.length);
     this.exportIpc.settingsVisible.set(true);
+  }
+
+  triggerSettings(): void {
+    window.open('?dialog=settings', '_blank', 'width=750,height=700,noopener,noreferrer');
   }
 }

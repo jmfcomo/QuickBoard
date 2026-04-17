@@ -1,6 +1,7 @@
 export { AppSettingsService } from './app-settings.service';
 export { AudioService } from './audio.service';
 export { ExportIpcService } from './export-ipc.service';
+export { PlatformFileService } from './platform-file.service';
 export { PlaybackService } from './playback.service';
 export { ThemeService } from './theme.service';
 export { UndoRedoService } from './undo-redo.service';

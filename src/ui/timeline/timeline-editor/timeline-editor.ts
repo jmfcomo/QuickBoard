@@ -25,6 +25,9 @@ import { TimelineControlsComponent } from '../timeline-controls/timeline-control
   host: {
     '(document:mousemove)': 'onMouseMove($event)',
     '(document:mouseup)': 'onMouseUp()',
+    '(document:touchmove)': 'onTouchMove($event)',
+    '(document:touchend)': 'onTouchEnd($event)',
+    '(document:touchcancel)': 'onTouchEnd($event)',
     '(wheel)': 'onWheel($event)',
   },
 })
@@ -47,6 +50,8 @@ export class TimelineEditor implements AfterViewInit {
   private animationStartRealTime = 0;
   private lastAnimationScale = 0;
   private lastAnimationTotalDuration = 0;
+  private initialPinchDistance = 0;
+  private isPinching = false;
 
   playheadPosition = computed(() => this.store.currentTime() * this.scale());
 
@@ -148,8 +153,8 @@ export class TimelineEditor implements AfterViewInit {
     });
   }
 
-  startScrub(event: MouseEvent) {
-    event.preventDefault();
+  startScrub(event: MouseEvent | TouchEvent) {
+    if (event.cancelable) event.preventDefault();
     this.wasPlaying = this.store.isPlaying();
     if (this.wasPlaying) {
       this.playback.pause();
@@ -164,8 +169,35 @@ export class TimelineEditor implements AfterViewInit {
     this.seekToMouse(event);
   }
 
-  onRulerClick(event: MouseEvent) {
-    event.preventDefault();
+  onTouchMove(event: TouchEvent) {
+    if (event.touches.length === 2 && !this.isScrubbing()) {
+      if (event.cancelable) event.preventDefault();
+      const dist = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY,
+      );
+      if (!this.isPinching) {
+        this.isPinching = true;
+        this.initialPinchDistance = dist;
+      } else {
+        const diff = dist - this.initialPinchDistance;
+        if (diff > 20) {
+          this.zoom.zoomIn();
+          this.initialPinchDistance = dist;
+        } else if (diff < -20) {
+          this.zoom.zoomOut();
+          this.initialPinchDistance = dist;
+        }
+      }
+      return;
+    }
+
+    if (!this.isScrubbing()) return;
+    this.seekToMouse(event);
+  }
+
+  onRulerClick(event: MouseEvent | TouchEvent) {
+    if (event.cancelable) event.preventDefault();
     this.seekToMouse(event);
   }
 
@@ -181,6 +213,13 @@ export class TimelineEditor implements AfterViewInit {
     }
   }
 
+  async onTouchEnd(event?: TouchEvent): Promise<void> {
+    if (event && event.touches.length < 2) {
+      this.isPinching = false;
+    }
+    await this.onMouseUp();
+  }
+
   onWheel(event: WheelEvent) {
     if (!event.shiftKey) return;
     event.preventDefault();
@@ -191,10 +230,11 @@ export class TimelineEditor implements AfterViewInit {
     }
   }
 
-  private seekToMouse(event: MouseEvent) {
+  private seekToMouse(event: MouseEvent | TouchEvent) {
     if (!this.timelineContent?.nativeElement) return;
     const rect = this.timelineContent.nativeElement.getBoundingClientRect();
-    const seconds = Math.max(0, (event.clientX - rect.left) / this.scale());
+    const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+    const seconds = Math.max(0, (clientX - rect.left) / this.scale());
     this.playback.seek(seconds);
   }
 
