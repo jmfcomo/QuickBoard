@@ -12,6 +12,12 @@ export class TimelineDrag {
   dragInsertIndex = signal<number>(-1);
   private dragStartIndex = -1;
 
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private isLongPressActivated = false;
+  readonly longPressDuration = 500;
+
   private readonly GAP_SIZE = 20; // pixels
 
   startDrag(event: DragEvent, boardId: string, boardIndex: number): void {
@@ -78,7 +84,101 @@ export class TimelineDrag {
   handleDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    this.applyDropFromCurrentState();
+  }
 
+  isTouchDragInProgress(): boolean {
+    return this.longPressTimer !== null || this.isLongPressActivated || !!this.draggingBoardId();
+  }
+
+  handleDragEnd(event: DragEvent): void {
+    event.preventDefault();
+    this.resetDragState();
+  }
+
+  // --- Touch specific implementation ---
+  startTouchDrag(event: TouchEvent, boardId: string, boardIndex: number): void {
+    const touch = event.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.dragStartIndex = boardIndex;
+    this.isLongPressActivated = false;
+
+    this.longPressTimer = setTimeout(() => {
+      this.isLongPressActivated = true;
+      this.draggingBoardId.set(boardId);
+      this.dragStartIndex = boardIndex;
+    }, this.longPressDuration);
+  }
+
+  handleTouchMove(event: TouchEvent): void {
+    if (!this.isLongPressActivated && this.longPressTimer !== null) {
+      const touch = event.touches[0];
+      const deltaX = Math.abs(touch.clientX - this.touchStartX);
+      const deltaY = Math.abs(touch.clientY - this.touchStartY);
+      if (deltaX > 20 || deltaY > 20) {
+        if (this.longPressTimer !== null) {
+          clearTimeout(this.longPressTimer);
+        }
+        this.longPressTimer = null;
+        this.resetDragState();
+      }
+      return;
+    }
+
+    if (!this.isLongPressActivated) return;
+
+    if (event.cancelable) event.preventDefault();
+
+    const touch = event.touches[0];
+    const draggedBoardId = this.draggingBoardId();
+    if (!draggedBoardId) return;
+
+    const boards = document.querySelectorAll('.timeline-board');
+    for (const board of Array.from(boards)) {
+      const rect = board.getBoundingClientRect();
+      if (touch.clientX >= rect.left && touch.clientX <= rect.right) {
+        const boardId = board.getAttribute('data-board-id');
+        if (boardId && boardId !== draggedBoardId) {
+          const boardCenterX = rect.left + rect.width / 2;
+          const targetIndex = this.store.boards().findIndex((b) => b.id === boardId);
+
+          if (targetIndex !== -1) {
+            const newInsertIndex = touch.clientX < boardCenterX ? targetIndex : targetIndex + 1;
+            if (this.dragInsertIndex() !== newInsertIndex) {
+              this.dragInsertIndex.set(newInsertIndex);
+              this.dragOverBoardId.set(boardId);
+            }
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  handleTouchEnd(): void {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+    }
+    this.longPressTimer = null;
+
+    if (this.isLongPressActivated && this.draggingBoardId()) {
+      this.applyDropFromCurrentState();
+    } else {
+      this.resetDragState();
+    }
+
+    this.isLongPressActivated = false;
+  }
+
+  private resetDragState(): void {
+    this.draggingBoardId.set(null);
+    this.dragOverBoardId.set(null);
+    this.dragInsertIndex.set(-1);
+    this.dragStartIndex = -1;
+  }
+
+  private applyDropFromCurrentState(): void {
     const draggedBoardId = this.draggingBoardId();
     if (!draggedBoardId) {
       this.resetDragState();
@@ -102,18 +202,6 @@ export class TimelineDrag {
     }
 
     this.resetDragState();
-  }
-
-  handleDragEnd(event: DragEvent): void {
-    event.preventDefault();
-    this.resetDragState();
-  }
-
-  private resetDragState(): void {
-    this.draggingBoardId.set(null);
-    this.dragOverBoardId.set(null);
-    this.dragInsertIndex.set(-1);
-    this.dragStartIndex = -1;
   }
 
   shouldShowSpaceBefore(boardIndex: number): boolean {

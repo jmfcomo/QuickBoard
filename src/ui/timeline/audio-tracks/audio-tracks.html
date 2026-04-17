@@ -15,6 +15,7 @@
     >
       <div
         class="audio-lane-track"
+        (dblclick)="openAudioFile(lane.laneIndex, getLaneInsertTime(lane.laneIndex))"
         (mousemove)="onLaneMouseMove($event, lane.laneIndex)"
         (mouseleave)="onLaneMouseLeave()"
         (dragover)="onLaneDragOver($event)"
@@ -43,14 +44,17 @@
               [style.width.px]="clip.widthPx"
               [title]="clip.name"
               (mousedown)="startAudioClipDrag($event, clip.id, clip.startTime)"
+              (touchstart)="startAudioClipDrag($event, clip.id, clip.startTime)"
             >
               <div
                 class="audio-trim-handle audio-trim-handle-left"
                 (mousedown)="$event.stopPropagation(); startAudioTrim($event, clip.id, 'left')"
+                (touchstart)="$event.stopPropagation(); startAudioTrim($event, clip.id, 'left')"
               ></div>
               <div
                 class="audio-trim-handle audio-trim-handle-right"
                 (mousedown)="$event.stopPropagation(); startAudioTrim($event, clip.id, 'right')"
+                (touchstart)="$event.stopPropagation(); startAudioTrim($event, clip.id, 'right')"
               ></div>
               @if (clip.waveformPath) {
                 <svg
@@ -67,6 +71,7 @@
                 [style.top.%]="getVolumeLineTopPercent(clip.volume)"
                 [attr.title]="getVolumeTooltip(clip.volume)"
                 (mousedown)="startVolumeDrag($event, clip.id)"
+                (touchstart)="startVolumeDrag($event, clip.id)"
               >
                 <div
                   class="audio-volume-line"

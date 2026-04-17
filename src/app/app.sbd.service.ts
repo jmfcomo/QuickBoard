@@ -49,7 +49,7 @@ export class SbdService {
         (track: { id: string; name: string; url: string }) => {
           const ext = track.name.includes('.') ? track.name.split('.').pop() : 'audio';
           return { ...track, url: `audio/${track.id}.${ext}` };
-        },
+        }
       );
     }
     if (Array.isArray(rawJson.boards)) {
@@ -100,7 +100,7 @@ export class SbdService {
                     }
                   }
                   return shape;
-                }),
+                })
               );
             }
 
@@ -108,8 +108,8 @@ export class SbdService {
               ...board,
               previewUrl: previewExtUrl,
             };
-          },
-        ),
+          }
+        )
       );
     }
     zip.file('project.json', JSON.stringify(rawJson, null, 2));
@@ -127,12 +127,18 @@ export class SbdService {
     this.store.loadFromJson(json);
   }
 
-  async loadSbdZip(base64Content: string): Promise<void> {
-    // Decode base64 → binary.
-    const binaryStr = atob(base64Content);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+  async loadSbdZip(content: string | Uint8Array): Promise<void> {
+    let bytes: Uint8Array;
+
+    if (content instanceof Uint8Array) {
+      bytes = content;
+    } else {
+      // Decode base64 → binary.
+      const binaryStr = atob(content);
+      bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
     }
 
     const zip = await JSZip.loadAsync(bytes);
@@ -182,11 +188,11 @@ export class SbdService {
                     }
                   }
                   return shape;
-                }),
+                })
               );
             }
-          },
-        ),
+          }
+        )
       );
     }
 
@@ -204,7 +210,7 @@ export class SbdService {
         const ext = track.url.split('.').pop() ?? 'audio';
         const mime = MIME_TYPES[ext] ?? 'audio/mpeg';
         blobMap.set(track.id, new Blob([arrayBuffer], { type: mime }));
-      }),
+      })
     );
 
     // Restore store state then reload Tone.js players from the extracted blobs.
