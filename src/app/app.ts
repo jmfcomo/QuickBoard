@@ -127,6 +127,8 @@ export class App implements OnInit, OnDestroy {
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
 
+    const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
+
     if (key === 'escape' && this.exportIpc.settingsVisible()) {
       event.preventDefault();
       this.exportIpc.onSettingsCancel();
@@ -142,7 +144,17 @@ export class App implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.isEditableTarget(event)) {
+      const target = event.target as HTMLElement | null;
+      // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
+      // but let regular inputs/textareas use the browser's native undo.
+      if (!target?.closest('#editorjs')) {
+        return;
+      }
+    }
+
     const ctrl = event.ctrlKey || event.metaKey;
+    // actions without ctrl/cmd key
     if (!ctrl) {
       switch(key) {
         case 's':
@@ -176,7 +188,6 @@ export class App implements OnInit, OnDestroy {
           break;
         case 'enter': {
           event.preventDefault();
-
           if(this.canvas()?.toolbar()?.isDrawToolActive()) {
             const option = this.canvas()?.toolbar()?.selectedDrawToolOption();
             if(option?.id === 'pencil') {
@@ -245,82 +256,107 @@ export class App implements OnInit, OnDestroy {
           }
           break;
         } 
+        case '.': {
+          const nextBoardIndex = Math.min(this.store.boards().length - 1,currentIndex + 1);
+          const nextBoardID = this.store.boards()[nextBoardIndex].id;
+          this.store.setCurrentBoard(nextBoardID);
+          break;
+        }
+        case ',': {
+          const prevBoardIndex = Math.max(0,currentIndex - 1);
+          const prevBoardID = this.store.boards()[prevBoardIndex].id;
+          this.store.setCurrentBoard(prevBoardID);
+          break;
+        }
+        case 'arrowright': {
+          event.preventDefault();
+          this.store.setCurrentTime(this.store.currentTime() + 1);
+          this.playback.seek(this.store.currentTime());
+          break;
+        }
+        case 'arrowleft': {
+          event.preventDefault();
+          this.store.setCurrentTime(this.store.currentTime() - 1);
+          this.playback.seek(this.store.currentTime());
+          break;
+        }
         default:
           return;
       }
-    }
-
-    if (this.isEditableTarget(event)) {
-      const target = event.target as HTMLElement | null;
-      // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
-      // but let regular inputs/textareas use the browser's native undo.
-      if (!target?.closest('#editorjs')) {
-        return;
-      }
-    }
-
-    event.preventDefault();
-    switch (key) {
-      case 'z': {
-        if (event.shiftKey) {
-          // Redo
+    } else {
+      // actions with ctrl/cmd key
+      event.preventDefault();
+      switch (key) {
+        case 'z': {
+          if (event.shiftKey) {
+            // Redo
+            this.undoRedo.triggerRedo();
+          } else {
+            // Undo
+            this.undoRedo.triggerUndo();
+          }
+          break;
+        }
+        case 'y': {
           this.undoRedo.triggerRedo();
-        } else {
-          // Undo
-          this.undoRedo.triggerUndo();
+          break;
         }
-        break;
-      }
-      case 'y': {
-        this.undoRedo.triggerRedo();
-        break;
-      }
-      case 'n': {
-        if (event.shiftKey) {
-          // Add Lane
-          this.store.addAudioLane();
-        } else {
-          // Add Board
-          this.store.addBoard();
+        case 'n': {
+          if (event.shiftKey) {
+            // Add Lane
+            this.store.addAudioLane();
+          } else {
+            // Add Board
+            this.store.addBoard();
+          }
+          break;
         }
-        break;
-      }
-      case 'd': {
-        const currentBoardId = this.store.currentBoardId();
-        if (currentBoardId) {
-          this.actions.duplicateBoard(currentBoardId);
-        }
-        break;
-      }
-      case 'backspace': {
-        if (event.shiftKey) {
-          this.canvas()?.requestClearCanvas();
-        } else {
+        case 'd': {
           const currentBoardId = this.store.currentBoardId();
           if (currentBoardId) {
-            this.actions.deleteBoard(currentBoardId);
+            this.actions.duplicateBoard(currentBoardId);
           }
+          break;
         }
-        break;
-      }
-      case 's': {
-        if (event.shiftKey) {
-          window.quickboard?.requestSaveAs();
-        } else {
-          window.quickboard?.requestSave();
+        case 'backspace': {
+          if (event.shiftKey) {
+            this.canvas()?.requestClearCanvas();
+          } else {
+            const currentBoardId = this.store.currentBoardId();
+            if (currentBoardId) {
+              this.actions.deleteBoard(currentBoardId);
+            }
+          }
+          break;
         }
-        break;
-      }
-      case 'o': 
-        window.quickboard?.loadIn();
-        break;
-      case 'e':
-        window.quickboard?.requestExport();
-        break;
-      default:
-        return;
-    };
-
+        case 's': {
+          if (event.shiftKey) {
+            window.quickboard?.requestSaveAs();
+          } else {
+            window.quickboard?.requestSave();
+          }
+          break;
+        }
+        case 'o': 
+          window.quickboard?.loadIn();
+          break;
+        case 'e':
+          window.quickboard?.requestExport();
+          break;
+        case '.': {
+            const lastBoard = this.store.boards()[this.store.boards().length - 1].id;
+            this.store.setCurrentBoard(lastBoard);
+            break;
+          }
+        case ',': {
+            const firstBoard = this.store.boards()[0].id;
+            this.store.setCurrentBoard(firstBoard);
+            break;
+        }
+        default:
+          return;
+      };
+    }
   }
 
   ngOnDestroy(): void {
