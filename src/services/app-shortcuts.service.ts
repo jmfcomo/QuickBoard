@@ -16,6 +16,7 @@ export class AppShortcutsService {
     onNotCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent, shift: boolean) {
         const key = event.key.toLowerCase();
         const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
+        const ranges = this.playback.getTimeRanges();
 
         event.preventDefault();
         switch(key) {
@@ -122,12 +123,14 @@ export class AppShortcutsService {
             const nextBoardIndex = Math.min(this.store.boards().length - 1,currentIndex + 1);
             const nextBoardID = this.store.boards()[nextBoardIndex].id;
             this.store.setCurrentBoard(nextBoardID);
+            this.playback.seek(ranges[nextBoardIndex].startTime);
             break;
           }
           case ',': {
             const prevBoardIndex = Math.max(0,currentIndex - 1);
             const prevBoardID = this.store.boards()[prevBoardIndex].id;
             this.store.setCurrentBoard(prevBoardID);
+            this.playback.seek(ranges[prevBoardIndex].startTime);
             break;
           }
           case 'arrowright': {
@@ -150,6 +153,7 @@ export class AppShortcutsService {
     onCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent, shift: boolean) {
       // actions with ctrl/cmd key
       const key = event.key.toLowerCase();
+      const ranges = this.playback.getTimeRanges();
 
       event.preventDefault();
       switch (key) {
@@ -209,11 +213,13 @@ export class AppShortcutsService {
         case '.': {
             const lastBoard = this.store.boards()[this.store.boards().length - 1].id;
             this.store.setCurrentBoard(lastBoard);
+            this.playback.seek(ranges[this.store.boards().length - 1].startTime);
             break;
           }
         case ',': {
             const firstBoard = this.store.boards()[0].id;
             this.store.setCurrentBoard(firstBoard);
+            this.playback.seek(ranges[0].startTime);
             break;
         }
         default:
