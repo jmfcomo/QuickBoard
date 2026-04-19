@@ -4,6 +4,7 @@ import { CanvasComponent } from 'src/ui';
 import { PlaybackService } from 'src/services';
 import { UndoRedoService } from 'src/services';
 import { TimelineActions } from 'src/ui';
+import { TimelineZoomService } from './timeline-zoom.service';
 
 @Injectable({ providedIn: 'root' })
 export class AppShortcutsService { 
@@ -12,13 +13,14 @@ export class AppShortcutsService {
     private readonly playback = inject(PlaybackService);
     private readonly undoRedo = inject(UndoRedoService);
     private readonly actions = inject(TimelineActions);
+    private readonly timeZoom = inject(TimelineZoomService);
 
     onNotCtrlKeyShortcuts(event: KeyboardEvent, canvas: CanvasComponent, shift: boolean) {
         const key = event.key.toLowerCase();
         const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
         const ranges = this.playback.getTimeRanges();
 
-        event.preventDefault();
+        // event.preventDefault();
         switch(key) {
           case 's':
             canvas.switchTools('select');
@@ -49,7 +51,7 @@ export class AppShortcutsService {
           case 'f':
             canvas.switchTools('bucket-fill');
             break;
-          case 'enter': {
+          case 'n': {
             event.preventDefault();
             if(canvas.toolbar()?.isDrawToolActive()) {
               const option = canvas.toolbar()?.selectedDrawToolOption();
@@ -85,7 +87,50 @@ export class AppShortcutsService {
               } else {
                 canvas.switchTools('eraser');
               }
-            } else if (canvas.activeTool() === 'zoom') {
+            }
+            break;
+          }
+          case 'b': {
+            event.preventDefault();
+            if(canvas.toolbar()?.isDrawToolActive()) {
+              const option = canvas.toolbar()?.selectedDrawToolOption();
+              if(option?.id === 'pencil') {
+                canvas.switchTools('brush');
+              } else {
+                canvas.switchTools('pencil');
+              }
+            } else if (canvas.toolbar()?.isEditToolActive()) {
+              const option = canvas.toolbar()?.selectedEditToolOption();
+              if(option?.id === 'select') {
+                canvas.switchTools('image');
+                canvas.toolbar()?.onActiveSubmenuSelect('image');
+              } else {
+                canvas.switchTools('select');
+              }
+            } else if (canvas.toolbar()?.isShapeToolActive()) {
+              const option = canvas.toolbar()?.selectedShapeTool();
+              switch(option?.id) {
+                case 'rectangle':
+                  canvas.switchTools('polygon');
+                  break;
+                case 'circle':
+                  canvas.switchTools('rectangle');
+                  break;
+                default:
+                  canvas.switchTools('circle');
+              }
+            } else if (canvas.toolbar()?.isEraserToolActive()){
+              const option = canvas.toolbar()?.selectedEraserToolOption();
+              if(option?.id === 'eraser') {
+                canvas.switchTools('object-eraser');
+              } else {
+                canvas.switchTools('eraser');
+              }
+            }
+            break;
+          }
+          case 'enter': {
+            if (canvas.activeTool() === 'zoom') {
               const zoomCenter = canvas.lc?.canvas?.getBoundingClientRect
                 ? (() => {
                     const rect = canvas.lc!.canvas.getBoundingClientRect();
@@ -99,6 +144,17 @@ export class AppShortcutsService {
               } else {
                 canvas.viewport.adjustZoomLevel(canvas.viewport.getClickZoomStep() as number, zoomCenter);
               }
+            } else if (canvas.activeTool() === 'image') {
+              const input = canvas.document.createElement('input') as HTMLInputElement;
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (e: Event) => {
+                const target = e.target as HTMLInputElement;
+                if (target.files && target.files.length > 0) {
+                  canvas.toolbar()?.imageSelected.emit(target.files[0]);
+                }
+              };
+              input.click();
             }
             break;
           }
@@ -115,7 +171,7 @@ export class AppShortcutsService {
             } else if (canvas.activeTool() === 'bucket-fill') {
               canvas.switchTools('zoom');
             } else if (canvas.activeTool() === 'zoom') {
-              canvas.switchTools('select'); 
+              canvas.switchTools(canvas.toolbar()?.selectedEditToolOption()?.id as string); 
             }
             break;
           } 
@@ -135,14 +191,36 @@ export class AppShortcutsService {
           }
           case 'arrowright': {
             event.preventDefault();
+            // if(shift) {
+            //   shiftBoardRight
+            // } else {
             this.store.setCurrentTime(this.store.currentTime() + 1);
             this.playback.seek(this.store.currentTime());
             break;
           }
           case 'arrowleft': {
             event.preventDefault();
+            // if(shift) {
+            //   shiftBoardLeft
+            // } else {
             this.store.setCurrentTime(this.store.currentTime() - 1);
-            this.playback.seek(this.store.currentTime());
+            this.playback.seek(this.store.currentTime());            
+            break;
+          }
+          case 'arrowup': {
+            event.preventDefault();
+            break;
+          }
+          case 'arrowdown': {
+            event.preventDefault();
+            break;
+          }
+          case '+': {
+            this.timeZoom.zoomIn();
+            break;
+          }
+          case '-': {
+            this.timeZoom.zoomOut();
             break;
           }
           default:
