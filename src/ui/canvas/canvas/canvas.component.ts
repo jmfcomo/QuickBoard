@@ -12,6 +12,7 @@ import {
   PLATFORM_ID,
   effect,
   DOCUMENT,
+  HostListener,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
@@ -29,6 +30,7 @@ import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/impr
 import { ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { CanvasViewportController } from './canvas-viewport-controller';
+import { CanvasShortcutsController } from './canvas-shortcuts-controller';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
@@ -62,6 +64,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     zoomKeepOnDefault: appSettings.canvas.zoomKeepOn ?? true,
     zoomClickStep: appSettings.canvas.zoomClickStep,
   });
+  private readonly shortcutsController = new CanvasShortcutsController(this);
   readonly isZoomKeepOn = this.viewport.zoomKeepOn;
   readonly canvasZoomLevel = this.viewport.zoomLevel;
   private readonly toolSizeMap = signal<Record<string, number>>({
@@ -254,6 +257,11 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   switchTools(tool: string): void {
     this.activeTool.set(tool);
     this.toolbar()?.toolSelected.emit(tool);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    this.shortcutsController.handleKeyDown(event);
   }
 
   private initializeCanvas(): void {
