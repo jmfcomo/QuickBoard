@@ -191,20 +191,28 @@ export class AppShortcutsService {
           }
           case 'arrowright': {
             event.preventDefault();
-            // if(shift) {
-            //   shiftBoardRight
-            // } else {
-            this.store.setCurrentTime(this.store.currentTime() + 1);
-            this.playback.seek(this.store.currentTime());
+            if(shift) {
+              const nextBoardIndex = Math.min(this.store.boards().length - 1,currentIndex + 1);
+              this.store.reorderBoards(currentIndex,nextBoardIndex);
+              this.playback.seek(ranges[currentIndex].endTime);
+              this.store.setCurrentBoard(this.store.boards()[nextBoardIndex].id);
+            } else {
+              this.store.setCurrentTime(this.store.currentTime() + 1);
+              this.playback.seek(this.store.currentTime());            
+            }
             break;
-          }
+          } 
           case 'arrowleft': {
             event.preventDefault();
-            // if(shift) {
-            //   shiftBoardLeft
-            // } else {
-            this.store.setCurrentTime(this.store.currentTime() - 1);
-            this.playback.seek(this.store.currentTime());            
+            if(shift) {
+              const prevBoardIndex = Math.max(0,currentIndex - 1);
+              this.store.reorderBoards(currentIndex,prevBoardIndex);
+              this.playback.seek(ranges[prevBoardIndex].startTime);
+              this.store.setCurrentBoard(this.store.boards()[prevBoardIndex].id);
+            } else {
+              this.store.setCurrentTime(this.store.currentTime() - 1);
+              this.playback.seek(this.store.currentTime());
+            }            
             break;
           }
           case 'arrowup': {
@@ -303,5 +311,17 @@ export class AppShortcutsService {
         default:
           return;
       };
+    }
+
+    onAltKeyShortcuts(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      const currentIndex = this.store.boards().findIndex((board) => board.id === this.store.currentBoardId());
+      const ranges = this.playback.getTimeRanges();
+
+      if(key === 'arrowright') {        
+        this.store.updateBoardDuration(this.store.boards()[currentIndex]?.id,ranges[currentIndex].endTime += 0.5);
+      } else if (key === 'arrowleft') {      
+        this.store.updateBoardDuration(this.store.boards()[currentIndex]?.id,Math.max(0.5,ranges[currentIndex].endTime -= 0.5));        
+      }
     }
 }
