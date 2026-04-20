@@ -11,6 +11,8 @@ declare global {
       sendSaveData: (payload: { filePath: string; data: string }) => void;
       sendSaveBinary: (payload: { filePath: string; data: Uint8Array }) => void;
       requestSave: () => void;
+      requestSaveAs: () => void;
+      loadIn: () => void;
       onThemeChanged: (
         handler: (theme: 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black') => void,
       ) => () => void;
@@ -22,6 +24,7 @@ declare global {
       ) => () => void;
       openExternal: (url: string) => void;
       onRequestExport: (handler: (payload: { defaultDirPath: string }) => void) => () => void;
+      requestExport: () => void;
       pickExportDir: () => Promise<string | null>;
       sendPngExportFrame: (payload: {
         dirPath: string;

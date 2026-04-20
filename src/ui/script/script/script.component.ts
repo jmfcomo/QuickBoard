@@ -120,7 +120,6 @@ export class ScriptComponent implements OnInit, OnDestroy {
 
     this.editor = new EditorJS({
       holder: 'editorjs',
-      autofocus: true,
       tools: {
         paragraph: Paragraph,
         header: Header,
