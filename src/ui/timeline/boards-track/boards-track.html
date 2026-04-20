@@ -19,6 +19,7 @@
       (keydown.space)="selectBoard(board.id)"
       (dragstart)="onDragStart($event, board.id, $index)"
       (touchstart)="onBoardTouchStart($event, board.id, $index)"
+      (contextmenu)="$event.preventDefault()"
       (dragover)="onDragOver($event, board.id)"
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event)"

@@ -22,6 +22,9 @@
     border-color 0.2s,
     box-shadow 0.2s,
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .timeline-board.dragging {
@@ -191,6 +194,7 @@
   cursor: grabbing;
   z-index: 20;
   pointer-events: none;
+  transition: transform 0s, opacity 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
 .timeline-board.dragging * {
