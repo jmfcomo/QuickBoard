@@ -406,4 +406,42 @@ export class ExportService {
     }
     return prefix.replace(/['"\r\n/\\]/g, '_');
   }
+
+  async exportPDFWithSettings(
+    settings: ExportSettings,
+    onProgress?: (current: number, total: number, fileName: string) => void,
+    abortSignal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'px',
+      format: [appSettings.board.width * settings.resolution.scale, appSettings.board.height * settings.resolution.scale],
+    });
+
+    await this.renderBoardsAtScaleStreaming(
+      settings.resolution.scale,
+      settings.prefix,
+      async (frame, current, total) => {
+        const imgProps = doc.getImageProperties(frame.dataUrl);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const imgWidth = imgProps.width;
+        const imgHeight = imgProps.height;
+        const x = (pageWidth - imgWidth) / 2;
+        const y = (pageHeight - imgHeight) / 2;
+        doc.addImage(frame.dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+        if (current < total) {
+          doc.addPage();
+        }
+        onProgress?.(current, total, frame.name);
+      },
+      'image/png',
+      abortSignal,
+    );
+
+    const pdfBlob = doc.output('blob');
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  }
 }

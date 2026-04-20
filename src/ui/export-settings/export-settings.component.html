@@ -22,6 +22,7 @@
           >
             <option value="png">PNG Sequence</option>
             <option value="video">MP4 Video</option>
+            <option value="pdf">PDF Document(s)</option>
           </select>
         </div>
         <div class="summary-item">
@@ -87,6 +88,8 @@
           />
           @if (selectedFormat() === 'video') {
             <p class="hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
+          } @else if (selectedFormat() === 'pdf') {
+            <p class="hint">Output file: {{ prefix().trim() || 'board' }}.pdf</p>
           } @else {
             <p class="hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
           }

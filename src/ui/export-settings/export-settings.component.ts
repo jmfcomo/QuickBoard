@@ -14,7 +14,7 @@ export class ExportSettingsComponent {
   boardCount = input<number>(0);
   defaultPrefix = input<string>('board');
   defaultDirPath = input<string>('');
-  exportType = input<'png' | 'video'>('png');
+  exportType = input<'png' | 'video' | 'pdf'>('png');
   confirmExport = output<ExportSettings>();
   cancelExport = output<void>();
 
@@ -24,7 +24,7 @@ export class ExportSettingsComponent {
   protected endIndex = signal(this.boardCount() - 1);
   protected startRaw = signal('1');
   protected endRaw = signal(String(this.boardCount()));
-  protected selectedFormat = signal<'png' | 'video'>('png');
+  protected selectedFormat = signal<'png' | 'video' | 'pdf'>('png');
   protected prefix = signal('board');
   protected dirPath = signal('');
   protected isBrowsing = signal(false);
@@ -51,7 +51,7 @@ export class ExportSettingsComponent {
 
   protected onFormatChange(event: Event): void {
     const nextValue = (event.target as HTMLSelectElement).value;
-    this.selectedFormat.set(nextValue === 'video' ? 'video' : 'png');
+    this.selectedFormat.set(nextValue === 'video' ? 'video' : nextValue === 'pdf' ? 'pdf' : 'png');
   }
 
   protected onSelectChange(event: Event): void {

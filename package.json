@@ -141,7 +141,7 @@
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@ngrx/signals": "^21.0.1",
     "capacitor-native-toolbar": "file:plugins/NativeToolbar",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "literallycanvas": "^0.5.2",
     "react": "^16.14.0",

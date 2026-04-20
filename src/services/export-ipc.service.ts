@@ -16,7 +16,7 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 export class ExportIpcService {
   private readonly exportService = inject(ExportService);
 
-  readonly settingsMode = signal<'png' | 'video'>('png');
+  readonly settingsMode = signal<'png' | 'video' | 'pdf'>('png');
   readonly settingsVisible = signal(false);
   readonly settingsBoardCount = signal(0);
 
@@ -69,8 +69,10 @@ export class ExportIpcService {
     this.settingsMode.set(settings.format);
     if (settings.format === 'video') {
       await this.runVideoExport(settings);
-    } else {
+    } else if (settings.format === 'png') {
       await this.runPngExport(settings);
+    } else {
+      await this.runPDFExport(settings);
     }
   }
 
@@ -217,6 +219,73 @@ export class ExportIpcService {
         this.exportVisible.set(false);
       } else {
         console.error('Video export failed:', err);
+        this.exportStatus.set('error');
+        this.exportMessage.set(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      this.abortController = null;
+    }
+  }
+
+  private async runPDFExport(settings: ExportSettings): Promise<void> {
+    this.settingsVisible.set(false);
+    const { prefix, dirPath } = settings;
+
+    if (this.successTimeout !== null) {
+      clearTimeout(this.successTimeout);
+      this.successTimeout = null;
+    }
+
+    try {
+      localStorage.setItem('quickboard:lastExportPath', dirPath);
+    } catch {
+      /* empty */
+    }
+    this._lastExportPath.set(dirPath);
+
+    this.exportTotal.set(settings.endIndex - settings.startIndex + 1);
+    this.exportFrameCount.set(settings.endIndex - settings.startIndex + 1);
+    this.exportCurrent.set(0);
+    this.exportFileName.set('');
+    this.exportMessage.set('');
+    this.exportStatus.set('exporting');
+    this.exportVisible.set(true);
+
+    this.abortController = new AbortController();
+
+    try {
+      const pdfBytes = await this.exportService.exportPDFWithSettings(
+        settings,
+        (current, total, fileName) => {
+          this.exportCurrent.set(current);
+          this.exportFileName.set(fileName);
+          this.exportMessage.set(`Rendering pages... (${current}/${total})`);
+        },
+        this.abortController.signal,
+      );
+
+      const outputName = `${prefix}.pdf`;
+      const result = await window.quickboard?.sendVideoFile({
+        dirPath,
+        name: outputName,
+        buffer: pdfBytes,
+      });
+
+      if (!result?.success) {
+        throw new Error(result?.message ?? 'Failed to save PDF file.');
+      }
+
+      this.exportCurrent.set(settings.endIndex - settings.startIndex + 1);
+      this.exportStatus.set('success');
+      this.successTimeout = setTimeout(() => {
+        this.successTimeout = null;
+        this.exportVisible.set(false);
+      }, 2500);
+    } catch (err) {
+      if (this.abortController?.signal.aborted) {
+        this.exportVisible.set(false);
+      } else {
+        console.error('PDF export failed:', err);
         this.exportStatus.set('error');
         this.exportMessage.set(err instanceof Error ? err.message : String(err));
       }
