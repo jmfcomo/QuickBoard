@@ -26,7 +26,7 @@ export class CanvasViewportController {
   private readonly onCanvasWheel = (event: WheelEvent) => this.handleCanvasWheel(event);
   private readonly onCanvasTouchStart = (event: TouchEvent) => this.handleCanvasTouchStart(event);
   private readonly onCanvasTouchMove = (event: TouchEvent) => this.handleCanvasTouchMove(event);
-  private readonly onCanvasTouchEnd = () => this.handleCanvasTouchEnd();
+  private readonly onCanvasTouchEnd = (event: TouchEvent) => this.handleCanvasTouchEnd(event);
   private readonly onCanvasMouseDown = (event: MouseEvent) => this.handleCanvasMouseDown(event);
   private readonly onWindowMouseMove = (event: MouseEvent) => this.handleWindowMouseMove(event);
   private readonly onWindowMouseUp = (event: MouseEvent) => this.handleWindowMouseUp(event);
@@ -45,10 +45,13 @@ export class CanvasViewportController {
     const canvas = lc.canvas;
     canvas.addEventListener('mousedown', this.onCanvasMouseDown, true);
     canvas.addEventListener('wheel', this.onCanvasWheel, { passive: false });
-    canvas.addEventListener('touchstart', this.onCanvasTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', this.onCanvasTouchMove, { passive: false });
-    canvas.addEventListener('touchend', this.onCanvasTouchEnd);
-    canvas.addEventListener('touchcancel', this.onCanvasTouchEnd);
+    canvas.addEventListener('touchstart', this.onCanvasTouchStart, {
+      passive: false,
+      capture: true,
+    });
+    canvas.addEventListener('touchmove', this.onCanvasTouchMove, { passive: false, capture: true });
+    canvas.addEventListener('touchend', this.onCanvasTouchEnd, { capture: true });
+    canvas.addEventListener('touchcancel', this.onCanvasTouchEnd, { capture: true });
   }
 
   detach(): void {
@@ -61,10 +64,10 @@ export class CanvasViewportController {
     const canvas = this.lc.canvas;
     canvas.removeEventListener('mousedown', this.onCanvasMouseDown, true);
     canvas.removeEventListener('wheel', this.onCanvasWheel);
-    canvas.removeEventListener('touchstart', this.onCanvasTouchStart);
-    canvas.removeEventListener('touchmove', this.onCanvasTouchMove);
-    canvas.removeEventListener('touchend', this.onCanvasTouchEnd);
-    canvas.removeEventListener('touchcancel', this.onCanvasTouchEnd);
+    canvas.removeEventListener('touchstart', this.onCanvasTouchStart, { capture: true });
+    canvas.removeEventListener('touchmove', this.onCanvasTouchMove, { capture: true });
+    canvas.removeEventListener('touchend', this.onCanvasTouchEnd, { capture: true });
+    canvas.removeEventListener('touchcancel', this.onCanvasTouchEnd, { capture: true });
     this.lc = null;
   }
 
@@ -189,7 +192,7 @@ export class CanvasViewportController {
 
     this.lc.setPan(
       this.middleMousePanStartPosition.x + dx * backingScale,
-      this.middleMousePanStartPosition.y + dy * backingScale,
+      this.middleMousePanStartPosition.y + dy * backingScale
     );
     this.options.syncViewportRects();
 
@@ -222,17 +225,40 @@ export class CanvasViewportController {
     window.removeEventListener('blur', this.onWindowBlur);
   }
 
+  private isPinchingCanvas = false;
+
   private handleCanvasTouchStart(event: TouchEvent): void {
-    if (!this.isZoomGestureEnabled() || event.touches.length !== 2) {
+    if (!this.isZoomGestureEnabled() || event.touches.length < 2) {
+      if (this.isPinchingCanvas) {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
       this.pinchTouchDistance = null;
       return;
     }
 
+    this.isPinchingCanvas = true;
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    event.preventDefault();
     this.pinchTouchDistance = this.getTouchDistance(event.touches[0], event.touches[1]);
   }
 
   private handleCanvasTouchMove(event: TouchEvent): void {
-    if (!this.lc || !this.isZoomGestureEnabled() || event.touches.length !== 2) {
+    if (!this.isPinchingCanvas) {
+      if (event.touches.length >= 2) {
+        this.handleCanvasTouchStart(event);
+      }
+      return;
+    }
+
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    event.preventDefault();
+
+    if (!this.lc || !this.isZoomGestureEnabled() || event.touches.length < 2) {
       this.pinchTouchDistance = null;
       return;
     }
@@ -245,8 +271,6 @@ export class CanvasViewportController {
       return;
     }
 
-    event.preventDefault();
-
     const factor = Math.pow(currentDistance / previousDistance, 1.35);
     const midpoint = this.getTouchMidpoint(event.touches[0], event.touches[1]);
     this.setCanvasScale(this.lc.scale * factor, midpoint);
@@ -254,8 +278,20 @@ export class CanvasViewportController {
     this.pinchTouchDistance = currentDistance;
   }
 
-  private handleCanvasTouchEnd(): void {
-    this.pinchTouchDistance = null;
+  private handleCanvasTouchEnd(event: TouchEvent): void {
+    if (this.isPinchingCanvas) {
+      // Only block touchend if there are still 2 or more fingers.
+      // If fingers are lifted (length < 2), let the event propagate so LC can clean up
+      // any lingering stroke that was started by the first finger.
+      if (event.touches.length >= 2) {
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      } else {
+        this.isPinchingCanvas = false;
+        this.pinchTouchDistance = null;
+      }
+    }
   }
 
   private getTouchDistance(first: Touch, second: Touch): number {
@@ -282,7 +318,7 @@ export class CanvasViewportController {
       const backingScale = this.lc.backingScale || 1;
       this.lc.setPan(
         this.lc.position.x - deltaX * backingScale,
-        this.lc.position.y - deltaY * backingScale,
+        this.lc.position.y - deltaY * backingScale
       );
     }
 
@@ -323,13 +359,13 @@ export class CanvasViewportController {
         this.lc.setZoom(targetScale);
         const clientPointAfterZoom = this.lc.drawingCoordsToClientCoords(
           drawingPoint.x,
-          drawingPoint.y,
+          drawingPoint.y
         );
         const backingScale = this.lc.backingScale || 1;
 
         this.lc.setPan(
           this.lc.position.x + localX * backingScale - clientPointAfterZoom.x,
-          this.lc.position.y + localY * backingScale - clientPointAfterZoom.y,
+          this.lc.position.y + localY * backingScale - clientPointAfterZoom.y
         );
 
         this.zoomLevel.set(this.scaleToZoomLevel(this.lc.scale));
