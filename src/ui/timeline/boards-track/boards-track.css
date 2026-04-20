@@ -17,10 +17,7 @@
   border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    box-shadow 0.2s,
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s,
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   -webkit-user-select: none;
@@ -217,9 +214,7 @@
   height: 70%;
   background: var(--border-active);
   border-radius: 3px;
-  box-shadow:
-    0 0 12px var(--selection-glow),
-    0 0 4px var(--border-active);
+  box-shadow: 0 0 12px var(--selection-glow), 0 0 4px var(--border-active);
   animation: pulse-indicator 0.3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -261,10 +256,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition:
-    color 0.15s,
-    border-color 0.15s,
-    background-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
 .add-board-icon {
