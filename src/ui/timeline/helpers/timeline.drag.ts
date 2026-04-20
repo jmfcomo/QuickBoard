@@ -110,6 +110,7 @@ export class TimelineDrag {
     this.touchCurrentY = touch.clientY;
     this.dragStartIndex = boardIndex;
     this.isLongPressActivated = false;
+    this.isTouchDragging.set(false);
     this.longPressBoardId.set(boardId);
     this.isLongPressing.set(true);
 
@@ -151,26 +152,23 @@ export class TimelineDrag {
     const draggedBoardId = this.draggingBoardId();
     if (!draggedBoardId) return;
 
-    // Use elementsFromPoint to find the hovered board, or iterate over boards
-    const boards = document.querySelectorAll('.timeline-board');
-    for (const board of Array.from(boards)) {
-      const rect = board.getBoundingClientRect();
-      if (touch.clientX >= rect.left && touch.clientX <= rect.right) {
-        const boardId = board.getAttribute('data-board-id');
-        if (boardId && boardId !== draggedBoardId) {
-          const boardCenterX = rect.left + rect.width / 2;
-          const targetIndex = this.store.boards().findIndex((b) => b.id === boardId);
+    const hoveredBoard = document
+      .elementsFromPoint(touch.clientX, touch.clientY)
+      .find((element) => element.classList?.contains('timeline-board'));
+    if (!hoveredBoard) return;
 
-          if (targetIndex !== -1) {
-            const newInsertIndex = touch.clientX < boardCenterX ? targetIndex : targetIndex + 1;
-            if (this.dragInsertIndex() !== newInsertIndex) {
-              this.dragInsertIndex.set(newInsertIndex);
-              this.dragOverBoardId.set(boardId);
-            }
-          }
-        }
-        break;
-      }
+    const boardId = hoveredBoard.getAttribute('data-board-id');
+    if (!boardId || boardId === draggedBoardId) return;
+
+    const rect = hoveredBoard.getBoundingClientRect();
+    const boardCenterX = rect.left + rect.width / 2;
+    const targetIndex = this.store.boards().findIndex((b) => b.id === boardId);
+    if (targetIndex === -1) return;
+
+    const newInsertIndex = touch.clientX < boardCenterX ? targetIndex : targetIndex + 1;
+    if (this.dragInsertIndex() !== newInsertIndex) {
+      this.dragInsertIndex.set(newInsertIndex);
+      this.dragOverBoardId.set(boardId);
     }
   }
 
@@ -252,7 +250,7 @@ export class TimelineDrag {
     }
 
     if (boardIndex === draggingIndex) {
-      const isTouch = this.isLongPressActivated || this.touchStartX !== 0; // touch active
+      const isTouch = this.isTouchDragging() || this.isLongPressActivated;
       if (isTouch) {
         return this.touchCurrentX - this.touchStartX;
       }
