@@ -24,7 +24,14 @@
     (canvasFullscreenToggled)="toggleCanvasFullscreen()"
   ></app-tools-bar>
   <div class="canvas-right">
-    <div class="canvas-stage" #canvasStage (dragover)="onDragOver($event)" (drop)="onDrop($event)" (mousedown)="canvasStage.focus()" tabindex="0">
+    <div
+      class="canvas-stage"
+      #canvasStage
+      (dragover)="onDragOver($event)"
+      (drop)="onDrop($event)"
+      (mousedown)="canvasStage.focus()"
+      tabindex="0"
+    >
       <div class="canvas-board-stack">
         <div #canvasContainer class="literally-canvas" tabindex="0"></div>
         <app-onion-skin-overlay
