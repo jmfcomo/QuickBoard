@@ -79,6 +79,69 @@ export class WindowScalingService {
     document.addEventListener('mouseup', onUp);
   }
 
+  onResizeTouchStart(event: TouchEvent, host: HTMLElement): void {
+    if (event.touches.length !== 1) {
+      return;
+    }
+
+    event.preventDefault();
+    const editors = host.querySelector('.editors') as HTMLElement | null;
+    const app = host.querySelector('.app') as HTMLElement | null;
+    const bounds = this.getEditorsHeightBounds(host);
+    if (!editors || !app || !bounds) {
+      return;
+    }
+
+    const startY = event.touches[0].clientY;
+    const startHeight = editors.getBoundingClientRect().height;
+    const totalHeight = app.getBoundingClientRect().height;
+    if (totalHeight <= 0) {
+      return;
+    }
+
+    let resizeRafId: number | null = null;
+
+    const applyEditorsHeight = (height: number): void => {
+      const clampedHeight = Math.min(Math.max(height, bounds.min), bounds.max);
+      const heightPercent = (clampedHeight / totalHeight) * 100;
+      host.style.setProperty('--editors-height', `${heightPercent}%`);
+    };
+
+    const onMove = (moveEvent: TouchEvent) => {
+      if (moveEvent.touches.length !== 1) {
+        return;
+      }
+      if (moveEvent.cancelable) {
+        moveEvent.preventDefault();
+      }
+      const rawHeight = startHeight + moveEvent.touches[0].clientY - startY;
+      applyEditorsHeight(rawHeight);
+
+      if (resizeRafId !== null) {
+        cancelAnimationFrame(resizeRafId);
+      }
+      resizeRafId = requestAnimationFrame(() => {
+        resizeRafId = null;
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+
+    const onEnd = () => {
+      if (resizeRafId !== null) {
+        cancelAnimationFrame(resizeRafId);
+        resizeRafId = null;
+      }
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+    document.addEventListener('touchcancel', onEnd);
+  }
+
   private applyLaunchScaleWorkaround(host: HTMLElement): void {
     const app = host.querySelector('.app') as HTMLElement | null;
     if (!app) {
@@ -115,7 +178,15 @@ export class WindowScalingService {
       return;
     }
 
-    const currentHeight = editors.getBoundingClientRect().height;
+    // Read the stored percentage rather than the rendered pixel height.
+    // This prevents virtual keyboard open/close from permanently mutating
+    // the editors height: the % naturally scales with the viewport, so we
+    // only need to re-clamp if it falls outside the *new* bounds.
+    const storedPct = parseFloat(host.style.getPropertyValue('--editors-height') || '');
+    const currentHeight = isNaN(storedPct)
+      ? editors.getBoundingClientRect().height
+      : (storedPct / 100) * totalHeight;
+
     const clampedHeight = Math.min(Math.max(currentHeight, bounds.min), bounds.max);
     const heightPercent = (clampedHeight / totalHeight) * 100;
     host.style.setProperty('--editors-height', `${heightPercent}%`);
@@ -139,15 +210,13 @@ export class WindowScalingService {
     const canvasStageHeight = canvasStage?.getBoundingClientRect().height ?? 0;
     const nonStageHeight = Math.max(0, canvasHostHeight - canvasStageHeight);
     const lcRoot = canvasHost.querySelector('.literally') as HTMLElement | null;
-    const lcMinHeight = lcRoot
-      ? (parseFloat(window.getComputedStyle(lcRoot).minHeight) || 0)
-      : 0;
+    const lcMinHeight = lcRoot ? parseFloat(window.getComputedStyle(lcRoot).minHeight) || 0 : 0;
     const minHeight = Math.max(100, Math.ceil(nonStageHeight + lcMinHeight));
     const maxByVertical = totalHeight - this.minTimelineHeight - handleHeight;
 
     const editorsWidth = editors.getBoundingClientRect().width;
     const scriptMinWidth = scriptHost
-      ? (parseFloat(window.getComputedStyle(scriptHost).minWidth) || this.minScriptWidth)
+      ? parseFloat(window.getComputedStyle(scriptHost).minWidth) || this.minScriptWidth
       : this.minScriptWidth;
     const toolsBar = canvasHost.querySelector('.tools-bar') as HTMLElement | null;
     const toolsBarWidth = toolsBar
@@ -155,7 +224,7 @@ export class WindowScalingService {
       : this.defaultToolbarWidth;
     const availableCanvasHostWidth = editorsWidth - scriptMinWidth - this.editorsGap;
     const maxByHorizontal = Math.floor(
-      Math.max(0, availableCanvasHostWidth - toolsBarWidth) / this.canvasAspectRatio,
+      Math.max(0, availableCanvasHostWidth - toolsBarWidth) / this.canvasAspectRatio
     );
 
     const maxHeight = Math.floor(Math.min(maxByVertical, maxByHorizontal));

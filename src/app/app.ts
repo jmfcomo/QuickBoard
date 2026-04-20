@@ -101,7 +101,7 @@ export class App implements OnInit, OnDestroy {
     this.removeExportIpcListeners = this.exportIpc.init();
 
     // for shortcuts attached to appmenu options (working through electron side)
-    if(window.quickboard?.onShortcut) {
+    if (window.quickboard?.onShortcut) {
       this.removeShortcutListener = window.quickboard.onShortcut((option: string) => {
         switch (option) {
           case 'undo':
@@ -109,7 +109,7 @@ export class App implements OnInit, OnDestroy {
             break;
           case 'redo':
             this.undoRedo.triggerRedo();
-            break;          
+            break;
           default:
             break;
         }
@@ -117,12 +117,16 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeWindowScalingListener = this.windowScalingService.init(
-      this.el.nativeElement as HTMLElement,
+      this.el.nativeElement as HTMLElement
     );
   }
 
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  onResizeTouchStart(event: TouchEvent): void {
+    this.windowScalingService.onResizeTouchStart(event, this.el.nativeElement as HTMLElement);
   }
 
   toggleCanvasFullscreen(): void {
