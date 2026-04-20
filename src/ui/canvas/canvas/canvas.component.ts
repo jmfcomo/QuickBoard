@@ -11,6 +11,8 @@ import {
   output,
   PLATFORM_ID,
   effect,
+  DOCUMENT,
+  HostListener,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
@@ -28,6 +30,7 @@ import { ImprovedSelectShape, registerImprovedSelectShapes } from '../tools/impr
 import { ZoomTool } from '../tools/zoom';
 import { LCInstance, LCTool } from '../literally-canvas-interfaces';
 import { CanvasViewportController } from './canvas-viewport-controller';
+import { CanvasShortcutsController } from './canvas-shortcuts-controller';
 import { UndoRedoService } from '../../../services/undo-redo.service';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
@@ -55,12 +58,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
-  private readonly viewport = new CanvasViewportController({
+  readonly viewport = new CanvasViewportController({
     activeTool: () => this.activeTool(),
     syncViewportRects: () => this.syncOnionLayerRect(),
     zoomKeepOnDefault: appSettings.canvas.zoomKeepOn ?? true,
     zoomClickStep: appSettings.canvas.zoomClickStep,
   });
+  private readonly shortcutsController = new CanvasShortcutsController(this);
   readonly isZoomKeepOn = this.viewport.zoomKeepOn;
   readonly canvasZoomLevel = this.viewport.zoomLevel;
   private readonly toolSizeMap = signal<Record<string, number>>({
@@ -118,7 +122,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly el = inject(ElementRef);
   private readonly undoRedo = inject(UndoRedoService);
   private readonly canvasDataService = inject(CanvasDataService);
-  private lc: LCInstance | null = null;
+  lc: LCInstance | null = null;
   private toolInstances = new Map<string, LCTool>();
   private platformId = inject(PLATFORM_ID);
   private currentBoardId: string | null = null;
@@ -131,6 +135,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   private readonly onWindowResize = () => this.scheduleCanvasFit();
   private _canvasDirty = false;
   readonly showClearCanvasConfirm = signal(false);
+  readonly toolbar = viewChild(ToolsBarComponent);
+  document = inject(DOCUMENT);
 
   constructor() {
     effect(() => {
@@ -246,6 +252,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.toolInstances.clear();
 
     this.canvasPersistence.clearPendingPreviewRegeneration();
+  }
+
+  switchTools(tool: string): void {
+    this.activeTool.set(tool);
+    this.toolbar()?.toolSelected.emit(tool);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    this.shortcutsController.handleKeyDown(event);
   }
 
   private initializeCanvas(): void {

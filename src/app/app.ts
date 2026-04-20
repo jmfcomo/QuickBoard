@@ -25,8 +25,10 @@ import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
+import { appSettings } from 'src/settings-loader';
 import { Capacitor } from '@capacitor/core';
 import { NativeToolbarService } from '../services/native-toolbar.service';
+import { AppShortcutsService } from 'src/services';
 
 @Component({
   selector: 'app-root',
@@ -68,6 +70,8 @@ export class App implements OnInit, OnDestroy {
   private readonly nativeToolbar = inject(NativeToolbarService);
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
+  private settings = appSettings;
+  private readonly shortcuts = inject(AppShortcutsService);
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
@@ -97,7 +101,7 @@ export class App implements OnInit, OnDestroy {
     this.removeExportIpcListeners = this.exportIpc.init();
 
     // for shortcuts attached to appmenu options (working through electron side)
-    if(window.quickboard?.onShortcut) {
+    if (window.quickboard?.onShortcut) {
       this.removeShortcutListener = window.quickboard.onShortcut((option: string) => {
         switch (option) {
           case 'undo':
@@ -105,7 +109,7 @@ export class App implements OnInit, OnDestroy {
             break;
           case 'redo':
             this.undoRedo.triggerRedo();
-            break;          
+            break;
           default:
             break;
         }
@@ -113,7 +117,7 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.removeWindowScalingListener = this.windowScalingService.init(
-      this.el.nativeElement as HTMLElement,
+      this.el.nativeElement as HTMLElement
     );
   }
 
@@ -163,9 +167,6 @@ export class App implements OnInit, OnDestroy {
       return;
     }
 
-    const ctrl = event.ctrlKey || event.metaKey;
-    if (!ctrl) return;
-
     if (this.isEditableTarget(event)) {
       const target = event.target as HTMLElement | null;
       // Allow global undo for EditorJS so its history interleaves perfectly with the canvas,
@@ -173,49 +174,21 @@ export class App implements OnInit, OnDestroy {
       if (!target?.closest('#editorjs')) {
         return;
       }
+      const ctrl = event.ctrlKey || event.metaKey;
+      if (!ctrl) {
+        return;
+      }
     }
 
-    event.preventDefault();
-    switch (key) {
-      case 'z': {
-        if (event.shiftKey) {
-          // Redo
-          this.undoRedo.triggerRedo();
-        } else {
-          // Undo
-          this.undoRedo.triggerUndo();
-        }
-        break;
-      }
-      case 'y': {
-        this.undoRedo.triggerRedo();
-        break;
-      }
-      case 'n': {
-        if (event.shiftKey) {
-          // Add Lane
-          this.store.addAudioLane();
-        } else {
-          // Add Board
-          this.store.addBoard();
-        }
-        break;
-      }
-      case 'd': {
-        const currentBoardId = this.store.currentBoardId();
-        if (currentBoardId) {
-          this.actions.duplicateBoard(currentBoardId);
-        }
-        break;
-      }
-      case 'x': {
-        this.canvas()?.requestClearCanvas();
-        break;
-      }
-      default:
-        return;
-    };
-
+    const ctrl = event.ctrlKey || event.metaKey;
+    // actions depending on ctrl/cmd key is active
+    if (ctrl) {
+      this.shortcuts.onCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
+    } else if (event.altKey) {
+      this.shortcuts.onAltKeyShortcuts(event);
+    } else {
+      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
+    }
   }
 
   ngOnDestroy(): void {

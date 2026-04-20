@@ -57,6 +57,10 @@ export class PlaybackService implements OnDestroy {
     }
   }
 
+  getTimeRanges(): BoardTimeRange[] {
+    return this.boardTimeRanges;
+  }
+
   stop() {
     Tone.Transport.stop();
     this.store.setIsPlaying(false);
