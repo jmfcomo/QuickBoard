@@ -178,14 +178,20 @@ export class App implements OnInit, OnDestroy {
       if (!target?.closest('#editorjs')) {
         return;
       }
+      const ctrl = event.ctrlKey || event.metaKey;
+      if (!ctrl) {
+        return;
+      }
     }
 
     const ctrl = event.ctrlKey || event.metaKey;
     // actions depending on ctrl/cmd key is active
-    if (!ctrl) {
-      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
-    } else {
+    if (ctrl) {
       this.shortcuts.onCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
+    } else if (event.altKey) {
+      this.shortcuts.onAltKeyShortcuts(event);
+    } else {
+      this.shortcuts.onNotCtrlKeyShortcuts(event, this.canvas() as CanvasComponent, event.shiftKey);
     }
   }
 
