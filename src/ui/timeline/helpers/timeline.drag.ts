@@ -10,6 +10,9 @@ export class TimelineDrag {
   draggingBoardId = signal<string | null>(null);
   dragOverBoardId = signal<string | null>(null);
   dragInsertIndex = signal<number>(-1);
+  longPressBoardId = signal<string | null>(null);
+  isLongPressing = signal(false);
+  isTouchDragging = signal(false);
   private dragStartIndex = -1;
 
   private touchStartX = 0;
@@ -107,9 +110,13 @@ export class TimelineDrag {
     this.touchCurrentY = touch.clientY;
     this.dragStartIndex = boardIndex;
     this.isLongPressActivated = false;
+    this.longPressBoardId.set(boardId);
+    this.isLongPressing.set(true);
 
     this.longPressTimer = setTimeout(() => {
       this.isLongPressActivated = true;
+      this.isLongPressing.set(false);
+      this.isTouchDragging.set(true);
       this.draggingBoardId.set(boardId);
       this.dragStartIndex = boardIndex;
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -128,6 +135,7 @@ export class TimelineDrag {
           clearTimeout(this.longPressTimer);
         }
         this.longPressTimer = null;
+        this.isLongPressing.set(false);
         this.resetDragState();
       }
       return;
@@ -171,6 +179,7 @@ export class TimelineDrag {
       clearTimeout(this.longPressTimer);
     }
     this.longPressTimer = null;
+    this.isLongPressing.set(false);
 
     if (this.isLongPressActivated && this.draggingBoardId()) {
       this.applyDropFromCurrentState();
@@ -185,6 +194,9 @@ export class TimelineDrag {
     this.draggingBoardId.set(null);
     this.dragOverBoardId.set(null);
     this.dragInsertIndex.set(-1);
+    this.longPressBoardId.set(null);
+    this.isLongPressing.set(false);
+    this.isTouchDragging.set(false);
     this.dragStartIndex = -1;
     this.touchCurrentX = 0;
     this.touchCurrentY = 0;

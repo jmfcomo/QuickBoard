@@ -198,6 +198,39 @@
   pointer-events: none !important;
 }
 
+/* Long-press charging animation — fires before drag activates */
+.timeline-board.long-pressing {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--selection-glow);
+  animation: long-press-charge 0.5s ease-out forwards;
+}
+
+@keyframes long-press-charge {
+  0% {
+    box-shadow: 0 0 0 0px var(--selection-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 4px var(--selection-glow), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* Touch drag — board follows finger; looks "lifted" */
+.timeline-board.touch-dragging {
+  opacity: 0.92;
+  z-index: 30;
+  pointer-events: none;
+  scale: 1.06;
+  border-color: var(--border-active);
+  box-shadow:
+    0 0 0 2px var(--border-active),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0s, scale 0.12s ease-out, box-shadow 0.12s;
+}
+
+.timeline-board.touch-dragging * {
+  pointer-events: none !important;
+}
+
 .timeline-board.drag-over {
   border-color: var(--border-active);
   box-shadow: 0 0 0 1px var(--selection-glow);
