@@ -153,8 +153,8 @@ export class TimelineDrag {
     if (!draggedBoardId) return;
 
     const hoveredBoard = document
-      .elementsFromPoint(touch.clientX, touch.clientY)
-      .find((element) => element.classList?.contains('timeline-board'));
+      .elementFromPoint(touch.clientX, touch.clientY)
+      ?.closest('.timeline-board');
     if (!hoveredBoard) return;
 
     const boardId = hoveredBoard.getAttribute('data-board-id');
