@@ -225,11 +225,11 @@ export class CanvasViewportController {
     window.removeEventListener('blur', this.onWindowBlur);
   }
 
-  private isPinchingCanvas = false;
+  private isPinchOrPostPinch = false;
 
   private handleCanvasTouchStart(event: TouchEvent): void {
     if (!this.isZoomGestureEnabled() || event.touches.length < 2) {
-      if (this.isPinchingCanvas) {
+      if (this.isPinchOrPostPinch) {
         event.stopPropagation();
         event.stopImmediatePropagation();
         event.preventDefault();
@@ -238,7 +238,16 @@ export class CanvasViewportController {
       return;
     }
 
-    this.isPinchingCanvas = true;
+    if (!this.isPinchOrPostPinch) {
+      this.isPinchOrPostPinch = true;
+
+      if (this.lc) {
+        // Artificially end the current stroke since we're transitioning to a pinch zoom
+        (this.lc as any).isDragging = false;
+        this.lc.setShapesInProgress([]);
+        this.lc.repaintLayer('main');
+      }
+    }
 
     event.stopPropagation();
     event.stopImmediatePropagation();
@@ -247,7 +256,7 @@ export class CanvasViewportController {
   }
 
   private handleCanvasTouchMove(event: TouchEvent): void {
-    if (!this.isPinchingCanvas) {
+    if (!this.isPinchOrPostPinch) {
       if (event.touches.length >= 2) {
         this.handleCanvasTouchStart(event);
       }
@@ -279,16 +288,13 @@ export class CanvasViewportController {
   }
 
   private handleCanvasTouchEnd(event: TouchEvent): void {
-    if (this.isPinchingCanvas) {
-      // Only block touchend if there are still 2 or more fingers.
-      // If fingers are lifted (length < 2), let the event propagate so LC can clean up
-      // any lingering stroke that was started by the first finger.
-      if (event.touches.length >= 2) {
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        event.preventDefault();
-      } else {
-        this.isPinchingCanvas = false;
+    if (this.isPinchOrPostPinch) {
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      event.preventDefault();
+
+      if (event.touches.length === 0) {
+        this.isPinchOrPostPinch = false;
         this.pinchTouchDistance = null;
       }
     }
