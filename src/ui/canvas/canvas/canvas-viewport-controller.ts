@@ -243,7 +243,7 @@ export class CanvasViewportController {
 
       if (this.lc) {
         // Artificially end the current stroke since we're transitioning to a pinch zoom
-        (this.lc as any).isDragging = false;
+        this.lc.isDragging = false;
         this.lc.setShapesInProgress([]);
         this.lc.repaintLayer('main');
       }
