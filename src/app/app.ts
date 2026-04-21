@@ -125,6 +125,10 @@ export class App implements OnInit, OnDestroy {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
   }
 
+  onResizeTouchStart(event: TouchEvent): void {
+    this.windowScalingService.onResizeTouchStart(event, this.el.nativeElement as HTMLElement);
+  }
+
   toggleCanvasFullscreen(): void {
     this.isCanvasFullscreen.update((fullscreen) => !fullscreen);
     window.requestAnimationFrame(() => {

@@ -1,58 +1,59 @@
 @if (!dialogMode()) {
-  <div class="app" [class.canvas-fullscreen]="isCanvasFullscreen()">
-    <!-- Non-Electron Toolbar -->
-    @if (showWebToolbar) {
-      <app-web-toolbar />
-    }
+<div class="app" [class.canvas-fullscreen]="isCanvasFullscreen()">
+  <!-- Non-Electron Toolbar -->
+  @if (showWebToolbar) {
+  <app-web-toolbar />
+  }
 
-    <div class="save-toast" [class.visible]="saveService.saveStatus()">
-      {{ saveService.saveStatus() }}
-    </div>
-    <div class="editors">
-      <app-canvas
-        [isCanvasFullscreen]="isCanvasFullscreen()"
-        (canvasFullscreenToggled)="toggleCanvasFullscreen()"
-      ></app-canvas>
-      @if (!isCanvasFullscreen()) {
-        <app-script></app-script>
-      }
-    </div>
+  <div class="save-toast" [class.visible]="saveService.saveStatus()">
+    {{ saveService.saveStatus() }}
+  </div>
+  <div class="editors">
+    <app-canvas
+      [isCanvasFullscreen]="isCanvasFullscreen()"
+      (canvasFullscreenToggled)="toggleCanvasFullscreen()"
+    ></app-canvas>
     @if (!isCanvasFullscreen()) {
-      <button
-        type="button"
-        class="resize-handle"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize timeline"
-        (mousedown)="onResizeMouseDown($event)"
-      ></button>
-      <app-timeline></app-timeline>
+    <app-script></app-script>
     }
   </div>
+  @if (!isCanvasFullscreen()) {
+  <button
+    type="button"
+    class="resize-handle"
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize timeline"
+    (mousedown)="onResizeMouseDown($event)"
+    (touchstart)="onResizeTouchStart($event)"
+  ></button>
+  <app-timeline></app-timeline>
+  }
+</div>
 
-  <app-export-settings
-    [visible]="exportIpc.settingsVisible()"
-    [boardCount]="exportIpc.settingsBoardCount()"
-    [defaultPrefix]="exportIpc.defaultPrefix()"
-    [defaultDirPath]="exportIpc.defaultDirPath()"
-    [exportType]="exportIpc.settingsMode()"
-    (confirmExport)="exportIpc.onSettingsConfirm($event)"
-    (cancelExport)="exportIpc.onSettingsCancel()"
-  />
+<app-export-settings
+  [visible]="exportIpc.settingsVisible()"
+  [boardCount]="exportIpc.settingsBoardCount()"
+  [defaultPrefix]="exportIpc.defaultPrefix()"
+  [defaultDirPath]="exportIpc.defaultDirPath()"
+  [exportType]="exportIpc.settingsMode()"
+  (confirmExport)="exportIpc.onSettingsConfirm($event)"
+  (cancelExport)="exportIpc.onSettingsCancel()"
+/>
 
-  <app-export-progress
-    [visible]="exportIpc.exportVisible()"
-    [current]="exportIpc.exportCurrent()"
-    [total]="exportIpc.exportTotal()"
-    [frameCount]="exportIpc.exportFrameCount()"
-    [fileName]="exportIpc.exportFileName()"
-    [status]="exportIpc.exportStatus()"
-    [message]="exportIpc.exportMessage()"
-    (dismiss)="exportIpc.onDismiss()"
-    (cancelExport)="exportIpc.onCancelExport()"
-  />
+<app-export-progress
+  [visible]="exportIpc.exportVisible()"
+  [current]="exportIpc.exportCurrent()"
+  [total]="exportIpc.exportTotal()"
+  [frameCount]="exportIpc.exportFrameCount()"
+  [fileName]="exportIpc.exportFileName()"
+  [status]="exportIpc.exportStatus()"
+  [message]="exportIpc.exportMessage()"
+  (dismiss)="exportIpc.onDismiss()"
+  (cancelExport)="exportIpc.onCancelExport()"
+/>
 } @else if (dialogMode() === 'about') {
-  <app-about-window />
+<app-about-window />
 } @else if (dialogMode() === 'settings') {
-  <app-settings />
+<app-settings />
 }
