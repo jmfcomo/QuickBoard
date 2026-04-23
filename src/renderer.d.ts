@@ -1,5 +1,7 @@
 export {};
 
+import type { CustomThemeId, ThemeId } from './shared/theme-types';
+
 declare global {
   interface Window {
     quickboard?: {
@@ -14,10 +16,10 @@ declare global {
       requestSaveAs: () => void;
       loadIn: () => void;
       onThemeChanged: (
-        handler: (theme: 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black') => void,
+        handler: (theme: ThemeId) => void,
       ) => () => void;
-      getThemeSource: () => Promise<'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black'>;
-      setCustomTheme: (theme: 'white' | 'light' | 'sepia' | 'dark' | 'black' | null) => void;
+      getThemeSource: () => Promise<ThemeId>;
+      setCustomTheme: (theme: CustomThemeId | null) => void;
       onShortcut: (handler: (option: string) => void) => () => void;
       onSaveResult: (
         handler: (payload: { filePath: string; success: boolean; message?: string }) => void,

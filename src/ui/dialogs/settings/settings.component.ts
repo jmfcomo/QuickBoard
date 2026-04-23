@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
+import themes from '../../../shared/themes.json';
 
 // Tool options for default tool dropdown
 const AVAILABLE_TOOLS = [
@@ -28,14 +29,10 @@ const AVAILABLE_TOOLS = [
   { id: 'image', label: 'Image' },
 ];
 
-// Theme options (excluding system - that's handled by OS)
-const AVAILABLE_THEMES = [
-  { id: 'white', label: 'White' },
-  { id: 'light', label: 'Light' },
-  { id: 'sepia', label: 'Sepia' },
-  { id: 'dark', label: 'Dark' },
-  { id: 'black', label: 'Black' },
-];
+// Theme options for user-selectable concrete themes (system is chosen separately)
+const AVAILABLE_THEMES = themes
+  .filter((theme) => theme.id !== 'system')
+  .map((theme) => ({ id: theme.id, label: theme.label }));
 
 const AVAILABLE_THEME_IDS = new Set(AVAILABLE_THEMES.map((theme) => theme.id));
 

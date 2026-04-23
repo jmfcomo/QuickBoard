@@ -1,14 +1,34 @@
 import UIKit
 import Capacitor
+import CapacitorNativeToolbar
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    private let defaultThemeItems: [[String: String]] = [
+        ["id": "system", "label": "System"],
+        ["id": "white", "label": "White"],
+        ["id": "light", "label": "Light"],
+        ["id": "sepia", "label": "Sepia"],
+        ["id": "dark", "label": "Dark"],
+        ["id": "black", "label": "Black"]
+    ]
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onMenuConfigChanged),
+            name: NativeToolbar.menuConfigDidChangeNotification,
+            object: nil
+        )
         return true
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -44,6 +64,190 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    @objc private func onMenuConfigChanged() {
+        if #available(iOS 13.0, *) {
+            UIMenuSystem.main.setNeedsRebuild()
+        }
+    }
+
+    @available(iOS 13.0, *)
+    override func buildMenu(with builder: UIMenuBuilder) {
+        guard UIDevice.current.userInterfaceIdiom == .pad, builder.system == .main else {
+            super.buildMenu(with: builder)
+            return
+        }
+
+        super.buildMenu(with: builder)
+
+        builder.replace(menu: .application, with: buildApplicationMenu())
+        builder.replace(menu: .file, with: buildFileMenu())
+        builder.replace(menu: .edit, with: buildEditMenu())
+        builder.replace(menu: .view, with: buildViewMenu())
+        builder.replace(menu: .help, with: buildHelpMenu())
+    }
+
+    @available(iOS 13.0, *)
+    private func buildApplicationMenu() -> UIMenu {
+        let about = UICommand(
+            title: "About QuickBoard",
+            action: #selector(handleMenuCommand(_:)),
+            propertyList: ["id": "app.about"]
+        )
+        let settings = UIKeyCommand(
+            title: "Settings",
+            action: #selector(handleMenuCommand(_:)),
+            input: ",",
+            modifierFlags: [.command],
+            propertyList: ["id": "app.settings"]
+        )
+
+        return UIMenu(
+            title: "QuickBoard",
+            image: nil,
+            identifier: .application,
+            options: [],
+            children: [about, settings]
+        )
+    }
+
+    @available(iOS 13.0, *)
+    private func buildFileMenu() -> UIMenu {
+        let save = UIKeyCommand(
+            title: "Save",
+            action: #selector(handleMenuCommand(_:)),
+            input: "s",
+            modifierFlags: [.command],
+            propertyList: ["id": "file.save"]
+        )
+        let saveAs = UIKeyCommand(
+            title: "Save As...",
+            action: #selector(handleMenuCommand(_:)),
+            input: "S",
+            modifierFlags: [.command, .shift],
+            propertyList: ["id": "file.saveAs"]
+        )
+        let load = UIKeyCommand(
+            title: "Load",
+            action: #selector(handleMenuCommand(_:)),
+            input: "o",
+            modifierFlags: [.command],
+            propertyList: ["id": "file.load"]
+        )
+        let export = UIKeyCommand(
+            title: "Export...",
+            action: #selector(handleMenuCommand(_:)),
+            input: "e",
+            modifierFlags: [.command],
+            propertyList: ["id": "file.export"]
+        )
+
+        return UIMenu(
+            title: "File",
+            image: nil,
+            identifier: .file,
+            options: [],
+            children: [save, saveAs, load, export]
+        )
+    }
+
+    @available(iOS 13.0, *)
+    private func buildEditMenu() -> UIMenu {
+        let undo = UIKeyCommand(
+            title: "Undo",
+            action: #selector(handleMenuCommand(_:)),
+            input: "z",
+            modifierFlags: [.command],
+            propertyList: ["id": "edit.undo"]
+        )
+        let redo = UIKeyCommand(
+            title: "Redo",
+            action: #selector(handleMenuCommand(_:)),
+            input: "Z",
+            modifierFlags: [.command, .shift],
+            propertyList: ["id": "edit.redo"]
+        )
+
+        return UIMenu(
+            title: "Edit",
+            image: nil,
+            identifier: .edit,
+            options: [],
+            children: [undo, redo]
+        )
+    }
+
+    @available(iOS 13.0, *)
+    private func buildViewMenu() -> UIMenu {
+        let plugin = NativeToolbar.sharedInstance
+        let currentTheme = plugin?.currentTheme ?? "system"
+        let themeItems = plugin?.menuThemeItems.isEmpty == false
+            ? plugin?.menuThemeItems ?? []
+            : defaultThemeItems
+
+        let appearanceItems: [UIMenuElement] = themeItems.compactMap { item in
+            guard let id = item["id"], let label = item["label"] else {
+                return nil
+            }
+
+            return UIAction(
+                title: label,
+                image: nil,
+                identifier: nil,
+                discoverabilityTitle: nil,
+                attributes: [],
+                state: id == currentTheme ? .on : .off
+            ) { [weak self] _ in
+                self?.emitMenuAction("theme.\(id)")
+            }
+        }
+
+        let appearanceMenu = UIMenu(
+            title: "Appearance",
+            image: nil,
+            identifier: nil,
+            options: .displayInline,
+            children: appearanceItems
+        )
+
+        return UIMenu(
+            title: "View",
+            image: nil,
+            identifier: .view,
+            options: [],
+            children: [appearanceMenu]
+        )
+    }
+
+    @available(iOS 13.0, *)
+    private func buildHelpMenu() -> UIMenu {
+        let about = UICommand(
+            title: "About QuickBoard",
+            action: #selector(handleMenuCommand(_:)),
+            propertyList: ["id": "app.about"]
+        )
+
+        return UIMenu(
+            title: "Help",
+            image: nil,
+            identifier: .help,
+            options: [],
+            children: [about]
+        )
+    }
+
+    @objc private func handleMenuCommand(_ sender: UICommand) {
+        guard let payload = sender.propertyList as? [String: String],
+              let actionId = payload["id"] else {
+            return
+        }
+
+        emitMenuAction(actionId)
+    }
+
+    private func emitMenuAction(_ actionId: String) {
+        NativeToolbar.sharedInstance?.emitMenuAction(actionId: actionId)
     }
 
 }

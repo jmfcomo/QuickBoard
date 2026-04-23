@@ -3,4 +3,5 @@
 
 CAP_PLUGIN(NativeToolbar, "NativeToolbar",
     CAP_PLUGIN_METHOD(setTitle, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(configureMenu, CAPPluginReturnPromise);
 )

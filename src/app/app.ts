@@ -27,8 +27,9 @@ import { PlaybackService } from '../services/playback.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 import { appSettings } from 'src/settings-loader';
 import { Capacitor } from '@capacitor/core';
-import { NativeToolbarService } from '../services/native-toolbar.service';
+import { NativeToolbarService, type ThemeId } from '../services/native-toolbar.service';
 import { AppShortcutsService } from 'src/services';
+import { PlatformFileService } from '../services/platform-file.service';
 
 @Component({
   selector: 'app-root',
@@ -68,12 +69,14 @@ export class App implements OnInit, OnDestroy {
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
   private readonly nativeToolbar = inject(NativeToolbarService);
+  private readonly platformFile = inject(PlatformFileService);
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
   private settings = appSettings;
   private readonly shortcuts = inject(AppShortcutsService);
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
+  private removeNativeMenuListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
@@ -81,12 +84,21 @@ export class App implements OnInit, OnDestroy {
     effect(() => {
       if (this.isIos) {
         this.nativeToolbar.setTitle(this.title());
+        this.nativeToolbar.configureMenu(this.themeService.currentTheme() as ThemeId);
       }
     });
   }
 
   ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();
+
+    if (this.isIos) {
+      void this.nativeToolbar.onMenuAction((actionId) => {
+        void this.handleNativeMenuAction(actionId);
+      }).then((removeListener) => {
+        this.removeNativeMenuListener = removeListener;
+      });
+    }
 
     // Check if this window was opened as a dialog by the main process
     const params = new URLSearchParams(window.location.search);
@@ -199,7 +211,102 @@ export class App implements OnInit, OnDestroy {
     this.saveService.destroy();
     this.removeThemeListener?.();
     this.removeShortcutListener?.();
+    this.removeNativeMenuListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
+  }
+
+  private async handleNativeMenuAction(actionId: string): Promise<void> {
+    switch (actionId) {
+      case 'app.about':
+        this.openMobileDialog('about');
+        return;
+      case 'app.settings':
+        this.openMobileDialog('settings');
+        return;
+      case 'file.save':
+        await this.triggerIosSave(false);
+        return;
+      case 'file.saveAs':
+        await this.triggerIosSave(true);
+        return;
+      case 'file.load':
+        await this.triggerIosLoad();
+        return;
+      case 'file.export':
+        this.triggerIosExport();
+        return;
+      case 'edit.undo':
+        this.undoRedo.triggerUndo();
+        return;
+      case 'edit.redo':
+        this.undoRedo.triggerRedo();
+        return;
+      default:
+        if (actionId.startsWith('theme.')) {
+          const [, theme] = actionId.split('.') as [string, ThemeId];
+          this.themeService.applyTheme(theme);
+        }
+    }
+  }
+
+  private openMobileDialog(dialog: 'about' | 'settings'): void {
+    window.open(`?dialog=${dialog}`, '_blank', 'width=750,height=700,noopener,noreferrer');
+  }
+
+  private async triggerIosSave(promptForName: boolean): Promise<void> {
+    try {
+      const isModernWeb = !window.quickboard && 'showSaveFilePicker' in window;
+
+      if (promptForName && !isModernWeb) {
+        const newName = window.prompt(
+          'Enter file name without extension:',
+          this.exportIpc.defaultPrefix() || 'project',
+        );
+        if (newName) {
+          this.exportIpc.setProjectName(newName);
+        } else {
+          return;
+        }
+      }
+
+      const zipData = await this.sbd.buildSbdZip();
+      const fileName = `${this.exportIpc.defaultPrefix() || 'project'}.sbd`;
+      await this.platformFile.saveFile(zipData, fileName);
+      this.saveService.saveStatus.set('Saved!');
+      setTimeout(() => {
+        if (this.saveService.saveStatus() === 'Saved!') {
+          this.saveService.saveStatus.set(null);
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('Save failed from native iPad menu', error);
+      window.alert(`Failed to save file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async triggerIosLoad(): Promise<void> {
+    try {
+      const result = await this.platformFile.pickAndReadFile('.sbd');
+      if (!result) {
+        return;
+      }
+
+      await this.sbd.loadSbdZip(result.data);
+      this.undoRedo.clear();
+
+      const stem = result.name.replace(/\.[^.]+$/, '');
+      if (stem) {
+        this.exportIpc.setProjectName(stem);
+      }
+    } catch (error) {
+      console.error('Load failed from native iPad menu', error);
+      window.alert(`Failed to load file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private triggerIosExport(): void {
+    this.exportIpc.settingsBoardCount.set(this.store.boards().length);
+    this.exportIpc.settingsVisible.set(true);
   }
 }

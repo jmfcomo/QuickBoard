@@ -2,6 +2,7 @@ const { Menu, nativeTheme, BrowserWindow, dialog, globalShortcut } = require('el
 const fs = require('fs');
 const path = require('path');
 const appSettings = require('./config/appsettings.json');
+const themes = require('../shared/themes.json');
 
 let aboutWin = null;
 let settingsWin = null;
@@ -104,6 +105,20 @@ function openDialogWindow(app, { title, width, height, query }) {
 }
 
 function buildMenu(app, win, hooks = {}) {
+  const appearanceItems = themes.map((theme) => ({
+    label: theme.label,
+    type: 'radio',
+    checked:
+      theme.id === 'system'
+        ? !global.quickboardCustomTheme
+        : global.quickboardCustomTheme === theme.id,
+    click: () => {
+      nativeTheme.themeSource = theme.nativeThemeSource;
+      global.quickboardCustomTheme = theme.id === 'system' ? null : theme.id;
+      sendToMainWindow(win, 'quickboard:theme-changed', theme.id);
+    },
+  }));
+
   const fileMenu = {
     label: 'File',
     submenu: [
@@ -163,68 +178,7 @@ function buildMenu(app, win, hooks = {}) {
     submenu: [
       {
         label: 'Appearance',
-        submenu: [
-          {
-            label: 'System',
-            type: 'radio',
-            checked: !global.quickboardCustomTheme,
-            click: () => {
-              nativeTheme.themeSource = 'system';
-              global.quickboardCustomTheme = null;
-              sendToMainWindow(win, 'quickboard:theme-changed', 'system');
-            },
-          },
-          {
-            label: 'White',
-            type: 'radio',
-            checked: global.quickboardCustomTheme === 'white',
-            click: () => {
-              nativeTheme.themeSource = 'light';
-              global.quickboardCustomTheme = 'white';
-              sendToMainWindow(win, 'quickboard:theme-changed', 'white');
-            },
-          },
-          {
-            label: 'Light',
-            type: 'radio',
-            checked: global.quickboardCustomTheme === 'light',
-            click: () => {
-              nativeTheme.themeSource = 'light';
-              global.quickboardCustomTheme = 'light';
-              sendToMainWindow(win, 'quickboard:theme-changed', 'light');
-            },
-          },
-          {
-            label: 'Sepia',
-            type: 'radio',
-            checked: global.quickboardCustomTheme === 'sepia',
-            click: () => {
-              nativeTheme.themeSource = 'light';
-              global.quickboardCustomTheme = 'sepia';
-              sendToMainWindow(win, 'quickboard:theme-changed', 'sepia');
-            },
-          },
-          {
-            label: 'Dark',
-            type: 'radio',
-            checked: global.quickboardCustomTheme === 'dark',
-            click: () => {
-              nativeTheme.themeSource = 'dark';
-              global.quickboardCustomTheme = 'dark';
-              sendToMainWindow(win, 'quickboard:theme-changed', 'dark');
-            },
-          },
-          {
-            label: 'Black',
-            type: 'radio',
-            checked: global.quickboardCustomTheme === 'black',
-            click: () => {
-              nativeTheme.themeSource = 'dark';
-              global.quickboardCustomTheme = 'black';
-              sendToMainWindow(win, 'quickboard:theme-changed', 'black');
-            },
-          },
-        ],
+        submenu: appearanceItems,
       },
     ],
   };
