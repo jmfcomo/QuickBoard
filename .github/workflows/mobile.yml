@@ -39,8 +39,19 @@ jobs:
       - name: Build Angular app for mobile
         run: npm run build:mobile
 
+      - name: Add Android platform
+        run: npx cap add android
+
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Patch AndroidManifest with storage permissions
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          # Add requestLegacyExternalStorage for Android 10 compatibility
+          sed -i 's/android:supportsRtl="true"/android:supportsRtl="true"\n        android:requestLegacyExternalStorage="true"/' "$MANIFEST"
+          # Inject storage permissions before </manifest>
+          sed -i 's|</manifest>|    <!-- Storage: only enforced on Android ≤ 12; 13+ uses scoped storage automatically -->\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\n        android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"\n        android:maxSdkVersion="32" />\n\n</manifest>|' "$MANIFEST"
 
       - name: Generate Android icons
         run: npx @capacitor/assets generate --android --assetPath branding/capacitor
