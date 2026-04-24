@@ -72,6 +72,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        return [.landscapeLeft, .landscapeRight]
+    }
+
     @available(iOS 13.0, *)
     override func buildMenu(with builder: UIMenuBuilder) {
         guard UIDevice.current.userInterfaceIdiom == .pad, builder.system == .main else {
