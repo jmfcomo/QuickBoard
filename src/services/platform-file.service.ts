@@ -67,58 +67,88 @@ export class PlatformFileService {
   }
 
   private async saveNative(data: Uint8Array, fileName: string): Promise<void> {
-    // Convert Uint8Array → base64
+    const base64 = this.toBase64(data);
+    const subPath = `QuickBoard/${fileName}`;
+
+    // 1. Try the public Documents/QuickBoard folder — user-visible in the Files app.
+    //    Requires WRITE_EXTERNAL_STORAGE on Android ≤ 12; on 13+ the system grants
+    //    access automatically to the app-specific directory instead.
+    try {
+      const status = await Filesystem.checkPermissions();
+      if (status.publicStorage !== 'granted') {
+        const requested = await Filesystem.requestPermissions();
+        if (requested.publicStorage !== 'granted') {
+          throw new Error('Storage permission denied');
+        }
+      }
+
+      await Filesystem.writeFile({
+        path: `Documents/${subPath}`,
+        data: base64,
+        directory: Directory.ExternalStorage,
+        recursive: true,
+      });
+
+      // Success — caller (web-toolbar) shows the "Saved!" toast.
+      return;
+    } catch (e) {
+      console.warn('ExternalStorage write failed, trying app-specific Documents', e);
+    }
+
+    // 2. Fall back to the app-specific external Documents directory.
+    //    No permission needed on any Android version. Files appear at:
+    //    Android/data/<appId>/files/Documents/QuickBoard/<fileName>
+    try {
+      await Filesystem.writeFile({
+        path: subPath,
+        data: base64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+
+      // Success — caller shows the "Saved!" toast.
+      return;
+    } catch (e) {
+      console.warn('App-specific Documents write failed, falling back to share sheet', e);
+    }
+
+    // 3. Last resort: share sheet so the user can send the file somewhere.
+    const tmpPath = `tmp_${fileName}`;
+    await Filesystem.writeFile({
+      path: tmpPath,
+      data: base64,
+      directory: Directory.Cache,
+    });
+
+    const { uri } = await Filesystem.getUri({
+      path: tmpPath,
+      directory: Directory.Cache,
+    });
+
+    try {
+      await Share.share({
+        title: `Save ${fileName}`,
+        url: uri,
+        dialogTitle: `Save ${fileName}`,
+      });
+    } finally {
+      await Filesystem.deleteFile({
+        path: tmpPath,
+        directory: Directory.Cache,
+      }).catch((deleteError) => {
+        console.warn(`Failed to cleanup temporary shared file: ${tmpPath}`, deleteError);
+      });
+    }
+  }
+
+  private toBase64(data: Uint8Array): string {
     let binary = '';
     const chunkSize = 8192;
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...chunk);
     }
-    const base64 = btoa(binary);
-
-    try {
-      // On Android, we can attempt to save to the Documents folder directly
-      // using the Filesystem API. This avoids the share sheet requirement.
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64,
-        directory: Directory.Documents,
-        recursive: true,
-      });
-
-      // If we made it here, notify the user where it was saved
-      window.alert(`Saved to Documents/${fileName}`);
-    } catch (e) {
-      console.warn('Direct file save failed, falling back to share sheet', e);
-
-      const tmpPath = `tmp_${fileName}`;
-      await Filesystem.writeFile({
-        path: tmpPath,
-        data: base64,
-        directory: Directory.Cache,
-      });
-
-      const { uri } = await Filesystem.getUri({
-        path: tmpPath,
-        directory: Directory.Cache,
-      });
-
-      // Let the OS share sheet handle where to save it as a fallback
-      try {
-        await Share.share({
-          title: `Save ${fileName}`,
-          url: uri,
-          dialogTitle: `Save ${fileName}`,
-        });
-      } finally {
-        await Filesystem.deleteFile({
-          path: tmpPath,
-          directory: Directory.Cache,
-        }).catch((deleteError) => {
-          console.warn(`Failed to cleanup temporary shared file: ${tmpPath}`, deleteError);
-        });
-      }
-    }
+    return btoa(binary);
   }
 
   private async saveWeb(data: Uint8Array, fileName: string): Promise<void> {
