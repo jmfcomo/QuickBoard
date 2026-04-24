@@ -121,30 +121,52 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly autosaveDuration = signal<number>(
     Math.round(
       ((this.getSafeSettingValue('saving.autosaveDuration', 300000) as number) || 300000) /
-        SettingsComponent.MS_PER_MINUTE,
-    ),
+        SettingsComponent.MS_PER_MINUTE
+    )
   );
   readonly savedToast = signal<boolean>(
-    this.getSafeSettingValue('saving.savedToast', true) as boolean,
+    this.getSafeSettingValue('saving.savedToast', true) as boolean
   );
   readonly initialSave = signal<boolean>(
-    this.getSafeSettingValue('saving.initialSave', true) as boolean,
+    this.getSafeSettingValue('saving.initialSave', true) as boolean
   );
-  readonly defaultLaneCount = signal<number>(this.getSafeSettingValue('audio.defaultLaneCount', 1) as number);
+  readonly defaultLaneCount = signal<number>(
+    this.getSafeSettingValue('audio.defaultLaneCount', 1) as number
+  );
   readonly defaultVolume = signal<number>(
-    ((this.getSafeSettingValue('audio.defaultVolume', 1) as number | null | undefined) ?? 1) * 100,
+    ((this.getSafeSettingValue('audio.defaultVolume', 1) as number | null | undefined) ?? 1) * 100
   );
-  readonly systemLightTheme = signal<string>(this.getSafeSettingValue('theme.systemLightTheme', 'white') as string);
-  readonly systemDarkTheme = signal<string>(this.getSafeSettingValue('theme.systemDarkTheme', 'black') as string);
-  readonly defaultStrokeColor = signal<string>(this.getSafeSettingValue('canvas.defaultStrokeColor', '#000000') as string);
-  readonly defaultFillColor = signal<string>(this.getSafeSettingValue('canvas.defaultFillColor', '#ffffff') as string);
-  readonly defaultBackgroundColor = signal<string>(this.getSafeSettingValue('canvas.defaultBackgroundColor', '#ffffff') as string);
-  readonly defaultTool = signal<string>(this.getSafeSettingValue('canvas.defaultTool', 'pencil') as string);
-  readonly showClearCanvasWarning = signal<boolean>(this.getSafeSettingValue('canvas.showClearCanvasWarning', true) as boolean);
+  readonly systemLightTheme = signal<string>(
+    this.getSafeSettingValue('theme.systemLightTheme', 'white') as string
+  );
+  readonly systemDarkTheme = signal<string>(
+    this.getSafeSettingValue('theme.systemDarkTheme', 'black') as string
+  );
+  readonly defaultStrokeColor = signal<string>(
+    this.getSafeSettingValue('canvas.defaultStrokeColor', '#000000') as string
+  );
+  readonly defaultFillColor = signal<string>(
+    this.getSafeSettingValue('canvas.defaultFillColor', '#ffffff') as string
+  );
+  readonly defaultBackgroundColor = signal<string>(
+    this.getSafeSettingValue('canvas.defaultBackgroundColor', '#ffffff') as string
+  );
+  readonly defaultTool = signal<string>(
+    this.getSafeSettingValue('canvas.defaultTool', 'pencil') as string
+  );
+  readonly showClearCanvasWarning = signal<boolean>(
+    this.getSafeSettingValue('canvas.showClearCanvasWarning', true) as boolean
+  );
   readonly minZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.minZoom', 2) as number);
-  readonly maxZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.maxZoom', 2500) as number);
-  readonly defaultZoom = signal<number>(this.getSafeSettingValue('timeline.zoom.defaultZoom', 40) as number);
-  readonly zoomStep = signal<number>(this.getSafeSettingValue('timeline.zoom.zoomStep', 100) as number);
+  readonly maxZoom = signal<number>(
+    this.getSafeSettingValue('timeline.zoom.maxZoom', 2500) as number
+  );
+  readonly defaultZoom = signal<number>(
+    this.getSafeSettingValue('timeline.zoom.defaultZoom', 40) as number
+  );
+  readonly zoomStep = signal<number>(
+    this.getSafeSettingValue('timeline.zoom.zoomStep', 100) as number
+  );
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
     {
@@ -324,7 +346,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
       void this.appSettingsService.saveAllSettings(this.buildSettingsPayload());
     },
-    { injector: this.injector },
+    { injector: this.injector }
   );
 
   ngOnInit(): void {
@@ -420,35 +442,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.initialDir.set(initialDir);
       this.autosave.set(resolvedAutosave);
       this.autosaveDuration.set(
-        Math.max(
-          1,
-          Math.round((resolvedAutosaveMs || 300000) / SettingsComponent.MS_PER_MINUTE),
-        ),
+        Math.max(1, Math.round((resolvedAutosaveMs || 300000) / SettingsComponent.MS_PER_MINUTE))
       );
       this.savedToast.set(resolvedSavedToast);
       this.initialSave.set(resolvedInitialSave);
       this.defaultLaneCount.set(getValue(settings, 'audio.defaultLaneCount', 1) as number);
-      this.defaultVolume.set(
-        ((getValue(settings, 'audio.defaultVolume', 1) as number || 1) * 100),
-      );
+      this.defaultVolume.set(((getValue(settings, 'audio.defaultVolume', 1) as number) || 1) * 100);
       this.systemLightTheme.set(
-        this.normalizeTheme(getValue(settings, 'theme.systemLightTheme', 'white'), 'white'),
+        this.normalizeTheme(getValue(settings, 'theme.systemLightTheme', 'white'), 'white')
       );
       this.systemDarkTheme.set(
-        this.normalizeTheme(getValue(settings, 'theme.systemDarkTheme', 'black'), 'black'),
+        this.normalizeTheme(getValue(settings, 'theme.systemDarkTheme', 'black'), 'black')
       );
       this.defaultStrokeColor.set(
-        getValue(settings, 'canvas.defaultStrokeColor', '#000000') as string,
+        getValue(settings, 'canvas.defaultStrokeColor', '#000000') as string
       );
-      this.defaultFillColor.set(
-        getValue(settings, 'canvas.defaultFillColor', '#ffffff') as string,
-      );
+      this.defaultFillColor.set(getValue(settings, 'canvas.defaultFillColor', '#ffffff') as string);
       this.defaultBackgroundColor.set(
-        getValue(settings, 'canvas.defaultBackgroundColor', '#ffffff') as string,
+        getValue(settings, 'canvas.defaultBackgroundColor', '#ffffff') as string
       );
       this.defaultTool.set(getValue(settings, 'canvas.defaultTool', 'pencil') as string);
       this.showClearCanvasWarning.set(
-        getValue(settings, 'canvas.showClearCanvasWarning', true) as boolean,
+        getValue(settings, 'canvas.showClearCanvasWarning', true) as boolean
       );
       this.minZoom.set(getValue(settings, 'timeline.zoom.minZoom', 2) as number);
       this.maxZoom.set(getValue(settings, 'timeline.zoom.maxZoom', 2500) as number);
@@ -494,6 +509,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.showRestoreConfirm.set(false);
   }
 
+  close(): void {
+    // Attempt window.close() first (works for web popups even with noopener).
+    // If we're in a regular browser tab or Android WebView where window.close() is a no-op, 
+    // it won't do anything, but we also call history.back() just in case.
+    window.close();
+    window.history.back();
+  }
+
   setBooleanSignalFromInput(event: Event, targetSignal: WritableSignal<boolean>): void {
     const input = event.target;
     if (input instanceof HTMLInputElement) {
@@ -518,18 +541,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
     event: Event,
     targetSignal: WritableSignal<number>,
     min?: number,
-    max?: number,
+    max?: number
   ): void {
     const input = event.target as HTMLInputElement | null;
     const rawValue = input?.valueAsNumber;
     const currentValue = targetSignal();
-    const fallbackValue =
-      Number.isFinite(currentValue) ? currentValue : (typeof min === 'number' ? min : 0);
+    const fallbackValue = Number.isFinite(currentValue)
+      ? currentValue
+      : typeof min === 'number'
+      ? min
+      : 0;
 
     const finiteValue =
-      typeof rawValue === 'number' && Number.isFinite(rawValue)
-        ? rawValue
-        : fallbackValue;
+      typeof rawValue === 'number' && Number.isFinite(rawValue) ? rawValue : fallbackValue;
 
     const clampedMin = typeof min === 'number' ? Math.max(min, finiteValue) : finiteValue;
     const clampedValue = typeof max === 'number' ? Math.min(max, clampedMin) : clampedMin;

@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { FileSaver } from './file-saver.plugin';
 
 interface NativeFilesPlugin {
   pickBoardFile(options: { directoryURL?: string }): Promise<{
@@ -37,7 +38,8 @@ const NativeFiles = registerPlugin<NativeFilesPlugin>('NativeFiles');
 /**
  * Abstracts file save/load across all platforms:
  * - Electron: delegates to window.quickboard IPC (not used here, handled by SaveService)
- * - Android/iOS native (Capacitor): uses @capacitor/filesystem + @capacitor/share
+ * - Android: uses ACTION_CREATE_DOCUMENT via FileSaver plugin (system file picker)
+ * - iOS: uses @capacitor/share sheet (shows "Save to Files" reliably)
  * - Browser (web): uses blob URL download + <input type="file">
  */
 @Injectable({ providedIn: 'root' })
@@ -49,10 +51,11 @@ export class PlatformFileService {
   private readonly iCloudQuickBoardFolder = 'iCloud Drive/QuickBoard';
 
   /**
-   * Save a binary file. On Android/iOS uses the Capacitor Share sheet so the
-   * user can choose where to save it. On web, attempts to use the File System
-   * Access API (showSaveFilePicker) for a native "Save As" experience, falling
-   * back to a normal download.
+   * Save a binary file.
+   * - Native (Android): writes directly via ACTION_CREATE_DOCUMENT system picker. Returns true on confirmed save.
+   * - Native (iOS): writes to a temp cache file and opens the OS share sheet. Returns false as we cannot confirm the save.
+   * - Web: uses the File System Access API (showSaveFilePicker) when available,
+   *   falling back to a blob download. Returns true on confirmed save.
    */
   async saveFile(
     data: Uint8Array,
@@ -63,8 +66,7 @@ export class PlatformFileService {
     if (this.isIos) {
       return this.saveNativeIpad(data, suggestedName || fileName, forcePrompt);
     } else if (this.isNative) {
-      await this.saveNative(data, suggestedName || fileName);
-      return true;
+      return this.saveNative(data, suggestedName || fileName);
     } else {
       return this.saveWeb(data, suggestedName || fileName);
     }
@@ -75,6 +77,26 @@ export class PlatformFileService {
    * On all platforms this uses a hidden <input type="file"> which works in
    * both the browser and Capacitor WebViews.
    */
+  /**
+   * Android only: check whether the app was launched by tapping a .sbd file.
+   * Returns the file bytes and name, or null if no file intent is pending.
+   */
+  async checkAndroidOpenFile(): Promise<{ data: Uint8Array; name: string } | null> {
+    if (Capacitor.getPlatform() !== 'android') return null;
+    try {
+      const result = await FileSaver.getOpenFileData();
+      if (!result?.data) return null;
+      const binary = atob(result.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return { data: bytes, name: result.fileName || 'project.sbd' };
+    } catch {
+      return null;
+    }
+  }
+
   pickAndReadFile(accept: string): Promise<{ data: Uint8Array; name: string } | null> {
     if (this.isIos) {
       return this.pickIpadFile();
@@ -156,59 +178,69 @@ export class PlatformFileService {
     }
   }
 
-  private async saveNative(data: Uint8Array, fileName: string): Promise<void> {
-    // Convert Uint8Array → base64
+  private async saveNative(data: Uint8Array, fileName: string): Promise<boolean> {
+    if (Capacitor.getPlatform() === 'android') {
+      // ACTION_CREATE_DOCUMENT opens the system file picker — the user chooses
+      // the folder and confirms the filename before the write happens.
+      const base64 = this.toBase64(data);
+      try {
+        await FileSaver.saveFile({ data: base64, fileName });
+        return true;
+      } catch (e) {
+        // Swallow silent cancels; re-throw real errors.
+        if (e instanceof Error && e.message === 'cancelled') return false;
+        if (
+          typeof e === 'object' &&
+          e !== null &&
+          (e as { message?: string }).message === 'cancelled'
+        )
+          return false;
+        throw e;
+      }
+    }
+
+    // iOS: the share sheet reliably shows "Save to Files".
+    const base64 = this.toBase64(data);
+    const tmpPath = `tmp_${Date.now()}_${fileName}`;
+
+    await Filesystem.writeFile({
+      path: tmpPath,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
+
+    const { uri } = await Filesystem.getUri({
+      path: tmpPath,
+      directory: Directory.Cache,
+    });
+
+    try {
+      await Share.share({
+        title: fileName,
+        url: uri,
+        dialogTitle: `Save ${fileName}`,
+      });
+    } finally {
+      await Filesystem.deleteFile({
+        path: tmpPath,
+        directory: Directory.Cache,
+      }).catch((deleteError) => {
+        console.warn(`Failed to cleanup temporary file: ${tmpPath}`, deleteError);
+      });
+    }
+
+    return false; // Share sheet shown but can't confirm completion on iOS
+  }
+
+  private toBase64(data: Uint8Array): string {
     let binary = '';
     const chunkSize = 8192;
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...chunk);
     }
-    const base64 = btoa(binary);
-
-    try {
-      // On Android, we can attempt to save to the Documents folder directly
-      // using the Filesystem API. This avoids the share sheet requirement.
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64,
-        directory: Directory.Documents,
-        recursive: true,
-      });
-
-      // If we made it here, notify the user where it was saved
-      window.alert(`Saved to Documents/${fileName}`);
-    } catch (e) {
-      console.warn('Direct file save failed, falling back to share sheet', e);
-
-      const tmpPath = `tmp_${fileName}`;
-      await Filesystem.writeFile({
-        path: tmpPath,
-        data: base64,
-        directory: Directory.Cache,
-      });
-
-      const { uri } = await Filesystem.getUri({
-        path: tmpPath,
-        directory: Directory.Cache,
-      });
-
-      // Let the OS share sheet handle where to save it as a fallback
-      try {
-        await Share.share({
-          title: `Save ${fileName}`,
-          url: uri,
-          dialogTitle: `Save ${fileName}`,
-        });
-      } finally {
-        await Filesystem.deleteFile({
-          path: tmpPath,
-          directory: Directory.Cache,
-        }).catch((deleteError) => {
-          console.warn(`Failed to cleanup temporary shared file: ${tmpPath}`, deleteError);
-        });
-      }
-    }
+    return btoa(binary);
   }
 
   private async saveNativeIpad(
@@ -242,6 +274,7 @@ export class PlatformFileService {
     }
   }
 
+
   private async saveWeb(data: Uint8Array, fileName: string): Promise<boolean> {
     // Attempt File System Access API for native "Save As"
     if ('showSaveFilePicker' in window) {
@@ -268,7 +301,7 @@ export class PlatformFileService {
         await writable.close();
         return true;
       } catch (e) {
-        // User cancelled, or other error. Fall back to standard download.
+        // User cancelled — no toast.
         if (e instanceof Error && e.name === 'AbortError') return false;
         console.warn('File System Access API failed, falling back to download', e);
       }

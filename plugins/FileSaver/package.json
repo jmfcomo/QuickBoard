@@ -1,0 +1,14 @@
+{
+  "name": "capacitor-file-saver",
+  "version": "1.0.0",
+  "description": "ACTION_CREATE_DOCUMENT file saver for QuickBoard Android",
+  "license": "MIT",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^8.0.0"
+  }
+}
