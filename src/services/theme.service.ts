@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
 import { appSettings } from 'src/settings-loader';
-import themes from '../shared/themes.json';
 import type { CustomThemeId, ThemeId } from '../shared/theme-types';
 import { THEME_IDS } from '../shared/theme-types';
 

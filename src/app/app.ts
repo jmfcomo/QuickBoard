@@ -78,7 +78,6 @@ export class App implements OnInit, OnDestroy {
   private actions = inject(TimelineActions);
   private settings = appSettings;
   private readonly shortcuts = inject(AppShortcutsService);
-  private readonly platformFile = inject(PlatformFileService);
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
   private removeNativeMenuListener?: () => void;
