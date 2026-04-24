@@ -472,6 +472,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.showRestoreConfirm.set(false);
   }
 
+  close(): void {
+    // When opened as a popup (desktop/web), window.close() works.
+    // When opened inside the Capacitor WebView (Android), window.opener is null,
+    // so fall back to history.back() to return to the previous state.
+    if (window.opener) {
+      window.close();
+    } else {
+      window.history.back();
+    }
+  }
+
   setBooleanSignalFromInput(event: Event, targetSignal: WritableSignal<boolean>): void {
     const input = event.target;
     if (input instanceof HTMLInputElement) {
