@@ -168,6 +168,12 @@ export class App implements OnInit, OnDestroy {
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
 
+    if (key === 'escape' && this.dialogMode() !== null) {
+      event.preventDefault();
+      this.closeDialog();
+      return;
+    }
+
     if (key === 'escape' && this.exportIpc.settingsVisible()) {
       event.preventDefault();
       this.exportIpc.onSettingsCancel();
@@ -251,7 +257,11 @@ export class App implements OnInit, OnDestroy {
   }
 
   private openMobileDialog(dialog: 'about' | 'settings'): void {
-    window.open(`?dialog=${dialog}`, '_blank', 'width=750,height=700,noopener,noreferrer');
+    this.dialogMode.set(dialog);
+  }
+
+  protected closeDialog(): void {
+    this.dialogMode.set(null);
   }
 
   private async triggerIosSave(promptForName: boolean): Promise<void> {
@@ -306,6 +316,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   private triggerIosExport(): void {
+    this.dialogMode.set(null);
     this.exportIpc.settingsBoardCount.set(this.store.boards().length);
     this.exportIpc.settingsVisible.set(true);
   }
