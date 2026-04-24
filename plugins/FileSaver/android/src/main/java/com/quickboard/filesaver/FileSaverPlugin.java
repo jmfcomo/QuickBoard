@@ -1,4 +1,4 @@
-﻿package com.quickboard.filesaver;
+package com.quickboard.filesaver;
 
 import android.app.Activity;
 import android.content.Intent;
