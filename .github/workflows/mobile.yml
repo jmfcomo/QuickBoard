@@ -39,9 +39,6 @@ jobs:
       - name: Build Angular app for mobile
         run: npm run build:mobile
 
-      - name: Add Android platform
-        run: npx cap add android
-
       - name: Sync Capacitor
         run: npx cap sync android
 
