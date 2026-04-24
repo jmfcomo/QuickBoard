@@ -120,13 +120,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let export = UIAction(title: "Export...") { [weak self] _ in
             self?.emitMenuAction("file.export")
         }
+        let separator = UIMenu(title: "", options: .displayInline, children: [])
+        let settings = UIAction(title: "Settings") { [weak self] _ in
+            self?.emitMenuAction("app.settings")
+        }
+        let about = UIAction(title: "About QuickBoard") { [weak self] _ in
+            self?.emitMenuAction("app.about")
+        }
 
         return UIMenu(
             title: "File",
             image: nil,
             identifier: .file,
             options: [],
-            children: [save, saveAs, load, export]
+            children: [save, saveAs, load, export, separator, settings, about]
         )
     }
 

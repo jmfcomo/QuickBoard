@@ -295,6 +295,26 @@ export class SettingsComponent implements OnInit, OnDestroy {
         return;
       }
 
+      // Read all signal values to establish dependency tracking
+      this.initialDir();
+      this.autosave();
+      this.autosaveDuration();
+      this.savedToast();
+      this.initialSave();
+      this.defaultLaneCount();
+      this.defaultVolume();
+      this.systemLightTheme();
+      this.systemDarkTheme();
+      this.defaultStrokeColor();
+      this.defaultFillColor();
+      this.defaultBackgroundColor();
+      this.defaultTool();
+      this.showClearCanvasWarning();
+      this.minZoom();
+      this.maxZoom();
+      this.defaultZoom();
+      this.zoomStep();
+
       void this.appSettingsService.saveAllSettings(this.buildSettingsPayload());
     },
     { injector: this.injector },

@@ -3,7 +3,7 @@
 }
 
 .page {
-  padding: 20px 24px;
+  padding: calc(20px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
   font-family:
     ui-sans-serif,
     system-ui,

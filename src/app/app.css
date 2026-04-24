@@ -19,9 +19,9 @@
 
 .dialog-close {
   position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 2000;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  z-index: 10000;
   border: 1px solid var(--border-default);
   background: var(--surface-raised, #ffffff);
   color: var(--text-primary, #111111);

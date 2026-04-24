@@ -257,6 +257,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   private openMobileDialog(dialog: 'about' | 'settings'): void {
+    this.exportIpc.onSettingsCancel();
     this.dialogMode.set(dialog);
   }
 

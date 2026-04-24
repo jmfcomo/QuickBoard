@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "absolute:/Users/Savannah/Documents/College/Semester 8/CS 4980/QuickBoard/branding/QuickBoard_icon_macOS.icon">
+   </FileRef>
+   <FileRef
       location = "group:App.xcodeproj">
    </FileRef>
    <FileRef
