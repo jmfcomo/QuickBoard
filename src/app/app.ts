@@ -1,6 +1,8 @@
 import {
   Component,
   ElementRef,
+  EffectRef,
+  Injector,
   OnDestroy,
   OnInit,
   inject,
@@ -70,6 +72,7 @@ export class App implements OnInit, OnDestroy {
   private readonly playback = inject(PlaybackService);
   private readonly nativeToolbar = inject(NativeToolbarService);
   private readonly platformFile = inject(PlatformFileService);
+  private readonly injector = inject(Injector);
   private store = inject(AppStore);
   private actions = inject(TimelineActions);
   private settings = appSettings;
@@ -79,6 +82,11 @@ export class App implements OnInit, OnDestroy {
   private removeNativeMenuListener?: () => void;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
+  private iosAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private iosSaveInProgress = false;
+  private iosHasActiveDocument = false;
+  private iosInitialSavePrompted = false;
+  private iosInitialSaveEffectRef?: EffectRef;
 
   constructor() {
     effect(() => {
@@ -109,6 +117,10 @@ export class App implements OnInit, OnDestroy {
     }
 
     this.saveService.init();
+
+    if (this.isIos) {
+      this.initIosSaveFlow();
+    }
 
     this.removeExportIpcListeners = this.exportIpc.init();
 
@@ -220,6 +232,70 @@ export class App implements OnInit, OnDestroy {
     this.removeNativeMenuListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
+    this.iosInitialSaveEffectRef?.destroy();
+    if (this.iosAutosaveTimer) {
+      clearInterval(this.iosAutosaveTimer);
+      this.iosAutosaveTimer = null;
+    }
+  }
+
+  private getIosSavingSettings(): {
+    autosave: boolean;
+    autosaveDurationMs: number;
+    initialSave: boolean;
+  } {
+    const saving = this.settings.saving;
+    const resolvedAutosave = saving?.autosave ?? this.settings.autosave ?? true;
+    const resolvedAutosaveDuration =
+      saving?.autosaveDuration ?? this.settings.autosaveDuration ?? 300_000;
+    const autosaveDurationMs =
+      typeof resolvedAutosaveDuration === 'number' && resolvedAutosaveDuration > 0
+        ? resolvedAutosaveDuration
+        : 300_000;
+
+    return {
+      autosave: resolvedAutosave,
+      autosaveDurationMs,
+      initialSave: saving?.initialSave ?? true,
+    };
+  }
+
+  private initIosSaveFlow(): void {
+    this.iosInitialSavePrompted = false;
+
+    this.iosInitialSaveEffectRef?.destroy();
+    this.iosInitialSaveEffectRef = effect(
+      () => {
+        const hasUndoHistory = this.undoRedo.canUndo();
+
+        if (!hasUndoHistory) {
+          this.iosInitialSavePrompted = false;
+          return;
+        }
+
+        if (!this.getIosSavingSettings().initialSave) {
+          return;
+        }
+
+        if (this.iosInitialSavePrompted || this.iosHasActiveDocument || this.iosSaveInProgress) {
+          return;
+        }
+
+        this.iosInitialSavePrompted = true;
+        void this.triggerIosSave(false);
+      },
+      { injector: this.injector },
+    );
+
+    const { autosave, autosaveDurationMs } = this.getIosSavingSettings();
+    if (autosave) {
+      this.iosAutosaveTimer = setInterval(() => {
+        if (!this.iosHasActiveDocument || this.iosSaveInProgress) {
+          return;
+        }
+        void this.triggerIosSave(false, false, true);
+      }, autosaveDurationMs);
+    }
   }
 
   private async handleNativeMenuAction(actionId: string): Promise<void> {
@@ -265,11 +341,21 @@ export class App implements OnInit, OnDestroy {
     this.dialogMode.set(null);
   }
 
-  private async triggerIosSave(promptForName: boolean): Promise<void> {
+  private async triggerIosSave(
+    promptForName: boolean,
+    showToast = true,
+    isAutosave = false,
+  ): Promise<boolean> {
+    if (this.iosSaveInProgress) {
+      return false;
+    }
+
+    this.iosSaveInProgress = true;
+
     try {
       const isModernWeb = !window.quickboard && 'showSaveFilePicker' in window;
 
-      if (promptForName && !isModernWeb) {
+      if (promptForName && !isModernWeb && !this.isIos) {
         const newName = window.prompt(
           'Enter file name without extension:',
           this.exportIpc.defaultPrefix() || 'project',
@@ -277,27 +363,47 @@ export class App implements OnInit, OnDestroy {
         if (newName) {
           this.exportIpc.setProjectName(newName);
         } else {
-          return;
+          return false;
         }
       }
 
+      this.canvas()?.flushCurrentBoardState(true);
+
       const zipData = await this.sbd.buildSbdZip();
       const fileName = `${this.exportIpc.defaultPrefix() || 'project'}.sbd`;
-      await this.platformFile.saveFile(zipData, fileName);
-      this.saveService.saveStatus.set('Saved!');
-      setTimeout(() => {
-        if (this.saveService.saveStatus() === 'Saved!') {
-          this.saveService.saveStatus.set(null);
+      const saved = await this.platformFile.saveFile(zipData, fileName, undefined, promptForName);
+
+      if (!saved) {
+        if (!isAutosave) {
+          this.iosInitialSavePrompted = false;
         }
-      }, 2000);
+        return false;
+      }
+
+      this.iosHasActiveDocument = true;
+
+      if (showToast) {
+        this.saveService.saveStatus.set('Saved!');
+        setTimeout(() => {
+          if (this.saveService.saveStatus() === 'Saved!') {
+            this.saveService.saveStatus.set(null);
+          }
+        }, 2000);
+      }
+
+      return true;
     } catch (error) {
       console.error('Save failed from native iPad menu', error);
       window.alert(`Failed to save file: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    } finally {
+      this.iosSaveInProgress = false;
     }
   }
 
   private async triggerIosLoad(): Promise<void> {
     try {
+      this.canvas()?.prepareForProjectLoad();
       const result = await this.platformFile.pickAndReadFile('.sbd');
       if (!result) {
         return;
@@ -310,6 +416,9 @@ export class App implements OnInit, OnDestroy {
       if (stem) {
         this.exportIpc.setProjectName(stem);
       }
+
+      this.iosHasActiveDocument = true;
+      this.iosInitialSavePrompted = true;
     } catch (error) {
       console.error('Load failed from native iPad menu', error);
       window.alert(`Failed to load file: ${error instanceof Error ? error.message : String(error)}`);

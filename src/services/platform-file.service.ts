@@ -1,7 +1,38 @@
 import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
+import { registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+
+interface NativeFilesPlugin {
+  pickBoardFile(options: { directoryURL?: string }): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    name?: string;
+    data?: string;
+    path?: string;
+    message?: string;
+  }>;
+  saveBoardFile(options: {
+    fileName: string;
+    data: string;
+    directoryURL?: string;
+    forcePrompt?: boolean;
+  }): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    path?: string;
+    message?: string;
+  }>;
+  selectFolder(options: { directoryURL?: string }): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    path?: string;
+    message?: string;
+  }>;
+}
+
+const NativeFiles = registerPlugin<NativeFilesPlugin>('NativeFiles');
 
 /**
  * Abstracts file save/load across all platforms:
@@ -13,6 +44,9 @@ import { Share } from '@capacitor/share';
 export class PlatformFileService {
   readonly isElectron = !!window.quickboard;
   readonly isNative = Capacitor.isNativePlatform();
+  readonly isIos = Capacitor.getPlatform() === 'ios';
+
+  private readonly iCloudQuickBoardFolder = 'iCloud Drive/QuickBoard';
 
   /**
    * Save a binary file. On Android/iOS uses the Capacitor Share sheet so the
@@ -20,11 +54,19 @@ export class PlatformFileService {
    * Access API (showSaveFilePicker) for a native "Save As" experience, falling
    * back to a normal download.
    */
-  async saveFile(data: Uint8Array, fileName: string, suggestedName?: string): Promise<void> {
-    if (this.isNative) {
+  async saveFile(
+    data: Uint8Array,
+    fileName: string,
+    suggestedName?: string,
+    forcePrompt = false,
+  ): Promise<boolean> {
+    if (this.isIos) {
+      return this.saveNativeIpad(data, suggestedName || fileName, forcePrompt);
+    } else if (this.isNative) {
       await this.saveNative(data, suggestedName || fileName);
+      return true;
     } else {
-      await this.saveWeb(data, suggestedName || fileName);
+      return this.saveWeb(data, suggestedName || fileName);
     }
   }
 
@@ -34,6 +76,10 @@ export class PlatformFileService {
    * both the browser and Capacitor WebViews.
    */
   pickAndReadFile(accept: string): Promise<{ data: Uint8Array; name: string } | null> {
+    if (this.isIos) {
+      return this.pickIpadFile();
+    }
+
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
@@ -64,6 +110,50 @@ export class PlatformFileService {
 
       input.click();
     });
+  }
+
+  async pickFolder(): Promise<string | undefined> {
+    if (this.isIos) {
+      try {
+        const result = await NativeFiles.selectFolder({
+          directoryURL: this.iCloudQuickBoardFolder,
+        });
+        if (result.success && result.path) {
+          return result.path;
+        }
+      } catch (error) {
+        console.warn('iPad folder picker failed.', error);
+      }
+      return undefined;
+    }
+
+    if (this.isElectron && window.quickboard?.selectFolder) {
+      return window.quickboard.selectFolder();
+    }
+
+    return undefined;
+  }
+
+  private async pickIpadFile(): Promise<{ data: Uint8Array; name: string } | null> {
+    try {
+      const result = await NativeFiles.pickBoardFile({
+        directoryURL: this.iCloudQuickBoardFolder,
+      });
+
+      if (!result.success || result.cancelled || !result.data || !result.name) {
+        return null;
+      }
+
+      const binary = atob(result.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+      return { data: bytes, name: result.name };
+    } catch (error) {
+      console.error('Failed to pick iPad file:', error);
+      return null;
+    }
   }
 
   private async saveNative(data: Uint8Array, fileName: string): Promise<void> {
@@ -121,7 +211,38 @@ export class PlatformFileService {
     }
   }
 
-  private async saveWeb(data: Uint8Array, fileName: string): Promise<void> {
+  private async saveNativeIpad(
+    data: Uint8Array,
+    fileName: string,
+    forcePrompt: boolean,
+  ): Promise<boolean> {
+    let binary = '';
+    const chunkSize = 8192;
+    for (let index = 0; index < data.length; index += chunkSize) {
+      const chunk = data.subarray(index, index + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    const base64 = btoa(binary);
+
+    try {
+      const result = await NativeFiles.saveBoardFile({
+        fileName,
+        data: base64,
+        directoryURL: this.iCloudQuickBoardFolder,
+        forcePrompt,
+      });
+
+      if (!result.success && !result.cancelled) {
+        throw new Error(result.message || 'Failed to save file to Apple Files.');
+      }
+      return result.success;
+    } catch (error) {
+      console.error('iPad Files save failed', error);
+      throw error;
+    }
+  }
+
+  private async saveWeb(data: Uint8Array, fileName: string): Promise<boolean> {
     // Attempt File System Access API for native "Save As"
     if ('showSaveFilePicker' in window) {
       try {
@@ -145,10 +266,10 @@ export class PlatformFileService {
         const writable = await handle.createWritable();
         await writable.write(data);
         await writable.close();
-        return;
+        return true;
       } catch (e) {
         // User cancelled, or other error. Fall back to standard download.
-        if (e instanceof Error && e.name === 'AbortError') return;
+        if (e instanceof Error && e.name === 'AbortError') return false;
         console.warn('File System Access API failed, falling back to download', e);
       }
     }
@@ -163,6 +284,7 @@ export class PlatformFileService {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return true;
   }
 
   private readFileAsBase64(file: File): Promise<string> {
