@@ -2,11 +2,13 @@ import { Injectable } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { FileSaver } from './file-saver.plugin';
 
 /**
  * Abstracts file save/load across all platforms:
  * - Electron: delegates to window.quickboard IPC (not used here, handled by SaveService)
- * - Android/iOS native (Capacitor): uses @capacitor/filesystem + @capacitor/share
+ * - Android: uses ACTION_CREATE_DOCUMENT via FileSaver plugin (system file picker)
+ * - iOS: uses @capacitor/share sheet (shows "Save to Files" reliably)
  * - Browser (web): uses blob URL download + <input type="file">
  */
 @Injectable({ providedIn: 'root' })
@@ -15,16 +17,20 @@ export class PlatformFileService {
   readonly isNative = Capacitor.isNativePlatform();
 
   /**
-   * Save a binary file. On Android/iOS uses the Capacitor Share sheet so the
-   * user can choose where to save it. On web, attempts to use the File System
-   * Access API (showSaveFilePicker) for a native "Save As" experience, falling
-   * back to a normal download.
+   * Save a binary file.
+   * - Native (Android/iOS): writes to a temp cache file and opens the OS share
+   *   sheet so the user can choose where to save it. Returns false because we
+   *   cannot confirm the user actually completed the save.
+   * - Web: uses the File System Access API (showSaveFilePicker) when available,
+   *   falling back to a blob download. Returns true on confirmed save.
    */
-  async saveFile(data: Uint8Array, fileName: string, suggestedName?: string): Promise<void> {
+  async saveFile(data: Uint8Array, fileName: string, suggestedName?: string): Promise<boolean> {
     if (this.isNative) {
       await this.saveNative(data, suggestedName || fileName);
+      // Share sheet was shown but we can't confirm the user saved.
+      return false;
     } else {
-      await this.saveWeb(data, suggestedName || fileName);
+      return this.saveWeb(data, suggestedName || fileName);
     }
   }
 
@@ -67,57 +73,35 @@ export class PlatformFileService {
   }
 
   private async saveNative(data: Uint8Array, fileName: string): Promise<void> {
-    const base64 = this.toBase64(data);
-    const subPath = `QuickBoard/${fileName}`;
-
-    // 1. Try the public Documents/QuickBoard folder — user-visible in the Files app.
-    //    Requires WRITE_EXTERNAL_STORAGE on Android ≤ 12; on 13+ the system grants
-    //    access automatically to the app-specific directory instead.
-    try {
-      const status = await Filesystem.checkPermissions();
-      if (status.publicStorage !== 'granted') {
-        const requested = await Filesystem.requestPermissions();
-        if (requested.publicStorage !== 'granted') {
-          throw new Error('Storage permission denied');
-        }
+    if (Capacitor.getPlatform() === 'android') {
+      // ACTION_CREATE_DOCUMENT opens the system file picker — the user chooses
+      // the folder and confirms the filename before the write happens.
+      const base64 = this.toBase64(data);
+      try {
+        await FileSaver.saveFile({ data: base64, fileName });
+      } catch (e) {
+        // Swallow silent cancels; re-throw real errors.
+        if (e instanceof Error && e.message === 'cancelled') return;
+        if (
+          typeof e === 'object' &&
+          e !== null &&
+          (e as { message?: string }).message === 'cancelled'
+        )
+          return;
+        throw e;
       }
-
-      await Filesystem.writeFile({
-        path: `Documents/${subPath}`,
-        data: base64,
-        directory: Directory.ExternalStorage,
-        recursive: true,
-      });
-
-      // Success — caller (web-toolbar) shows the "Saved!" toast.
       return;
-    } catch (e) {
-      console.warn('ExternalStorage write failed, trying app-specific Documents', e);
     }
 
-    // 2. Fall back to the app-specific external Documents directory.
-    //    No permission needed on any Android version. Files appear at:
-    //    Android/data/<appId>/files/Documents/QuickBoard/<fileName>
-    try {
-      await Filesystem.writeFile({
-        path: subPath,
-        data: base64,
-        directory: Directory.Documents,
-        recursive: true,
-      });
+    // iOS: the share sheet reliably shows "Save to Files".
+    const base64 = this.toBase64(data);
+    const tmpPath = `tmp_${Date.now()}_${fileName}`;
 
-      // Success — caller shows the "Saved!" toast.
-      return;
-    } catch (e) {
-      console.warn('App-specific Documents write failed, falling back to share sheet', e);
-    }
-
-    // 3. Last resort: share sheet so the user can send the file somewhere.
-    const tmpPath = `tmp_${fileName}`;
     await Filesystem.writeFile({
       path: tmpPath,
       data: base64,
       directory: Directory.Cache,
+      recursive: true,
     });
 
     const { uri } = await Filesystem.getUri({
@@ -127,7 +111,7 @@ export class PlatformFileService {
 
     try {
       await Share.share({
-        title: `Save ${fileName}`,
+        title: fileName,
         url: uri,
         dialogTitle: `Save ${fileName}`,
       });
@@ -136,7 +120,7 @@ export class PlatformFileService {
         path: tmpPath,
         directory: Directory.Cache,
       }).catch((deleteError) => {
-        console.warn(`Failed to cleanup temporary shared file: ${tmpPath}`, deleteError);
+        console.warn(`Failed to cleanup temporary file: ${tmpPath}`, deleteError);
       });
     }
   }
@@ -151,7 +135,7 @@ export class PlatformFileService {
     return btoa(binary);
   }
 
-  private async saveWeb(data: Uint8Array, fileName: string): Promise<void> {
+  private async saveWeb(data: Uint8Array, fileName: string): Promise<boolean> {
     // Attempt File System Access API for native "Save As"
     if ('showSaveFilePicker' in window) {
       try {
@@ -175,10 +159,10 @@ export class PlatformFileService {
         const writable = await handle.createWritable();
         await writable.write(data);
         await writable.close();
-        return;
+        return true;
       } catch (e) {
-        // User cancelled, or other error. Fall back to standard download.
-        if (e instanceof Error && e.name === 'AbortError') return;
+        // User cancelled — no toast.
+        if (e instanceof Error && e.name === 'AbortError') return false;
         console.warn('File System Access API failed, falling back to download', e);
       }
     }
@@ -193,6 +177,7 @@ export class PlatformFileService {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return true;
   }
 
   private readFileAsBase64(file: File): Promise<string> {
