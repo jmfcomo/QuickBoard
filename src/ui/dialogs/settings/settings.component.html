@@ -4,7 +4,9 @@
       <p class="eyebrow">Configuration</p>
       <div class="header-row">
         <h3 class="title" id="settings-title">Settings</h3>
-        <button type="button" class="close-button" aria-label="Close settings" (click)="close()">&#x2715;</button>
+        <button type="button" class="close-button" aria-label="Close settings" (click)="close()">
+          &#x2715;
+        </button>
       </div>
     </header>
 
@@ -23,64 +25,68 @@
                 [value]="initialDir()"
                 readonly
               />
-              <button type="button" class="browse-button" (click)="openBrowseDialog()">Browse</button>
+              <button type="button" class="browse-button" (click)="openBrowseDialog()">
+                Browse
+              </button>
             </div>
           </div>
 
           @for (field of savingCheckboxFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              <div
-                class="checkbox-label"
-                [class]="field.checkboxLabelClass ? 'checkbox-label ' + field.checkboxLabelClass : 'checkbox-label'"
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <div
+              class="checkbox-label"
+              [class]="
+                field.checkboxLabelClass
+                  ? 'checkbox-label ' + field.checkboxLabelClass
+                  : 'checkbox-label'
+              "
+            >
+              <input
+                [id]="field.id"
+                type="checkbox"
+                class="checkbox"
+                [checked]="field.value()"
+                (change)="setBooleanSignalFromInput($event, field.value)"
+              />
+              <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+          } @for (field of savingNumberFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            @if (field.unit && field.groupClass) {
+            <div [class]="field.groupClass">
+              <input
+                [id]="field.id"
+                type="number"
+                class="number-input"
+                [value]="field.value()"
+                (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
+                [disabled]="field.disabled ? field.disabled() : false"
+                [attr.min]="field.min ?? null"
+                [attr.max]="field.max ?? null"
+              />
+              <span
+                class="unit-label"
+                [class.is-disabled]="field.disabled ? field.disabled() : false"
               >
-                <input
-                  [id]="field.id"
-                  type="checkbox"
-                  class="checkbox"
-                  [checked]="field.value()"
-                  (change)="setBooleanSignalFromInput($event, field.value)"
-                />
-                <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
-              </div>
+                {{ field.unit }}
+              </span>
             </div>
-          }
-
-          @for (field of savingNumberFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              @if (field.unit && field.groupClass) {
-                <div [class]="field.groupClass">
-                  <input
-                    [id]="field.id"
-                    type="number"
-                    class="number-input"
-                    [value]="field.value()"
-                    (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
-                    [disabled]="field.disabled ? field.disabled() : false"
-                    [attr.min]="field.min ?? null"
-                    [attr.max]="field.max ?? null"
-                  />
-                  <span
-                    class="unit-label"
-                    [class.is-disabled]="field.disabled ? field.disabled() : false"
-                  >
-                    {{ field.unit }}
-                  </span>
-                </div>
-              } @else {
-                <input
-                  [id]="field.id"
-                  type="number"
-                  class="number-input"
-                  [value]="field.value()"
-                  (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
-                  [disabled]="field.disabled ? field.disabled() : false"
-                  [attr.min]="field.min ?? null"
-                  [attr.max]="field.max ?? null"
-                />
-              }
-            </div>
+            } @else {
+            <input
+              [id]="field.id"
+              type="number"
+              class="number-input"
+              [value]="field.value()"
+              (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
+              [disabled]="field.disabled ? field.disabled() : false"
+              [attr.min]="field.min ?? null"
+              [attr.max]="field.max ?? null"
+            />
+            }
+          </div>
           }
         </div>
       </section>
@@ -90,136 +96,10 @@
         <h4 class="section-title">Audio</h4>
         <div class="settings-grid">
           @for (field of audioNumberFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              @if (field.unit && field.groupClass) {
-                <div [class]="field.groupClass">
-                  <input
-                    [id]="field.id"
-                    type="number"
-                    class="number-input"
-                    [value]="field.value()"
-                    (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
-                    [attr.min]="field.min ?? null"
-                    [attr.max]="field.max ?? null"
-                  />
-                  <span class="unit-label">{{ field.unit }}</span>
-                </div>
-              } @else {
-                <input
-                  [id]="field.id"
-                  type="number"
-                  class="number-input"
-                  [value]="field.value()"
-                  (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
-                  [attr.min]="field.min ?? null"
-                  [attr.max]="field.max ?? null"
-                />
-              }
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- Themes Section -->
-      <section class="settings-section">
-        <h4 class="section-title">Themes</h4>
-        <div class="settings-grid">
-          @for (field of themeSelectFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              @if (field.useNgModel) {
-                <select
-                  [id]="field.id"
-                  class="select-input"
-                  [ngModel]="field.value()"
-                  (ngModelChange)="setStringSignalFromModel($event, field.value)"
-                >
-                  @for (option of field.options; track option.id) {
-                    <option [value]="option.id">
-                      {{ option.label }}
-                    </option>
-                  }
-                </select>
-              } @else {
-                <select
-                  [id]="field.id"
-                  class="select-input"
-                  [value]="field.value()"
-                  (change)="setStringSignalFromInput($event, field.value)"
-                >
-                  @for (option of field.options; track option.id) {
-                    <option [value]="option.id">
-                      {{ option.label }}
-                    </option>
-                  }
-                </select>
-              }
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- Canvas Defaults Section -->
-      <section class="settings-section">
-        <h4 class="section-title">Canvas Defaults</h4>
-        <div class="settings-grid canvas-grid">
-          @for (field of canvasColorFields; track field.id) {
-            <div [class]="field.fieldClass ? 'field ' + field.fieldClass : 'field'">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              <input
-                [id]="field.id"
-                type="color"
-                class="color-input"
-                [value]="field.value()"
-                (change)="setStringSignalFromInput($event, field.value)"
-              />
-            </div>
-          }
-
-          @for (field of canvasSelectFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              <select
-                [id]="field.id"
-                class="select-input"
-                [value]="field.value()"
-                (change)="setStringSignalFromInput($event, field.value)"
-              >
-                @for (option of field.options; track option.id) {
-                  <option [value]="option.id">
-                    {{ option.label }}
-                  </option>
-                }
-              </select>
-            </div>
-          }
-
-          @for (field of canvasCheckboxFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
-              <div class="checkbox-label">
-                <input
-                  [id]="field.id"
-                  type="checkbox"
-                  class="checkbox"
-                  [checked]="field.value()"
-                  (change)="setBooleanSignalFromInput($event, field.value)"
-                />
-                <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
-              </div>
-            </div>
-          }
-        </div>
-      </section>
-
-      <!-- Timeline Section -->
-      <section class="settings-section">
-        <h4 class="section-title">Timeline (Experimental)</h4>
-        <div class="settings-grid">
-          @for (field of timelineNumberFields; track field.id) {
-            <div class="field">
-              <label [for]="field.id" class="field-label">{{ field.label }}</label>
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            @if (field.unit && field.groupClass) {
+            <div [class]="field.groupClass">
               <input
                 [id]="field.id"
                 type="number"
@@ -229,7 +109,129 @@
                 [attr.min]="field.min ?? null"
                 [attr.max]="field.max ?? null"
               />
+              <span class="unit-label">{{ field.unit }}</span>
             </div>
+            } @else {
+            <input
+              [id]="field.id"
+              type="number"
+              class="number-input"
+              [value]="field.value()"
+              (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
+              [attr.min]="field.min ?? null"
+              [attr.max]="field.max ?? null"
+            />
+            }
+          </div>
+          }
+        </div>
+      </section>
+
+      <!-- Themes Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Themes</h4>
+        <div class="settings-grid">
+          @for (field of themeSelectFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            @if (field.useNgModel) {
+            <select
+              [id]="field.id"
+              class="select-input"
+              [ngModel]="field.value()"
+              (ngModelChange)="setStringSignalFromModel($event, field.value)"
+            >
+              @for (option of field.options; track option.id) {
+              <option [value]="option.id">
+                {{ option.label }}
+              </option>
+              }
+            </select>
+            } @else {
+            <select
+              [id]="field.id"
+              class="select-input"
+              [value]="field.value()"
+              (change)="setStringSignalFromInput($event, field.value)"
+            >
+              @for (option of field.options; track option.id) {
+              <option [value]="option.id">
+                {{ option.label }}
+              </option>
+              }
+            </select>
+            }
+          </div>
+          }
+        </div>
+      </section>
+
+      <!-- Canvas Defaults Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Canvas Defaults</h4>
+        <div class="settings-grid canvas-grid">
+          @for (field of canvasColorFields; track field.id) {
+          <div [class]="field.fieldClass ? 'field ' + field.fieldClass : 'field'">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <input
+              [id]="field.id"
+              type="color"
+              class="color-input"
+              [value]="field.value()"
+              (change)="setStringSignalFromInput($event, field.value)"
+            />
+          </div>
+          } @for (field of canvasSelectFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <select
+              [id]="field.id"
+              class="select-input"
+              [value]="field.value()"
+              (change)="setStringSignalFromInput($event, field.value)"
+            >
+              @for (option of field.options; track option.id) {
+              <option [value]="option.id">
+                {{ option.label }}
+              </option>
+              }
+            </select>
+          </div>
+          } @for (field of canvasCheckboxFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <div class="checkbox-label">
+              <input
+                [id]="field.id"
+                type="checkbox"
+                class="checkbox"
+                [checked]="field.value()"
+                (change)="setBooleanSignalFromInput($event, field.value)"
+              />
+              <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
+          }
+        </div>
+      </section>
+
+      <!-- Timeline Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Timeline (Experimental)</h4>
+        <div class="settings-grid">
+          @for (field of timelineNumberFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <input
+              [id]="field.id"
+              type="number"
+              class="number-input"
+              [value]="field.value()"
+              (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
+              [attr.min]="field.min ?? null"
+              [attr.max]="field.max ?? null"
+            />
+          </div>
           }
         </div>
       </section>
@@ -250,21 +252,21 @@
 
     <!-- Restore Confirmation -->
     @if (showRestoreConfirm()) {
-      <div
-        class="restore-confirm"
-        [style.top.px]="restoreConfirmTop()"
-        [style.right.px]="restoreConfirmRight()"
-      >
-        <p class="confirm-message">Restore all settings to default values?</p>
-        <div class="confirm-buttons">
-          <button type="button" class="confirm-yes" (click)="confirmRestore()" [disabled]="saving()">
-            {{ saving() ? 'Restoring...' : 'Yes' }}
-          </button>
-          <button type="button" class="confirm-no" (click)="cancelRestore()" [disabled]="saving()">
-            No
-          </button>
-        </div>
+    <div
+      class="restore-confirm"
+      [style.top.px]="restoreConfirmTop()"
+      [style.right.px]="restoreConfirmRight()"
+    >
+      <p class="confirm-message">Restore all settings to default values?</p>
+      <div class="confirm-buttons">
+        <button type="button" class="confirm-yes" (click)="confirmRestore()" [disabled]="saving()">
+          {{ saving() ? 'Restoring...' : 'Yes' }}
+        </button>
+        <button type="button" class="confirm-no" (click)="cancelRestore()" [disabled]="saving()">
+          No
+        </button>
       </div>
+    </div>
     }
   </div>
 </div>
