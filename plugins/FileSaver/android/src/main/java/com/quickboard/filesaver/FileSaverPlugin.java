@@ -1,4 +1,4 @@
-package com.quickboard.filesaver;
+﻿package com.quickboard.filesaver;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -7,11 +7,14 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
-import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.ByteArrayOutputStream;
@@ -22,9 +25,33 @@ import java.io.OutputStream;
 @CapacitorPlugin(name = "FileSaver")
 public class FileSaverPlugin extends Plugin {
 
-    // -------------------------------------------------------------------------
-    // Save: ACTION_CREATE_DOCUMENT — lets user pick folder + confirm file name.
-    // -------------------------------------------------------------------------
+    private ActivityResultLauncher<Intent> createDocumentLauncher;
+    private PluginCall pendingSaveCall;
+
+    @Override
+    public void load() {
+        createDocumentLauncher = getActivity().registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            (ActivityResult result) -> {
+                PluginCall call = pendingSaveCall;
+                pendingSaveCall = null;
+                if (call == null) return;
+
+                if (result.getResultCode() == Activity.RESULT_CANCELED) {
+                    call.reject("cancelled");
+                    return;
+                }
+
+                Intent data = result.getData();
+                if (data == null || data.getData() == null) {
+                    call.reject("No URI returned from file picker");
+                    return;
+                }
+
+                writeToUri(call, data.getData());
+            }
+        );
+    }
 
     @PluginMethod
     public void saveFile(PluginCall call) {
@@ -42,31 +69,16 @@ public class FileSaverPlugin extends Plugin {
         intent.setType(mimeType);
         intent.putExtra(Intent.EXTRA_TITLE, fileName);
 
-        startActivityForResult(call, intent, "handleFileCreated");
+        pendingSaveCall = call;
+        createDocumentLauncher.launch(intent);
     }
 
-    @ActivityCallback
-    private void handleFileCreated(PluginCall call, com.getcapacitor.ActivityResult result) {
-        if (call == null) return;
-
-        if (result.getResultCode() == Activity.RESULT_CANCELED) {
-            call.reject("cancelled");
-            return;
-        }
-
-        Intent data = result.getData();
-        if (data == null || data.getData() == null) {
-            call.reject("No URI returned from file picker");
-            return;
-        }
-
-        Uri uri = data.getData();
+    private void writeToUri(PluginCall call, Uri uri) {
         String base64Data = call.getString("data");
         if (base64Data == null) {
             call.reject("No data in call");
             return;
         }
-
         try {
             byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
             OutputStream outputStream = getContext().getContentResolver().openOutputStream(uri);
@@ -86,16 +98,10 @@ public class FileSaverPlugin extends Plugin {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Open: read a file from an ACTION_VIEW launch intent.
-    // Called by JS on app start to check if the app was opened via a .sbd file.
-    // -------------------------------------------------------------------------
-
     @PluginMethod
     public void getOpenFileData(PluginCall call) {
         Intent intent = getActivity().getIntent();
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) {
-            // No file intent — resolve with empty object (JS checks for .data field).
             call.resolve();
             return;
         }
@@ -105,7 +111,6 @@ public class FileSaverPlugin extends Plugin {
             String fileName = getFileName(intent.getData());
             String base64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
 
-            // Clear the intent so a second call (e.g. after rotation) doesn't re-open.
             getActivity().setIntent(new Intent());
 
             JSObject result = new JSObject();
@@ -117,7 +122,6 @@ public class FileSaverPlugin extends Plugin {
         }
     }
 
-    // Called by Capacitor when the activity receives a new intent while already running.
     @Override
     public void handleOnNewIntent(Intent intent) {
         super.handleOnNewIntent(intent);
@@ -135,14 +139,9 @@ public class FileSaverPlugin extends Plugin {
             event.put("fileName", fileName);
             notifyListeners("fileOpened", event);
         } catch (IOException e) {
-            // Can't propagate errors through events; log and move on.
             android.util.Log.e("FileSaver", "handleOnNewIntent: failed to read file", e);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
 
     private byte[] readUri(Uri uri) throws IOException {
         InputStream is = getContext().getContentResolver().openInputStream(uri);
