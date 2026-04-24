@@ -8,3 +8,5 @@ export { UndoRedoService } from './undo-redo.service';
 export type { UndoableCommand, UndoReservation } from './undo-redo.service';
 export { WindowScalingService } from './window-scaling.service';
 export { AppShortcutsService } from './app-shortcuts.service';
+export { IosIntegrationService } from './ios-integration.service';
+export type { IosCanvasDelegate } from './ios-integration.service';
