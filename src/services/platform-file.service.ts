@@ -18,17 +18,14 @@ export class PlatformFileService {
 
   /**
    * Save a binary file.
-   * - Native (Android/iOS): writes to a temp cache file and opens the OS share
-   *   sheet so the user can choose where to save it. Returns false because we
-   *   cannot confirm the user actually completed the save.
+   * - Native (Android): writes directly via ACTION_CREATE_DOCUMENT system picker. Returns true on confirmed save.
+   * - Native (iOS): writes to a temp cache file and opens the OS share sheet. Returns false as we cannot confirm the save.
    * - Web: uses the File System Access API (showSaveFilePicker) when available,
    *   falling back to a blob download. Returns true on confirmed save.
    */
   async saveFile(data: Uint8Array, fileName: string, suggestedName?: string): Promise<boolean> {
     if (this.isNative) {
-      await this.saveNative(data, suggestedName || fileName);
-      // Share sheet was shown but we can't confirm the user saved.
-      return false;
+      return this.saveNative(data, suggestedName || fileName);
     } else {
       return this.saveWeb(data, suggestedName || fileName);
     }
@@ -92,25 +89,25 @@ export class PlatformFileService {
     });
   }
 
-  private async saveNative(data: Uint8Array, fileName: string): Promise<void> {
+  private async saveNative(data: Uint8Array, fileName: string): Promise<boolean> {
     if (Capacitor.getPlatform() === 'android') {
       // ACTION_CREATE_DOCUMENT opens the system file picker — the user chooses
       // the folder and confirms the filename before the write happens.
       const base64 = this.toBase64(data);
       try {
         await FileSaver.saveFile({ data: base64, fileName });
+        return true;
       } catch (e) {
         // Swallow silent cancels; re-throw real errors.
-        if (e instanceof Error && e.message === 'cancelled') return;
+        if (e instanceof Error && e.message === 'cancelled') return false;
         if (
           typeof e === 'object' &&
           e !== null &&
           (e as { message?: string }).message === 'cancelled'
         )
-          return;
+          return false;
         throw e;
       }
-      return;
     }
 
     // iOS: the share sheet reliably shows "Save to Files".
@@ -143,6 +140,8 @@ export class PlatformFileService {
         console.warn(`Failed to cleanup temporary file: ${tmpPath}`, deleteError);
       });
     }
+
+    return false; // Share sheet shown but can't confirm completion on iOS
   }
 
   private toBase64(data: Uint8Array): string {

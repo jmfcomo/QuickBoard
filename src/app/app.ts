@@ -152,8 +152,6 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  // Placeholder closing brace removed — the real one follows below.
-
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
   }

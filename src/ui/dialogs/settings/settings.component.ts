@@ -490,14 +490,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   close(): void {
-    // When opened as a popup (desktop/web), window.close() works.
-    // When opened inside the Capacitor WebView (Android), window.opener is null,
-    // so fall back to history.back() to return to the previous state.
-    if (window.opener) {
-      window.close();
-    } else {
-      window.history.back();
-    }
+    // Attempt window.close() first (works for web popups even with noopener).
+    // If we're in a regular browser tab or Android WebView where window.close() is a no-op, 
+    // it won't do anything, but we also call history.back() just in case.
+    window.close();
+    window.history.back();
   }
 
   setBooleanSignalFromInput(event: Event, targetSignal: WritableSignal<boolean>): void {
