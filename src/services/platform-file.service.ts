@@ -39,6 +39,26 @@ export class PlatformFileService {
    * On all platforms this uses a hidden <input type="file"> which works in
    * both the browser and Capacitor WebViews.
    */
+  /**
+   * Android only: check whether the app was launched by tapping a .sbd file.
+   * Returns the file bytes and name, or null if no file intent is pending.
+   */
+  async checkAndroidOpenFile(): Promise<{ data: Uint8Array; name: string } | null> {
+    if (Capacitor.getPlatform() !== 'android') return null;
+    try {
+      const result = await FileSaver.getOpenFileData();
+      if (!result?.data) return null;
+      const binary = atob(result.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return { data: bytes, name: result.fileName || 'project.sbd' };
+    } catch {
+      return null;
+    }
+  }
+
   pickAndReadFile(accept: string): Promise<{ data: Uint8Array; name: string } | null> {
     return new Promise((resolve) => {
       const input = document.createElement('input');
