@@ -3,14 +3,25 @@
 
 html,
 body {
-	width: 100%;
-	height: 100%;
-	margin: 0;
-	padding: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Eliminate the 300ms tap delay on touch devices for all interactive elements */
+button,
+a,
+input,
+select,
+textarea,
+label,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 body {
-	overflow: hidden;
-	background-color: var(--bg-body);
-	color: var(--text-default);
+  overflow: hidden;
+  background-color: var(--bg-body);
+  color: var(--text-default);
 }
