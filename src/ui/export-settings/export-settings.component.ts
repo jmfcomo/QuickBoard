@@ -2,7 +2,7 @@ import { Component, computed, effect, input, output, signal } from '@angular/cor
 import { inject } from '@angular/core';
 import { EXPORT_RESOLUTIONS } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
-import { PlatformFileService } from '../../services/platform-file.service';
+import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform-file.service';
 
 @Component({
   selector: 'app-export-settings',
@@ -36,7 +36,7 @@ export class ExportSettingsComponent {
     const idx = Math.max(0, Math.min(this.selectedIndex(), this.resolutions.length - 1));
     return this.resolutions[idx] ?? this.resolutions[0];
   });
-  private readonly defaultIpadDir = 'iCloud Drive/QuickBoard';
+  private readonly defaultIpadDir = IOS_DEFAULT_FOLDER;
 
   constructor() {
     // Sync internal signals from inputs each time the dialog opens.
@@ -109,7 +109,7 @@ export class ExportSettingsComponent {
   protected async onBrowse(): Promise<void> {
     this.isBrowsing.set(true);
     try {
-      const chosen = await this.platformFile.pickFolder();
+      const chosen = await this.platformFile.pickExportDir();
       if (chosen) this.dirPath.set(chosen);
     } finally {
       this.isBrowsing.set(false);

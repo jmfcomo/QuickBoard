@@ -110,6 +110,33 @@ export class App implements OnInit, OnDestroy {
     this.removeWindowScalingListener = this.windowScalingService.init(
       this.el.nativeElement as HTMLElement
     );
+
+    // Android: open a .sbd file that was tapped in the file manager.
+    if (Capacitor.getPlatform() === 'android') {
+      void this.platformFile.checkAndroidOpenFile().then((file) => {
+        if (file) void this.openFile(file);
+      });
+      FileSaver.addListener('fileOpened', (event) => {
+        const binary = atob(event.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        void this.openFile({ data: bytes, name: event.fileName });
+      }).then((handle) => {
+        this.androidFileListener = handle;
+      });
+    }
+  }
+
+  private async openFile(file: { data: Uint8Array; name: string }): Promise<void> {
+    try {
+      await this.sbd.loadSbdZip(file.data);
+      this.undoRedo.clear();
+      const stem = file.name.replace(/\.[^.]+$/, '');
+      if (stem) this.exportIpc.setProjectName(stem);
+    } catch (err) {
+      console.error('Failed to open file:', err);
+      window.alert('Failed to open file: ' + (err instanceof Error ? err.message : String(err)));
+    }
   }
 
   onResizeMouseDown(event: MouseEvent): void {

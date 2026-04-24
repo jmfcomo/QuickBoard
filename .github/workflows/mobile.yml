@@ -39,11 +39,58 @@ jobs:
       - name: Build Angular app for mobile
         run: npm run build:mobile
 
+      - name: Clean Android directory
+        run: rm -rf android
+
       - name: Add Android platform
         run: npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Register .sbd file association in AndroidManifest
+        run: |
+          python3 - <<'EOF'
+          import re
+
+          with open('android/app/src/main/AndroidManifest.xml', 'r') as f:
+              content = f.read()
+
+          # Intent filters to inject into the MainActivity <activity> block.
+          # Three filters for maximum compatibility:
+          #   1. Custom MIME type (used when other apps know about us)
+          #   2. content:// URIs from Files/Downloads app (most common on Android 10+)
+          #   3. file:// URIs from older file managers
+          intent_filters = '''
+                  <intent-filter>
+                      <action android:name="android.intent.action.VIEW" />
+                      <category android:name="android.intent.category.DEFAULT" />
+                      <category android:name="android.intent.category.BROWSABLE" />
+                      <data android:mimeType="application/x-quickboard" />
+                  </intent-filter>
+                  <intent-filter>
+                      <action android:name="android.intent.action.VIEW" />
+                      <category android:name="android.intent.category.DEFAULT" />
+                      <category android:name="android.intent.category.BROWSABLE" />
+                      <data android:scheme="content" android:mimeType="*/*"
+                          android:pathPattern=".*\\.sbd" />
+                  </intent-filter>
+                  <intent-filter>
+                      <action android:name="android.intent.action.VIEW" />
+                      <category android:name="android.intent.category.DEFAULT" />
+                      <category android:name="android.intent.category.BROWSABLE" />
+                      <data android:scheme="file" android:mimeType="*/*"
+                          android:pathPattern=".*\\.sbd" />
+                  </intent-filter>'''
+
+          # Insert just before the first </activity> closing tag
+          content = content.replace('</activity>', intent_filters + '\n        </activity>', 1)
+
+          with open('android/app/src/main/AndroidManifest.xml', 'w') as f:
+              f.write(content)
+
+          print('AndroidManifest patched with .sbd intent filters.')
+          EOF
 
       - name: Generate Android icons
         run: npx @capacitor/assets generate --android --assetPath branding/capacitor
@@ -192,7 +239,7 @@ jobs:
           find ios/App/build -name "*.ipa" -exec mv {} ios/App/build/quickboard-ios.ipa \;
 
       - name: Upload iOS IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ios-ipa
           path: ios/App/build/quickboard-ios.ipa
