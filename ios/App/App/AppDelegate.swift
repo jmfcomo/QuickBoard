@@ -90,18 +90,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @available(iOS 13.0, *)
     private func buildApplicationMenu() -> UIMenu {
-        let about = UICommand(
-            title: "About QuickBoard",
-            action: #selector(handleMenuCommand(_:)),
-            propertyList: ["id": "app.about"]
-        )
-        let settings = UIKeyCommand(
-            title: "Settings",
-            action: #selector(handleMenuCommand(_:)),
-            input: ",",
-            modifierFlags: [.command],
-            propertyList: ["id": "app.settings"]
-        )
+        let about = UIAction(title: "About QuickBoard") { [weak self] _ in
+            self?.emitMenuAction("app.about")
+        }
+        let settings = UIAction(title: "Settings") { [weak self] _ in
+            self?.emitMenuAction("app.settings")
+        }
 
         return UIMenu(
             title: "QuickBoard",
@@ -114,34 +108,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @available(iOS 13.0, *)
     private func buildFileMenu() -> UIMenu {
-        let save = UIKeyCommand(
-            title: "Save",
-            action: #selector(handleMenuCommand(_:)),
-            input: "s",
-            modifierFlags: [.command],
-            propertyList: ["id": "file.save"]
-        )
-        let saveAs = UIKeyCommand(
-            title: "Save As...",
-            action: #selector(handleMenuCommand(_:)),
-            input: "S",
-            modifierFlags: [.command, .shift],
-            propertyList: ["id": "file.saveAs"]
-        )
-        let load = UIKeyCommand(
-            title: "Load",
-            action: #selector(handleMenuCommand(_:)),
-            input: "o",
-            modifierFlags: [.command],
-            propertyList: ["id": "file.load"]
-        )
-        let export = UIKeyCommand(
-            title: "Export...",
-            action: #selector(handleMenuCommand(_:)),
-            input: "e",
-            modifierFlags: [.command],
-            propertyList: ["id": "file.export"]
-        )
+        let save = UIAction(title: "Save") { [weak self] _ in
+            self?.emitMenuAction("file.save")
+        }
+        let saveAs = UIAction(title: "Save As...") { [weak self] _ in
+            self?.emitMenuAction("file.saveAs")
+        }
+        let load = UIAction(title: "Load") { [weak self] _ in
+            self?.emitMenuAction("file.load")
+        }
+        let export = UIAction(title: "Export...") { [weak self] _ in
+            self?.emitMenuAction("file.export")
+        }
 
         return UIMenu(
             title: "File",
@@ -154,20 +132,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @available(iOS 13.0, *)
     private func buildEditMenu() -> UIMenu {
-        let undo = UIKeyCommand(
-            title: "Undo",
-            action: #selector(handleMenuCommand(_:)),
-            input: "z",
-            modifierFlags: [.command],
-            propertyList: ["id": "edit.undo"]
-        )
-        let redo = UIKeyCommand(
-            title: "Redo",
-            action: #selector(handleMenuCommand(_:)),
-            input: "Z",
-            modifierFlags: [.command, .shift],
-            propertyList: ["id": "edit.redo"]
-        )
+        let undo = UIAction(title: "Undo") { [weak self] _ in
+            self?.emitMenuAction("edit.undo")
+        }
+        let redo = UIAction(title: "Redo") { [weak self] _ in
+            self?.emitMenuAction("edit.redo")
+        }
 
         return UIMenu(
             title: "Edit",
@@ -222,11 +192,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     @available(iOS 13.0, *)
     private func buildHelpMenu() -> UIMenu {
-        let about = UICommand(
-            title: "About QuickBoard",
-            action: #selector(handleMenuCommand(_:)),
-            propertyList: ["id": "app.about"]
-        )
+        let about = UIAction(title: "About QuickBoard") { [weak self] _ in
+            self?.emitMenuAction("app.about")
+        }
 
         return UIMenu(
             title: "Help",
@@ -235,15 +203,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             options: [],
             children: [about]
         )
-    }
-
-    @objc private func handleMenuCommand(_ sender: UICommand) {
-        guard let payload = sender.propertyList as? [String: String],
-              let actionId = payload["id"] else {
-            return
-        }
-
-        emitMenuAction(actionId)
     }
 
     private func emitMenuAction(_ actionId: String) {
