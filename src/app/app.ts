@@ -1,12 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
@@ -20,6 +12,7 @@ import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
+import { AndroidOpenFileService } from '../services/android-open-file.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
 import { Capacitor } from '@capacitor/core';
 import { AppShortcutsService, IosIntegrationService } from 'src/services';
@@ -60,6 +53,7 @@ export class App implements OnInit, OnDestroy {
   protected readonly useSafeArea = !this.isElectron;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
+  private readonly androidOpenFile = inject(AndroidOpenFileService);
   private readonly iosIntegration = inject(IosIntegrationService);
   private readonly shortcuts = inject(AppShortcutsService);
   private removeThemeListener?: () => void;
@@ -111,32 +105,9 @@ export class App implements OnInit, OnDestroy {
       this.el.nativeElement as HTMLElement
     );
 
-    // Android: open a .sbd file that was tapped in the file manager.
-    if (Capacitor.getPlatform() === 'android') {
-      void this.platformFile.checkAndroidOpenFile().then((file) => {
-        if (file) void this.openFile(file);
-      });
-      FileSaver.addListener('fileOpened', (event) => {
-        const binary = atob(event.data);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        void this.openFile({ data: bytes, name: event.fileName });
-      }).then((handle) => {
-        this.androidFileListener = handle;
-      });
-    }
-  }
-
-  private async openFile(file: { data: Uint8Array; name: string }): Promise<void> {
-    try {
-      await this.sbd.loadSbdZip(file.data);
-      this.undoRedo.clear();
-      const stem = file.name.replace(/\.[^.]+$/, '');
-      if (stem) this.exportIpc.setProjectName(stem);
-    } catch (err) {
-      console.error('Failed to open file:', err);
-      window.alert('Failed to open file: ' + (err instanceof Error ? err.message : String(err)));
-    }
+    this.androidOpenFile.init({
+      prepareForProjectLoad: () => this.canvas()?.prepareForProjectLoad(),
+    });
   }
 
   onResizeMouseDown(event: MouseEvent): void {
@@ -220,6 +191,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.androidOpenFile.destroy();
     this.saveService.destroy();
     this.iosIntegration.destroy();
     this.removeThemeListener?.();

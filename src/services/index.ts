@@ -8,5 +8,7 @@ export { UndoRedoService } from './undo-redo.service';
 export type { UndoableCommand, UndoReservation } from './undo-redo.service';
 export { WindowScalingService } from './window-scaling.service';
 export { AppShortcutsService } from './app-shortcuts.service';
+export { AndroidOpenFileService } from './android-open-file.service';
+export type { AndroidCanvasDelegate } from './android-open-file.service';
 export { IosIntegrationService } from './ios-integration.service';
 export type { IosCanvasDelegate } from './ios-integration.service';
