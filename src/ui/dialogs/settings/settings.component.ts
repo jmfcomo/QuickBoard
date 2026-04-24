@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
-import { PlatformFileService } from '../../../services/platform-file.service';
+import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../../services/platform-file.service';
 import themes from '../../../shared/themes.json';
 
 // Tool options for default tool dropdown
@@ -89,7 +89,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly injector = inject(Injector);
   private readonly settingsHydrated = signal(false);
   private static readonly MS_PER_MINUTE = 60_000;
-  private readonly defaultIpadDir = 'iCloud Drive/QuickBoard';
+  private readonly defaultIpadDir = IOS_DEFAULT_FOLDER;
 
   // Helper to safely get app settings values
   private getSafeSettingValue(path: string, defaultValue: unknown = null): unknown {
@@ -323,26 +323,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
       if (!this.settingsHydrated()) {
         return;
       }
-
-      // Read all signal values to establish dependency tracking
-      this.initialDir();
-      this.autosave();
-      this.autosaveDuration();
-      this.savedToast();
-      this.initialSave();
-      this.defaultLaneCount();
-      this.defaultVolume();
-      this.systemLightTheme();
-      this.systemDarkTheme();
-      this.defaultStrokeColor();
-      this.defaultFillColor();
-      this.defaultBackgroundColor();
-      this.defaultTool();
-      this.showClearCanvasWarning();
-      this.minZoom();
-      this.maxZoom();
-      this.defaultZoom();
-      this.zoomStep();
 
       void this.appSettingsService.saveAllSettings(this.buildSettingsPayload());
     },

@@ -42,13 +42,16 @@ const NativeFiles = registerPlugin<NativeFilesPlugin>('NativeFiles');
  * - iOS: uses @capacitor/share sheet (shows "Save to Files" reliably)
  * - Browser (web): uses blob URL download + <input type="file">
  */
+/** iCloud folder path used as the default save/load location on iOS. */
+export const IOS_DEFAULT_FOLDER = 'iCloud Drive/QuickBoard';
+
 @Injectable({ providedIn: 'root' })
 export class PlatformFileService {
   readonly isElectron = !!window.quickboard;
   readonly isNative = Capacitor.isNativePlatform();
   readonly isIos = Capacitor.getPlatform() === 'ios';
 
-  private readonly iCloudQuickBoardFolder = 'iCloud Drive/QuickBoard';
+  private readonly iCloudQuickBoardFolder = IOS_DEFAULT_FOLDER;
 
   /**
    * Save a binary file.
@@ -154,6 +157,13 @@ export class PlatformFileService {
     }
 
     return undefined;
+  }
+
+  async pickExportDir(): Promise<string | undefined> {
+    if (this.isElectron && window.quickboard?.pickExportDir) {
+      return (await window.quickboard.pickExportDir()) ?? undefined;
+    }
+    return this.pickFolder();
   }
 
   private async pickIpadFile(): Promise<{ data: Uint8Array; name: string } | null> {

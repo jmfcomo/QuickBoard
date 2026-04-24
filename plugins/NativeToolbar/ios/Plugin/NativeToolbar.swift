@@ -93,14 +93,14 @@ public class NativeToolbar: CAPPlugin, CAPBridgedPlugin {
         stateQueue.async(flags: .barrier) {
             self._menuThemeItems = parsedThemeItems
             self._currentTheme = currentTheme
-        }
 
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: NativeToolbar.menuConfigDidChangeNotification, object: nil)
-            if #available(iOS 13.0, *) {
-                UIMenuSystem.main.setNeedsRebuild()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: NativeToolbar.menuConfigDidChangeNotification, object: nil)
+                if #available(iOS 13.0, *) {
+                    UIMenuSystem.main.setNeedsRebuild()
+                }
+                call.resolve()
             }
-            call.resolve()
         }
     }
 
