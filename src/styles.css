@@ -13,4 +13,17 @@ body {
 	overflow: hidden;
 	background-color: var(--bg-body);
 	color: var(--text-default);
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable=''],
+[contenteditable='true'],
+#editorjs,
+#editorjs * {
+	-webkit-user-select: text;
+	user-select: text;
 }
