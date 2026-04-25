@@ -420,17 +420,33 @@ export class ExportService {
     });
 
     const allBoards = this.store.boards();
+    const [cols, rows] = settings.table.split('x').map((value) => Number(value));
+    const boardsPerPage = cols * rows;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const cellWidth = pageWidth / cols;
+    const cellHeight = pageHeight / rows;
+    const boardAspectRatio = appSettings.board.height / appSettings.board.width;
+    const rawImageWidth = cellWidth * 0.9;
+    const rawImageHeight = rawImageWidth * boardAspectRatio;
+    const imageWidth = rawImageWidth;
+    const imageHeight = Math.min(rawImageHeight, cellHeight * 0.65);
+    const textFontSize = 24;
 
     await this.renderBoardsAtScaleStreaming(
       settings.resolution.scale,
       settings.prefix,
       async (frame, current, total) => {
-        const imgProps = doc.getImageProperties(frame.dataUrl);
-        const imgWidth = imgProps.width;
-        const imgHeight = imgProps.height;
         const boardIndex = current - 1;
-        doc.setFontSize(24);
-        const board = allBoards[boardIndex];
+        const board = allBoards[settings.startIndex + boardIndex];
+        const pageSlot = boardIndex % boardsPerPage;
+        const colIndex = pageSlot % cols;
+        const rowIndex = Math.floor(pageSlot / cols);
+        const cellX = colIndex * cellWidth;
+        const cellY = rowIndex * cellHeight;
+        const imgX = cellX + (cellWidth - imageWidth) / 2;
+        const imgY = cellY + cellHeight * 0.05;
+        const captionY = imgY + imageHeight + 50;
         const scriptText = board?.scriptData?.blocks
           ?.map((block) => {
             const text = typeof block?.data?.text === 'string' ? block.data.text : '';
@@ -439,26 +455,25 @@ export class ExportService {
           .filter((text) => text.length > 0)
           .join(', ') ?? '';
 
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.rect(cellX + 2, cellY + 2, cellWidth - 4, cellHeight - 4, 'S');
 
-        doc.setDrawColor(0); // Black border
-        doc.setLineWidth(3.5);
-
-        doc.addImage(frame.dataUrl, 'PNG', imgWidth * .02, imgHeight * .05, imgWidth * .9, imgHeight * .9);
-
-        doc.rect(imgWidth * .05, imgHeight * .02, imgWidth * .9, imgHeight * .9, 'S');
-        
+        doc.addImage(frame.dataUrl, 'PNG', imgX, imgY, imageWidth, imageHeight);
+        doc.rect(imgX, imgY, imageWidth, imageHeight, 'S');
 
         if (scriptText) {
-          doc.text(
-            scriptText.split(/\r?\n/),
-            (appSettings.board.width * settings.resolution.scale) / 2,
-            (appSettings.board.height * settings.resolution.scale) - 50,
-            { align: 'center' as const },
-          );
+          doc.setFontSize(textFontSize);
+          doc.text(scriptText.split(/\r?\n/), cellX + cellWidth / 2, captionY, {
+            align: 'center' as const,
+            maxWidth: imageWidth,
+          });
         }
-        if (current < total) {
+
+        if (pageSlot === boardsPerPage - 1 && current < total) {
           doc.addPage();
         }
+
         onProgress?.(current, total, frame.name);
       },
       'image/png',

@@ -10,6 +10,7 @@ export interface ExportResolution {
 export interface ExportSettings {
   format: 'png' | 'video' | 'pdf';
   resolution: ExportResolution;
+  table: '1x1' | '2x2' | '3x3';
   prefix: string;
   dirPath: string;
   startIndex: number;
