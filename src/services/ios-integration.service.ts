@@ -1,4 +1,4 @@
-import { Injectable, Injector, effect, inject, signal, type EffectRef } from '@angular/core';
+import { Injectable, Injector, effect, inject, type EffectRef } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { AppStore } from 'src/data';
 import { appSettings } from 'src/settings-loader';
@@ -14,6 +14,8 @@ export interface IosCanvasDelegate {
   flushCurrentBoardState(force?: boolean): void;
   prepareForProjectLoad(): void;
 }
+
+type IosDialog = 'about' | 'settings' | null;
 
 @Injectable({
   providedIn: 'root',
@@ -39,32 +41,41 @@ export class IosIntegrationService {
   private iosMenuEffectRef?: EffectRef;
   private removeNativeMenuListener?: () => void;
   private canvasDelegate?: IosCanvasDelegate;
-  private onOpenDialog?: (dialog: 'about' | 'settings') => void;
+  private onOpenDialog?: (dialog: IosDialog) => void;
 
-  init(delegate: IosCanvasDelegate, onOpenDialog: (dialog: 'about' | 'settings') => void, titleSignal: () => string): void {
+  init(
+    delegate: IosCanvasDelegate,
+    onOpenDialog: (dialog: IosDialog) => void,
+    titleSignal: () => string
+  ): void {
     if (!this.isIos) return;
 
     this.canvasDelegate = delegate;
     this.onOpenDialog = onOpenDialog;
 
-    void this.nativeToolbar.onMenuAction((actionId) => {
-      void this.handleNativeMenuAction(actionId);
-    }).then((removeListener) => {
-      this.removeNativeMenuListener = removeListener;
-    });
+    void this.nativeToolbar
+      .onMenuAction((actionId) => {
+        void this.handleNativeMenuAction(actionId);
+      })
+      .then((removeListener) => {
+        this.removeNativeMenuListener = removeListener;
+      });
 
     this.initIosSaveFlow();
 
     this.iosMenuEffectRef?.destroy();
-    this.iosMenuEffectRef = effect(() => {
-      this.nativeToolbar.setTitle(titleSignal());
-      this.nativeToolbar.configureMenu(this.themeService.currentTheme() as ThemeId);
-    }, { injector: this.injector });
+    this.iosMenuEffectRef = effect(
+      () => {
+        this.nativeToolbar.setTitle(titleSignal());
+        this.nativeToolbar.configureMenu(this.themeService.currentTheme() as ThemeId);
+      },
+      { injector: this.injector }
+    );
   }
 
   destroy(): void {
     if (!this.isIos) return;
-    
+
     this.removeNativeMenuListener?.();
     this.iosInitialSaveEffectRef?.destroy();
     this.iosMenuEffectRef?.destroy();
@@ -119,7 +130,7 @@ export class IosIntegrationService {
         this.iosInitialSavePrompted = true;
         void this.triggerIosSave(false);
       },
-      { injector: this.injector },
+      { injector: this.injector }
     );
 
     const { autosave, autosaveDurationMs } = this.getIosSavingSettings();
@@ -175,7 +186,7 @@ export class IosIntegrationService {
   public async triggerIosSave(
     promptForName: boolean,
     showToast = true,
-    isAutosave = false,
+    isAutosave = false
   ): Promise<boolean> {
     if (this.iosSaveInProgress) {
       return false;
@@ -186,12 +197,12 @@ export class IosIntegrationService {
     try {
       const isModernWeb = !window.quickboard && 'showSaveFilePicker' in window;
 
-      // Note: this logic from app.ts was slightly ambiguous about !this.isIos 
+      // Note: this logic from app.ts was slightly ambiguous about !this.isIos
       // but since it's in triggerIosSave we keep it for now as is.
       if (promptForName && !isModernWeb && !this.isIos) {
         const newName = window.prompt(
           'Enter file name without extension:',
-          this.exportIpc.defaultPrefix() || 'project',
+          this.exportIpc.defaultPrefix() || 'project'
         );
         if (newName) {
           this.exportIpc.setProjectName(newName);
@@ -227,7 +238,9 @@ export class IosIntegrationService {
       return true;
     } catch (error) {
       console.error('Save failed from native iPad menu', error);
-      window.alert(`Failed to save file: ${error instanceof Error ? error.message : String(error)}`);
+      window.alert(
+        `Failed to save file: ${error instanceof Error ? error.message : String(error)}`
+      );
       return false;
     } finally {
       this.iosSaveInProgress = false;
@@ -254,12 +267,14 @@ export class IosIntegrationService {
       this.iosInitialSavePrompted = true;
     } catch (error) {
       console.error('Load failed from native iPad menu', error);
-      window.alert(`Failed to load file: ${error instanceof Error ? error.message : String(error)}`);
+      window.alert(
+        `Failed to load file: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   private triggerIosExport(): void {
-    this.onOpenDialog?.(null as any); // Close any open dialogs
+    this.onOpenDialog?.(null); // Close any open dialogs
     this.exportIpc.settingsBoardCount.set(this.store.boards().length);
     this.exportIpc.settingsVisible.set(true);
   }
