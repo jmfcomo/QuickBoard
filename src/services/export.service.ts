@@ -419,18 +419,43 @@ export class ExportService {
       format: [appSettings.board.width * settings.resolution.scale, appSettings.board.height * settings.resolution.scale],
     });
 
+    const allBoards = this.store.boards();
+
     await this.renderBoardsAtScaleStreaming(
       settings.resolution.scale,
       settings.prefix,
       async (frame, current, total) => {
         const imgProps = doc.getImageProperties(frame.dataUrl);
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
         const imgWidth = imgProps.width;
         const imgHeight = imgProps.height;
-        const x = (pageWidth - imgWidth) / 2;
-        const y = (pageHeight - imgHeight) / 2;
-        doc.addImage(frame.dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+        const boardIndex = current - 1;
+        doc.setFontSize(24);
+        const board = allBoards[boardIndex];
+        const scriptText = board?.scriptData?.blocks
+          ?.map((block) => {
+            const text = typeof block?.data?.text === 'string' ? block.data.text : '';
+            return text.length > 0 ? `"${text}"` : '';
+          })
+          .filter((text) => text.length > 0)
+          .join(', ') ?? '';
+
+
+        doc.setDrawColor(0); // Black border
+        doc.setLineWidth(3.5);
+
+        doc.addImage(frame.dataUrl, 'PNG', imgWidth * .02, imgHeight * .05, imgWidth * .9, imgHeight * .9);
+
+        doc.rect(imgWidth * .05, imgHeight * .02, imgWidth * .9, imgHeight * .9, 'S');
+        
+
+        if (scriptText) {
+          doc.text(
+            scriptText.split(/\r?\n/),
+            (appSettings.board.width * settings.resolution.scale) / 2,
+            (appSettings.board.height * settings.resolution.scale) - 50,
+            { align: 'center' as const },
+          );
+        }
         if (current < total) {
           doc.addPage();
         }
