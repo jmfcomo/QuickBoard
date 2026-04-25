@@ -137,7 +137,8 @@
   min-width: 100px;
   margin-right: 12px;
   text-align: left;
-  user-select: text;
+  -webkit-user-select: none;
+  user-select: none;
   flex-shrink: 0;
 }
 

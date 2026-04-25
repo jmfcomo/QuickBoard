@@ -81,13 +81,17 @@ export class WebToolbarComponent {
     try {
       const zipData = await this.sbd.buildSbdZip();
       const fileName = (this.exportIpc.defaultPrefix() || 'project') + '.sbd';
-      await this.platformFile.saveFile(zipData, fileName);
-      this.saveService.saveStatus.set('Saved!');
-      setTimeout(() => {
-        if (this.saveService.saveStatus() === 'Saved!') {
-          this.saveService.saveStatus.set(null);
-        }
-      }, 2000);
+      const confirmed = await this.platformFile.saveFile(zipData, fileName);
+      // Only show the toast when we know the save completed (web/desktop).
+      // On native the share sheet is the feedback; we can't confirm the user saved.
+      if (confirmed) {
+        this.saveService.saveStatus.set('Saved!');
+        setTimeout(() => {
+          if (this.saveService.saveStatus() === 'Saved!') {
+            this.saveService.saveStatus.set(null);
+          }
+        }, 2000);
+      }
     } catch (e) {
       console.error('Save failed', e);
       window.alert('Failed to save file: ' + (e instanceof Error ? e.message : String(e)));

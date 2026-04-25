@@ -1,6 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
+import { IOS_DEFAULT_FOLDER } from './platform-file.service';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
@@ -41,7 +43,17 @@ export class ExportIpcService {
       }
     })(),
   );
-  readonly defaultDirPath = computed(() => this._lastExportPath() || this.systemDocumentsPath());
+  readonly defaultDirPath = computed(() => {
+    const lastPath = this._lastExportPath();
+    const systemPath = this.systemDocumentsPath();
+    if (lastPath) {
+      return lastPath;
+    }
+    if (systemPath) {
+      return systemPath;
+    }
+    return Capacitor.getPlatform() === 'ios' ? IOS_DEFAULT_FOLDER : '';
+  });
   private successTimeout: ReturnType<typeof setTimeout> | null = null;
   private abortController: AbortController | null = null;
 

@@ -17,11 +17,11 @@
   border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    box-shadow 0.2s,
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s,
     transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .timeline-board.dragging {
@@ -191,9 +191,41 @@
   cursor: grabbing;
   z-index: 20;
   pointer-events: none;
+  transition: transform 0s, opacity 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
 .timeline-board.dragging * {
+  pointer-events: none !important;
+}
+
+/* Long-press charging animation — fires before drag activates */
+.timeline-board.long-pressing {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--selection-glow);
+  animation: long-press-charge 0.5s ease-out forwards;
+}
+
+@keyframes long-press-charge {
+  0% {
+    box-shadow: 0 0 0 0px var(--selection-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 4px var(--selection-glow), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
+/* Touch drag — board follows finger; looks "lifted" */
+.timeline-board.touch-dragging {
+  opacity: 0.92;
+  z-index: 30;
+  pointer-events: none;
+  scale: 1.06;
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--border-active), 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0s, scale 0.12s ease-out, box-shadow 0.12s;
+}
+
+.timeline-board.touch-dragging * {
   pointer-events: none !important;
 }
 
@@ -213,9 +245,7 @@
   height: 70%;
   background: var(--border-active);
   border-radius: 3px;
-  box-shadow:
-    0 0 12px var(--selection-glow),
-    0 0 4px var(--border-active);
+  box-shadow: 0 0 12px var(--selection-glow), 0 0 4px var(--border-active);
   animation: pulse-indicator 0.3s ease-in-out infinite;
   pointer-events: none;
 }
@@ -257,10 +287,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition:
-    color 0.15s,
-    border-color 0.15s,
-    background-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
 .add-board-icon {

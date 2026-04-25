@@ -1,34 +1,21 @@
-import {
-  Component,
-  ElementRef,
-  OnDestroy,
-  OnInit,
-  inject,
-  signal,
-  viewChild,
-  effect,
-} from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject, signal, viewChild } from '@angular/core';
 import { CanvasComponent } from '../ui/canvas/canvas/canvas.component';
 import { ScriptComponent } from '../ui/script/script/script.component';
 import { TimelineComponent } from '../ui/timeline/timeline/timeline.component';
-import { TimelineActions } from '../ui/timeline/helpers/timeline.actions';
 import { AboutWindowComponent } from '../ui/dialogs/about-window/about-window.component';
 import { SettingsComponent } from '../ui/dialogs/settings/settings.component';
 import { ExportProgressComponent } from '../ui/export-progress/export-progress.component';
 import { ExportSettingsComponent } from '../ui/export-settings/export-settings.component';
-import { AppStore } from 'src/data';
-import { SbdService } from './app.sbd.service';
 import { ThemeService } from '../services/theme.service';
 import { SaveService } from '../services/save.service';
 import { ExportIpcService } from '../services/export-ipc.service';
 import { WindowScalingService } from '../services/window-scaling.service';
 import { UndoRedoService } from '../services/undo-redo.service';
 import { PlaybackService } from '../services/playback.service';
+import { AndroidOpenFileService } from '../services/android-open-file.service';
 import { WebToolbarComponent } from '../ui/web-toolbar/web-toolbar.component';
-import { appSettings } from 'src/settings-loader';
 import { Capacitor } from '@capacitor/core';
-import { NativeToolbarService } from '../services/native-toolbar.service';
-import { AppShortcutsService } from 'src/services';
+import { AppShortcutsService, IosIntegrationService } from 'src/services';
 
 @Component({
   selector: 'app-root',
@@ -56,7 +43,6 @@ export class App implements OnInit, OnDestroy {
   protected readonly saveService = inject(SaveService);
   protected readonly dialogMode = signal<'about' | 'settings' | null>(null);
   private readonly canvas = viewChild(CanvasComponent);
-  private readonly sbd = inject(SbdService);
   private readonly el = inject(ElementRef);
   private readonly themeService = inject(ThemeService);
   private readonly windowScalingService = inject(WindowScalingService);
@@ -67,26 +53,25 @@ export class App implements OnInit, OnDestroy {
   protected readonly useSafeArea = !this.isElectron;
   private readonly undoRedo = inject(UndoRedoService);
   private readonly playback = inject(PlaybackService);
-  private readonly nativeToolbar = inject(NativeToolbarService);
-  private store = inject(AppStore);
-  private actions = inject(TimelineActions);
-  private settings = appSettings;
+  private readonly androidOpenFile = inject(AndroidOpenFileService);
+  private readonly iosIntegration = inject(IosIntegrationService);
   private readonly shortcuts = inject(AppShortcutsService);
   private removeThemeListener?: () => void;
   private removeShortcutListener?: () => void | undefined;
   private removeWindowScalingListener?: () => void;
   private removeExportIpcListeners?: () => void;
 
-  constructor() {
-    effect(() => {
-      if (this.isIos) {
-        this.nativeToolbar.setTitle(this.title());
-      }
-    });
-  }
-
   ngOnInit(): void {
     this.removeThemeListener = this.themeService.initTheme();
+
+    this.iosIntegration.init(
+      {
+        flushCurrentBoardState: (force) => this.canvas()?.flushCurrentBoardState(force),
+        prepareForProjectLoad: () => this.canvas()?.prepareForProjectLoad(),
+      },
+      (dialog) => this.dialogMode.set(dialog),
+      () => this.title()
+    );
 
     // Check if this window was opened as a dialog by the main process
     const params = new URLSearchParams(window.location.search);
@@ -119,10 +104,18 @@ export class App implements OnInit, OnDestroy {
     this.removeWindowScalingListener = this.windowScalingService.init(
       this.el.nativeElement as HTMLElement
     );
+
+    this.androidOpenFile.init({
+      prepareForProjectLoad: () => this.canvas()?.prepareForProjectLoad(),
+    });
   }
 
   onResizeMouseDown(event: MouseEvent): void {
     this.windowScalingService.onResizeMouseDown(event, this.el.nativeElement as HTMLElement);
+  }
+
+  onResizeTouchStart(event: TouchEvent): void {
+    this.windowScalingService.onResizeTouchStart(event, this.el.nativeElement as HTMLElement);
   }
 
   toggleCanvasFullscreen(): void {
@@ -151,6 +144,12 @@ export class App implements OnInit, OnDestroy {
 
   onKeyDown(event: KeyboardEvent): void {
     const key = event.key.toLowerCase();
+
+    if (key === 'escape' && this.dialogMode() !== null) {
+      event.preventDefault();
+      this.closeDialog();
+      return;
+    }
 
     if (key === 'escape' && this.exportIpc.settingsVisible()) {
       event.preventDefault();
@@ -192,10 +191,16 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.androidOpenFile.destroy();
     this.saveService.destroy();
+    this.iosIntegration.destroy();
     this.removeThemeListener?.();
     this.removeShortcutListener?.();
     this.removeWindowScalingListener?.();
     this.removeExportIpcListeners?.();
+  }
+
+  protected closeDialog(): void {
+    this.dialogMode.set(null);
   }
 }

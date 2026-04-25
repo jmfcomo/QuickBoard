@@ -31,6 +31,7 @@ export interface LCInstance {
   shapes: unknown[];
   repaintLayer(layer: string): void;
   trigger(event: string, data?: unknown): void;
+  isDragging?: boolean;
   tool: LCTool;
   getColor(type: string): string;
   setColor(type: string, color: string): void;
@@ -62,7 +63,7 @@ export interface LiterallyCanvas {
     options?: {
       imageURLPrefix?: string;
       imageSize?: { width: number; height: number };
-    },
+    }
   ): LCInstance;
   tools: {
     Pencil: LiterallyCanvasTool;

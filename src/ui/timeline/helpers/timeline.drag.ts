@@ -10,10 +10,15 @@ export class TimelineDrag {
   draggingBoardId = signal<string | null>(null);
   dragOverBoardId = signal<string | null>(null);
   dragInsertIndex = signal<number>(-1);
+  longPressBoardId = signal<string | null>(null);
+  isLongPressing = signal(false);
+  isTouchDragging = signal(false);
   private dragStartIndex = -1;
 
   private touchStartX = 0;
   private touchStartY = 0;
+  private touchCurrentX = 0;
+  private touchCurrentY = 0;
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private isLongPressActivated = false;
   readonly longPressDuration = 500;
@@ -101,13 +106,23 @@ export class TimelineDrag {
     const touch = event.touches[0];
     this.touchStartX = touch.clientX;
     this.touchStartY = touch.clientY;
+    this.touchCurrentX = touch.clientX;
+    this.touchCurrentY = touch.clientY;
     this.dragStartIndex = boardIndex;
     this.isLongPressActivated = false;
+    this.isTouchDragging.set(false);
+    this.longPressBoardId.set(boardId);
+    this.isLongPressing.set(true);
 
     this.longPressTimer = setTimeout(() => {
       this.isLongPressActivated = true;
+      this.isLongPressing.set(false);
+      this.isTouchDragging.set(true);
       this.draggingBoardId.set(boardId);
       this.dragStartIndex = boardIndex;
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
     }, this.longPressDuration);
   }
 
@@ -121,6 +136,7 @@ export class TimelineDrag {
           clearTimeout(this.longPressTimer);
         }
         this.longPressTimer = null;
+        this.isLongPressing.set(false);
         this.resetDragState();
       }
       return;
@@ -131,28 +147,28 @@ export class TimelineDrag {
     if (event.cancelable) event.preventDefault();
 
     const touch = event.touches[0];
+    this.touchCurrentX = touch.clientX;
+    this.touchCurrentY = touch.clientY;
     const draggedBoardId = this.draggingBoardId();
     if (!draggedBoardId) return;
 
-    const boards = document.querySelectorAll('.timeline-board');
-    for (const board of Array.from(boards)) {
-      const rect = board.getBoundingClientRect();
-      if (touch.clientX >= rect.left && touch.clientX <= rect.right) {
-        const boardId = board.getAttribute('data-board-id');
-        if (boardId && boardId !== draggedBoardId) {
-          const boardCenterX = rect.left + rect.width / 2;
-          const targetIndex = this.store.boards().findIndex((b) => b.id === boardId);
+    const hoveredBoard = document
+      .elementFromPoint(touch.clientX, touch.clientY)
+      ?.closest('.timeline-board');
+    if (!hoveredBoard) return;
 
-          if (targetIndex !== -1) {
-            const newInsertIndex = touch.clientX < boardCenterX ? targetIndex : targetIndex + 1;
-            if (this.dragInsertIndex() !== newInsertIndex) {
-              this.dragInsertIndex.set(newInsertIndex);
-              this.dragOverBoardId.set(boardId);
-            }
-          }
-        }
-        break;
-      }
+    const boardId = hoveredBoard.getAttribute('data-board-id');
+    if (!boardId || boardId === draggedBoardId) return;
+
+    const rect = hoveredBoard.getBoundingClientRect();
+    const boardCenterX = rect.left + rect.width / 2;
+    const targetIndex = this.store.boards().findIndex((b) => b.id === boardId);
+    if (targetIndex === -1) return;
+
+    const newInsertIndex = touch.clientX < boardCenterX ? targetIndex : targetIndex + 1;
+    if (this.dragInsertIndex() !== newInsertIndex) {
+      this.dragInsertIndex.set(newInsertIndex);
+      this.dragOverBoardId.set(boardId);
     }
   }
 
@@ -161,6 +177,7 @@ export class TimelineDrag {
       clearTimeout(this.longPressTimer);
     }
     this.longPressTimer = null;
+    this.isLongPressing.set(false);
 
     if (this.isLongPressActivated && this.draggingBoardId()) {
       this.applyDropFromCurrentState();
@@ -175,7 +192,14 @@ export class TimelineDrag {
     this.draggingBoardId.set(null);
     this.dragOverBoardId.set(null);
     this.dragInsertIndex.set(-1);
+    this.longPressBoardId.set(null);
+    this.isLongPressing.set(false);
+    this.isTouchDragging.set(false);
     this.dragStartIndex = -1;
+    this.touchCurrentX = 0;
+    this.touchCurrentY = 0;
+    this.touchStartX = 0;
+    this.touchStartY = 0;
   }
 
   private applyDropFromCurrentState(): void {
@@ -221,22 +245,27 @@ export class TimelineDrag {
     const insertIndex = this.dragInsertIndex();
     const draggingIndex = this.dragStartIndex;
 
-    if (insertIndex === -1 || draggingIndex === -1) {
+    if (draggingIndex === -1) {
       return 0;
     }
 
     if (boardIndex === draggingIndex) {
+      const isTouch = this.isTouchDragging() || this.isLongPressActivated;
+      if (isTouch) {
+        return this.touchCurrentX - this.touchStartX;
+      }
       return 0;
     }
 
-    // drag right
+    if (insertIndex === -1) {
+      return 0;
+    }
+
     if (draggingIndex < insertIndex) {
       if (boardIndex === insertIndex) {
         return this.GAP_SIZE;
       }
-    }
-    // drag left
-    else if (draggingIndex > insertIndex) {
+    } else if (draggingIndex > insertIndex) {
       if (boardIndex >= insertIndex && boardIndex < draggingIndex) {
         return this.GAP_SIZE;
       }
