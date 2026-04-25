@@ -13,6 +13,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
+import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../../services/platform-file.service';
+import themes from '../../../shared/themes.json';
 
 // Tool options for default tool dropdown
 const AVAILABLE_TOOLS = [
@@ -28,14 +30,10 @@ const AVAILABLE_TOOLS = [
   { id: 'image', label: 'Image' },
 ];
 
-// Theme options (excluding system - that's handled by OS)
-const AVAILABLE_THEMES = [
-  { id: 'white', label: 'White' },
-  { id: 'light', label: 'Light' },
-  { id: 'sepia', label: 'Sepia' },
-  { id: 'dark', label: 'Dark' },
-  { id: 'black', label: 'Black' },
-];
+// Theme options for user-selectable concrete themes (system is chosen separately)
+const AVAILABLE_THEMES = themes
+  .filter((theme) => theme.id !== 'system')
+  .map((theme) => ({ id: theme.id, label: theme.label }));
 
 const AVAILABLE_THEME_IDS = new Set(AVAILABLE_THEMES.map((theme) => theme.id));
 
@@ -87,9 +85,11 @@ interface ColorFieldConfig {
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
+  private readonly platformFile = inject(PlatformFileService);
   private readonly injector = inject(Injector);
   private readonly settingsHydrated = signal(false);
   private static readonly MS_PER_MINUTE = 60_000;
+  private readonly defaultIpadDir = IOS_DEFAULT_FOLDER;
 
   // Helper to safely get app settings values
   private getSafeSettingValue(path: string, defaultValue: unknown = null): unknown {
@@ -113,7 +113,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   // Settings states - with safe defaults
   readonly initialDir = signal<string>(
-    this.getSafeSettingValue('saving.initialDir', 'documents') as string
+    this.platformFile.isIos
+      ? this.defaultIpadDir
+      : (this.getSafeSettingValue('saving.initialDir', 'documents') as string),
   );
   readonly autosave = signal<boolean>(this.getSafeSettingValue('saving.autosave', true) as boolean);
   readonly autosaveDuration = signal<number>(
@@ -401,6 +403,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       const resolvedInitialDir =
         (getValue(settings, 'saving.initialDir', undefined) as string | undefined) ??
         (getValue(settings, 'initialDir', 'documents') as string);
+      const initialDir =
+        this.platformFile.isIos && (!resolvedInitialDir || resolvedInitialDir === 'documents')
+          ? this.defaultIpadDir
+          : resolvedInitialDir;
       const resolvedAutosave =
         (getValue(settings, 'saving.autosave', undefined) as boolean | undefined) ??
         (getValue(settings, 'autosave', true) as boolean);
@@ -413,7 +419,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         (getValue(settings, 'saving.initialSave', undefined) as boolean | undefined) ?? true;
 
       // Update signals with fresh values from disk
-      this.initialDir.set(resolvedInitialDir);
+      this.initialDir.set(initialDir);
       this.autosave.set(resolvedAutosave);
       this.autosaveDuration.set(
         Math.max(1, Math.round((resolvedAutosaveMs || 300000) / SettingsComponent.MS_PER_MINUTE))
@@ -449,16 +455,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  openBrowseDialog(): void {
-    if (window.quickboard?.selectFolder) {
-      window.quickboard
-        .selectFolder()
-        .then((path: string | undefined) => {
-          if (path) {
-            this.initialDir.set(path);
-          }
-        })
-        .catch(console.error);
+  async openBrowseDialog(): Promise<void> {
+    const path = await this.platformFile.pickFolder();
+    if (path) {
+      this.initialDir.set(path);
     }
   }
 

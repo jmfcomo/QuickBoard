@@ -1,13 +1,16 @@
 import { Injectable, signal } from '@angular/core';
 import { appSettings } from 'src/settings-loader';
+import type { CustomThemeId, ThemeId } from '../shared/theme-types';
+import { THEME_IDS } from '../shared/theme-types';
 
-type Theme = 'system' | 'white' | 'light' | 'sepia' | 'dark' | 'black';
+type Theme = ThemeId;
+const VALID_THEME_IDS = new Set(THEME_IDS);
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly THEME_STORAGE_KEY = 'qb-theme';
   private mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  private lastCustomThemeSent: Theme | null | undefined;
+  private lastCustomThemeSent: CustomThemeId | null | undefined;
 
   readonly currentTheme = signal<Theme>('system');
 
@@ -47,7 +50,7 @@ export class ThemeService {
     localStorage.setItem(this.THEME_STORAGE_KEY, source);
     this.currentTheme.set(source);
 
-    const customTheme = source === 'system' ? null : source;
+    const customTheme = source === 'system' ? null : (source as CustomThemeId);
     if (customTheme !== this.lastCustomThemeSent) {
       window.quickboard?.setCustomTheme?.(customTheme);
       this.lastCustomThemeSent = customTheme;
@@ -69,7 +72,7 @@ export class ThemeService {
 
   getStoredTheme(): Theme | null {
     const stored = localStorage.getItem(this.THEME_STORAGE_KEY);
-    if (stored && ['system', 'white', 'light', 'sepia', 'dark', 'black'].includes(stored)) {
+    if (stored && VALID_THEME_IDS.has(stored)) {
       return stored as Theme;
     }
     return null;

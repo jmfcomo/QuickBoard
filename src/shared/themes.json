@@ -1,0 +1,32 @@
+[
+  {
+    "id": "system",
+    "label": "System",
+    "nativeThemeSource": "system"
+  },
+  {
+    "id": "white",
+    "label": "White",
+    "nativeThemeSource": "light"
+  },
+  {
+    "id": "light",
+    "label": "Light",
+    "nativeThemeSource": "light"
+  },
+  {
+    "id": "sepia",
+    "label": "Sepia",
+    "nativeThemeSource": "light"
+  },
+  {
+    "id": "dark",
+    "label": "Dark",
+    "nativeThemeSource": "dark"
+  },
+  {
+    "id": "black",
+    "label": "Black",
+    "nativeThemeSource": "dark"
+  }
+]

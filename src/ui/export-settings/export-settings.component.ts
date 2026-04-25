@@ -1,6 +1,8 @@
 import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { inject } from '@angular/core';
 import { EXPORT_RESOLUTIONS } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
+import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform-file.service';
 
 @Component({
   selector: 'app-export-settings',
@@ -10,6 +12,7 @@ import type { ExportSettings } from './export-resolutions';
   styleUrl: './export-settings.component.css',
 })
 export class ExportSettingsComponent {
+  private readonly platformFile = inject(PlatformFileService);
   visible = input<boolean>(false);
   boardCount = input<number>(0);
   defaultPrefix = input<string>('board');
@@ -33,6 +36,7 @@ export class ExportSettingsComponent {
     const idx = Math.max(0, Math.min(this.selectedIndex(), this.resolutions.length - 1));
     return this.resolutions[idx] ?? this.resolutions[0];
   });
+  private readonly defaultIpadDir = IOS_DEFAULT_FOLDER;
 
   constructor() {
     // Sync internal signals from inputs each time the dialog opens.
@@ -40,7 +44,7 @@ export class ExportSettingsComponent {
       if (this.visible()) {
         this.selectedFormat.set(this.exportType());
         this.prefix.set(this.defaultPrefix() || 'board');
-        this.dirPath.set(this.defaultDirPath());
+        this.dirPath.set(this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : ''));
         this.startIndex.set(0);
         this.endIndex.set(this.boardCount() - 1);
         this.startRaw.set('1');
@@ -105,7 +109,7 @@ export class ExportSettingsComponent {
   protected async onBrowse(): Promise<void> {
     this.isBrowsing.set(true);
     try {
-      const chosen = await window.quickboard?.pickExportDir();
+      const chosen = await this.platformFile.pickExportDir();
       if (chosen) this.dirPath.set(chosen);
     } finally {
       this.isBrowsing.set(false);

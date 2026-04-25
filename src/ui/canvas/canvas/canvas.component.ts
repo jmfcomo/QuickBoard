@@ -489,6 +489,35 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     this.canvasUndoRedo.finishBoardLoad(this.lc);
   }
 
+  public flushCurrentBoardState(includePreviews = true): void {
+    if (!this.lc || !this.currentBoardId) {
+      return;
+    }
+
+    if (this.updateCanvasTimeout !== null) {
+      clearTimeout(this.updateCanvasTimeout);
+      this.updateCanvasTimeout = null;
+    }
+
+    this.canvasPersistence.persistCurrentBoardData(
+      this.lc,
+      this.currentBoardId,
+      this.currentBoardId,
+      includePreviews,
+    );
+    this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
+    this._canvasDirty = false;
+  }
+
+  public prepareForProjectLoad(): void {
+    if (this.updateCanvasTimeout !== null) {
+      clearTimeout(this.updateCanvasTimeout);
+      this.updateCanvasTimeout = null;
+    }
+    this.canvasPersistence.clearPendingPreviewRegeneration();
+    this._canvasDirty = false;
+  }
+
   private observeCanvasResize(): void {
     if (!this.lc || typeof ResizeObserver === 'undefined') return;
 

@@ -5,6 +5,14 @@ const filePath = path.join(
   __dirname,
   'node_modules/literallycanvas/lib/js/literallycanvas-core.js',
 );
+const capacitorCordovaHeaderPath = path.join(
+  __dirname,
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h',
+);
+const capacitorCordovaUmbrellaHeaderPath = path.join(
+  __dirname,
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h',
+);
 
 try {
   let content = fs.readFileSync(filePath, 'utf8');
@@ -41,4 +49,51 @@ try {
   }
 } catch (error) {
   console.error('Error patching literallycanvas:', error.message);
+}
+
+try {
+  let content = fs.readFileSync(capacitorCordovaHeaderPath, 'utf8');
+  const oldCordovaImport = '#import <Cordova/CDVAvailabilityDeprecated.h>';
+  const localImport = '#import "CDVAvailabilityDeprecated.h"';
+  const macroBlock =
+    '#ifndef CDV_DEPRECATED\n' +
+    '#define CDV_DEPRECATED(version, msg) __attribute__((deprecated("Deprecated in Cordova " #version ". " msg)))\n' +
+    '#endif';
+
+  if (content.includes(oldCordovaImport)) {
+    content = content.replace(oldCordovaImport, macroBlock);
+    fs.writeFileSync(capacitorCordovaHeaderPath, content, 'utf8');
+    console.log('✓ Patched: fixed CapacitorCordova deprecated availability header include');
+  } else if (content.includes(localImport)) {
+    content = content.replace(localImport, macroBlock);
+    fs.writeFileSync(capacitorCordovaHeaderPath, content, 'utf8');
+    console.log('✓ Patched: replaced CapacitorCordova local include with inline deprecation macro');
+  } else if (content.includes('#ifndef CDV_DEPRECATED')) {
+    console.log('✓ CapacitorCordova header include patch already applied');
+  } else {
+    console.log('! CapacitorCordova header include patch: pattern not found');
+  }
+} catch (error) {
+  console.error('Error patching CapacitorCordova header:', error.message);
+}
+
+try {
+  let content = fs.readFileSync(capacitorCordovaUmbrellaHeaderPath, 'utf8');
+  const oldImport = '#import <Cordova/CDVAvailabilityDeprecated.h>';
+  const macroBlock =
+    '#ifndef CDV_DEPRECATED\n' +
+    '#define CDV_DEPRECATED(version, msg) __attribute__((deprecated("Deprecated in Cordova " #version ". " msg)))\n' +
+    '#endif';
+
+  if (content.includes(oldImport)) {
+    content = content.replace(oldImport, macroBlock);
+    fs.writeFileSync(capacitorCordovaUmbrellaHeaderPath, content, 'utf8');
+    console.log('✓ Patched: fixed CapacitorCordova umbrella deprecated header include');
+  } else if (content.includes('#ifndef CDV_DEPRECATED')) {
+    console.log('✓ CapacitorCordova umbrella header patch already applied');
+  } else {
+    console.log('! CapacitorCordova umbrella patch: pattern not found');
+  }
+} catch (error) {
+  console.error('Error patching CapacitorCordova umbrella header:', error.message);
 }
