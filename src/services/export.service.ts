@@ -427,10 +427,16 @@ export class ExportService {
     const cellWidth = pageWidth / cols;
     const cellHeight = pageHeight / rows;
     const boardAspectRatio = appSettings.board.height / appSettings.board.width;
-    const rawImageWidth = cellWidth * 0.9;
-    const rawImageHeight = rawImageWidth * boardAspectRatio;
-    const imageWidth = rawImageWidth;
-    const imageHeight = Math.min(rawImageHeight, cellHeight * 0.65);
+    const baseImageWidth = cellWidth * 0.9;
+    const targetImageWidth = baseImageWidth * 1.5;
+    const maxImageWidth = cellWidth * 0.98;
+    let imageWidth = Math.min(targetImageWidth, maxImageWidth);
+    let imageHeight = imageWidth * boardAspectRatio;
+    const maxImageHeight = cellHeight * 0.75;
+    if (imageHeight > maxImageHeight) {
+      imageHeight = maxImageHeight;
+      imageWidth = imageHeight / boardAspectRatio;
+    }
     const textFontSize = 24;
 
     await this.renderBoardsAtScaleStreaming(
