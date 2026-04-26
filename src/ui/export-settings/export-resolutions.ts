@@ -8,9 +8,10 @@ export interface ExportResolution {
 }
 
 export interface ExportSettings {
-  format: 'png' | 'video';
+  format: 'png' | 'video' | 'pdf';
   resolution: ExportResolution;
   prefix: string;
+  table: '1x1' | '2x2' | '3x3';
   dirPath: string;
   startIndex: number;
   endIndex: number;

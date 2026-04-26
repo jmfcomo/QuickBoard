@@ -406,4 +406,88 @@ export class ExportService {
     }
     return prefix.replace(/['"\r\n/\\]/g, '_');
   }
+
+  async exportPDFWithSettings(
+    settings: ExportSettings,
+    onProgress?: (current: number, total: number, fileName: string) => void,
+    abortSignal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'px',
+      format: [appSettings.board.width * settings.resolution.scale, appSettings.board.height * settings.resolution.scale],
+    });
+
+    const allBoards = this.store.boards();
+    const [cols, rows] = settings.table.split('x').map((value) => Number(value));
+    const boardsPerPage = cols * rows;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const cellWidth = pageWidth / cols;
+    const cellHeight = pageHeight / rows;
+    const boardAspectRatio = appSettings.board.height / appSettings.board.width;
+    const baseImageWidth = cellWidth * 0.9;
+    const targetImageWidth = baseImageWidth * 1.5;
+    const maxImageWidth = cellWidth * 0.98;
+    let imageWidth = Math.min(targetImageWidth, maxImageWidth);
+    let imageHeight = imageWidth * boardAspectRatio;
+    const maxImageHeight = cellHeight * 0.75;
+    if (imageHeight > maxImageHeight) {
+      imageHeight = maxImageHeight;
+      imageWidth = imageHeight / boardAspectRatio;
+    }
+    const textFontSize = 24;
+
+    await this.renderBoardsAtScaleStreaming(
+      settings.resolution.scale,
+      settings.prefix,
+      async (frame, current, total) => {
+        const boardIndex = current - 1;
+        const board = allBoards[settings.startIndex + boardIndex];
+        const pageSlot = boardIndex % boardsPerPage;
+        const colIndex = pageSlot % cols;
+        const rowIndex = Math.floor(pageSlot / cols);
+        const cellX = colIndex * cellWidth;
+        const cellY = rowIndex * cellHeight;
+        const imgX = cellX + (cellWidth - imageWidth) / 2;
+        const imgY = cellY + cellHeight * 0.05;
+        const captionY = imgY + imageHeight + 50;
+        const scriptText = board?.scriptData?.blocks
+          ?.map((block) => {
+            const text = typeof block?.data?.text === 'string' ? block.data.text : '';
+            return text.length > 0 ? `"${text}"` : '';
+          })
+          .filter((text) => text.length > 0)
+          .join(', ') ?? '';
+
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.rect(cellX + 2, cellY + 2, cellWidth - 4, cellHeight - 4, 'S');
+
+        doc.addImage(frame.dataUrl, 'PNG', imgX, imgY, imageWidth, imageHeight);
+        doc.rect(imgX, imgY, imageWidth, imageHeight, 'S');
+
+        if (scriptText) {
+          doc.setFontSize(textFontSize);
+          doc.text(scriptText.split(/\r?\n/), cellX + cellWidth / 2, captionY, {
+            align: 'center' as const,
+            maxWidth: imageWidth,
+          });
+        }
+
+        if (pageSlot === boardsPerPage - 1 && current < total) {
+          doc.addPage();
+        }
+
+        onProgress?.(current, total, frame.name);
+      },
+      'image/png',
+      abortSignal,
+    );
+
+    const pdfBlob = doc.output('blob');
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  }
 }
