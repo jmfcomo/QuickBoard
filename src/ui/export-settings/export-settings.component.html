@@ -22,6 +22,19 @@
           >
             <option value="png">PNG Sequence</option>
             <option value="video">MP4 Video</option>
+            <option value="pdf">PDF Document(s)</option>
+          </select>
+          <label class="summary-label" for="table-select">Frames per Page</label>
+          <select
+            id="table-select"
+            class="summary-select"
+            [value]="selectedTable()"
+            (change)="onTableChange($event)"
+            [disabled]="selectedFormat() !== 'pdf'"
+          >
+            <option value="1x1">1x1</option>
+            <option value="2x2">2x2</option>
+            <option value="3x3">3x3</option>
           </select>
         </div>
         <div class="summary-item">
@@ -87,6 +100,8 @@
           />
           @if (selectedFormat() === 'video') {
             <p class="hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
+          } @else if (selectedFormat() === 'pdf') {
+            <p class="hint">Output file: {{ prefix().trim() || 'board' }}.pdf</p>
           } @else {
             <p class="hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
           }

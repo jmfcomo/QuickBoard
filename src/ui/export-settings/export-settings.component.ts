@@ -17,7 +17,8 @@ export class ExportSettingsComponent {
   boardCount = input<number>(0);
   defaultPrefix = input<string>('board');
   defaultDirPath = input<string>('');
-  exportType = input<'png' | 'video'>('png');
+  exportType = input<'png' | 'video' | 'pdf'>('png');
+  tableLayout = input<'1x1' | '2x2' | '3x3'>('1x1');
   confirmExport = output<ExportSettings>();
   cancelExport = output<void>();
 
@@ -27,7 +28,8 @@ export class ExportSettingsComponent {
   protected endIndex = signal(this.boardCount() - 1);
   protected startRaw = signal('1');
   protected endRaw = signal(String(this.boardCount()));
-  protected selectedFormat = signal<'png' | 'video'>('png');
+  protected selectedFormat = signal<'png' | 'video' | 'pdf'>('png');
+  protected selectedTable = signal<'1x1' | '2x2' | '3x3'>('1x1');
   protected prefix = signal('board');
   protected dirPath = signal('');
   protected isBrowsing = signal(false);
@@ -43,6 +45,7 @@ export class ExportSettingsComponent {
     effect(() => {
       if (this.visible()) {
         this.selectedFormat.set(this.exportType());
+        this.selectedTable.set(this.tableLayout());
         this.prefix.set(this.defaultPrefix() || 'board');
         this.dirPath.set(this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : ''));
         this.startIndex.set(0);
@@ -55,7 +58,12 @@ export class ExportSettingsComponent {
 
   protected onFormatChange(event: Event): void {
     const nextValue = (event.target as HTMLSelectElement).value;
-    this.selectedFormat.set(nextValue === 'video' ? 'video' : 'png');
+    this.selectedFormat.set(nextValue === 'video' ? 'video' : nextValue === 'pdf' ? 'pdf' : 'png');
+  }
+
+  protected onTableChange(event: Event): void {
+    const nextValue = (event.target as HTMLSelectElement).value;
+    this.selectedTable.set(nextValue === '2x2' ? '2x2' : nextValue === '3x3' ? '3x3' : '1x1');
   }
 
   protected onSelectChange(event: Event): void {
@@ -128,6 +136,7 @@ export class ExportSettingsComponent {
     this.confirmExport.emit({
       format: this.selectedFormat(),
       resolution: this.selectedResolution(),
+      table: this.selectedTable(),
       prefix: safePrefix,
       dirPath: this.dirPath(),
       startIndex,
