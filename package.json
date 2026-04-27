@@ -1,6 +1,6 @@
 {
   "name": "quickboard",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "A storyboarding tool",
   "author": {
     "name": "QuickBoard Team",
@@ -61,6 +61,7 @@
       "dist/**/*",
       "electron-main.js",
       "src/electron/**/*",
+      "src/shared/themes.json",
       "package.json"
     ],
     "fileAssociations": [

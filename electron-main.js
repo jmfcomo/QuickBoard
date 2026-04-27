@@ -60,15 +60,19 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  const { buildMenu } = require('./src/electron/menu');
-  const hooks = {
-    onSave: fileio.requestSaveFromRenderer,
-    onSaveAs: fileio.requestSaveAsFromRenderer,
-    onLoad: fileio.loadBoardIntoRenderer,
-    onExport: exportModule.exportRequest,
-  };
+  try {
+    const { buildMenu } = require('./src/electron/menu');
+    const hooks = {
+      onSave: fileio.requestSaveFromRenderer,
+      onSaveAs: fileio.requestSaveAsFromRenderer,
+      onLoad: fileio.loadBoardIntoRenderer,
+      onExport: exportModule.exportRequest,
+    };
 
-  buildMenu(app, win, hooks);
+    buildMenu(app, win, hooks);
+  } catch (error) {
+    console.error('Failed to initialize custom app menu:', error);
+  }
 
   win.loadURL(appSettings.appURL);
 
