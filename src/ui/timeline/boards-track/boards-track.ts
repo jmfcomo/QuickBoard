@@ -3,7 +3,6 @@ import { AppStore } from '../../../data/store/app.store';
 import { TimelineActions } from '../helpers/timeline.actions';
 import { TimelineDrag } from '../helpers/timeline.drag';
 import { createTimelineData } from '../helpers/timeline.editor.graphics';
-import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-boards-track',
@@ -26,9 +25,8 @@ export class BoardsTrackComponent {
   scale = input.required<number>();
   containerWidth = input.required<number>();
 
-  readonly MIN_DURATION = 1 / (appSettings.board.defaultFps || 24);
-  readonly SNAP_PRECISION =
-    appSettings.board.defaultSnapPrecision || 1 / (appSettings.board.defaultFps || 24);
+  readonly MIN_DURATION = 1 / (this.store.fps() || 24);
+  readonly SNAP_PRECISION = 1 / (this.store.fps() || 24);
 
   // Resize state
   private isResizing = signal(false);
@@ -125,7 +123,7 @@ export class BoardsTrackComponent {
               newPrevDuration,
               boardId,
               this.resizeStartDuration,
-              newDuration,
+              newDuration
             );
           }
         }
@@ -163,7 +161,7 @@ export class BoardsTrackComponent {
 
     if (this.resizeEdge() === 'right') {
       const newDuration = this.snap(
-        Math.max(this.MIN_DURATION, this.resizeStartDuration + deltaSec),
+        Math.max(this.MIN_DURATION, this.resizeStartDuration + deltaSec)
       );
       this.store.updateBoardDuration(boardId, newDuration);
     } else if (this.resizeEdge() === 'left' && this.resizePrevBoardId) {

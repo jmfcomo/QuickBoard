@@ -39,6 +39,9 @@ interface AppState {
   audioLaneMixers: AudioLaneMixer[];
   isPlaying: boolean;
   currentTime: number; // seconds
+  fps: number;
+  width: number;
+  height: number;
 }
 
 const firstBoardId = crypto.randomUUID();
@@ -60,6 +63,9 @@ const initialState: AppState = {
   audioLaneMixers: [{ volume: appSettings.audio.defaultVolume, muted: false }],
   isPlaying: false,
   currentTime: 0,
+  fps: appSettings.board.defaultFps,
+  width: appSettings.board.width,
+  height: appSettings.board.height,
 };
 
 export const AppStore = signalStore(
@@ -74,7 +80,8 @@ export const AppStore = signalStore(
 
       addBoard() {
         const currentBoard = store.boards().find((board) => board.id === store.currentBoardId());
-        const backgroundColor = currentBoard?.backgroundColor ?? appSettings.board.defaultBackgroundColor;
+        const backgroundColor =
+          currentBoard?.backgroundColor ?? appSettings.board.defaultBackgroundColor;
         const duration = currentBoard?.duration ?? appSettings.board.defaultDuration;
         const newBoard: Board = {
           id: crypto.randomUUID(),
@@ -133,9 +140,12 @@ export const AppStore = signalStore(
             audioTracks: store.audioTracks(),
             audioLaneCount: store.audioLaneCount(),
             audioLaneMixers: store.audioLaneMixers(),
+            fps: store.fps(),
+            width: store.width(),
+            height: store.height(),
           },
           null,
-          2,
+          2
         );
       },
 
@@ -164,12 +174,12 @@ export const AppStore = signalStore(
                 try {
                   shapes = parsedCanvasData['shapes']
                     ? (LC.snapshotJSONToShapes(
-                        parsedCanvasData['shapes'] as Record<string, unknown>[],
+                        parsedCanvasData['shapes'] as Record<string, unknown>[]
                       ) as unknown[])
                     : [];
                   backgroundShapes = parsedCanvasData['backgroundShapes']
                     ? (LC.snapshotJSONToShapes(
-                        parsedCanvasData['backgroundShapes'] as Record<string, unknown>[],
+                        parsedCanvasData['backgroundShapes'] as Record<string, unknown>[]
                       ) as unknown[])
                     : [];
                 } catch (e) {
@@ -204,7 +214,7 @@ export const AppStore = signalStore(
                 volume:
                   typeof (track as Partial<AudioTrack>).volume === 'number'
                     ? (track as AudioTrack).volume
-                    : (laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1),
+                    : laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1,
               }))
             : [];
           patchState(store, {
@@ -214,6 +224,18 @@ export const AppStore = signalStore(
             audioTracks: normalizedTracks,
             audioLaneCount: laneCount,
             audioLaneMixers: laneMixers,
+            fps:
+              typeof (data as Partial<AppState>).fps === 'number'
+                ? (data as AppState).fps
+                : appSettings.board.defaultFps,
+            width:
+              typeof (data as Partial<AppState>).width === 'number'
+                ? (data as AppState).width
+                : appSettings.board.width,
+            height:
+              typeof (data as Partial<AppState>).height === 'number'
+                ? (data as AppState).height
+                : appSettings.board.height,
           });
         } catch (error) {
           console.error('Failed to load JSON:', error);
@@ -241,6 +263,14 @@ export const AppStore = signalStore(
 
       setCurrentTime(time: number) {
         patchState(store, { currentTime: time });
+      },
+
+      setFps(fps: number) {
+        patchState(store, { fps });
+      },
+
+      setResolution(width: number, height: number) {
+        patchState(store, { width, height });
       },
 
       updateAudioUrl(trackId: string, url: string) {
@@ -272,7 +302,7 @@ export const AppStore = signalStore(
       updateAudioStartTime(trackId: string, newStartTime: number) {
         patchState(store, (state) => ({
           audioTracks: state.audioTracks.map((t) =>
-            t.id === trackId ? { ...t, startTime: newStartTime } : t,
+            t.id === trackId ? { ...t, startTime: newStartTime } : t
           ),
         }));
       },
@@ -280,7 +310,7 @@ export const AppStore = signalStore(
       updateAudioTrim(trackId: string, startTime: number, duration: number, trimStart: number) {
         patchState(store, (state) => ({
           audioTracks: state.audioTracks.map((t) =>
-            t.id === trackId ? { ...t, startTime, duration, trimStart } : t,
+            t.id === trackId ? { ...t, startTime, duration, trimStart } : t
           ),
         }));
       },
@@ -289,7 +319,10 @@ export const AppStore = signalStore(
         if (store.audioLaneCount() < 4) {
           patchState(store, {
             audioLaneCount: store.audioLaneCount() + 1,
-            audioLaneMixers: [...store.audioLaneMixers(), { volume: appSettings.audio.defaultVolume, muted: false }],
+            audioLaneMixers: [
+              ...store.audioLaneMixers(),
+              { volume: appSettings.audio.defaultVolume, muted: false },
+            ],
           });
         }
       },
@@ -347,5 +380,5 @@ export const AppStore = signalStore(
     totalDuration: computed(() => {
       return store.boards().reduce((acc, b) => acc + (b.duration || 3), 0);
     }),
-  })),
+  }))
 );

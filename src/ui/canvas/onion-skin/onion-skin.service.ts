@@ -3,11 +3,9 @@ import { AppStore } from '../../../data/store/app.store';
 import { CanvasDataService } from '../../../services/canvas-data.service';
 import { LCInstance } from '../literally-canvas-interfaces';
 import { OnionSkinLayer } from './onion-skin.types';
-import { appSettings } from 'src/settings-loader';
 
 @Injectable({ providedIn: 'root' })
 export class OnionSkinService {
-  private readonly defaultCanvasSize = { width: appSettings.board.width, height: appSettings.board.height };
   private readonly store = inject(AppStore);
   private readonly canvasDataService = inject(CanvasDataService);
   private readonly onionPreviewCache = signal<Record<string, string>>({});
@@ -93,7 +91,7 @@ export class OnionSkinService {
   public updateCurrentBoardPreview(
     lc: LCInstance | null,
     currentBoardId: string | null,
-    boardId: string,
+    boardId: string
   ): void {
     if (!lc || currentBoardId !== boardId) {
       return;
@@ -106,14 +104,14 @@ export class OnionSkinService {
       rect: {
         x: 0,
         y: 0,
-        width: this.defaultCanvasSize.width,
-        height: this.defaultCanvasSize.height,
+        width: this.store.width(),
+        height: this.store.height(),
       },
     });
 
     const onionPreviewUrl = this.createTransparentOnionPreview(
       onionImage,
-      lc.getColor('background') ?? '#ffffff',
+      lc.getColor('background') ?? '#ffffff'
     );
     this.onionPreviewCache.update((cache) => ({
       ...cache,
@@ -177,7 +175,7 @@ export class OnionSkinService {
 
   private renderOnionPreviewForBoard(
     canvasData: Record<string, unknown> | null,
-    backgroundColor: string,
+    backgroundColor: string
   ): string | null {
     const container = document.createElement('div');
     container.style.cssText =
@@ -189,7 +187,7 @@ export class OnionSkinService {
 
     try {
       lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-      lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+      lc.setImageSize(this.store.width(), this.store.height());
       if (canvasData) {
         lc.loadSnapshot(this.withoutViewportState(canvasData));
       } else {
@@ -203,8 +201,8 @@ export class OnionSkinService {
         rect: {
           x: 0,
           y: 0,
-          width: this.defaultCanvasSize.width,
-          height: this.defaultCanvasSize.height,
+          width: this.store.width(),
+          height: this.store.height(),
         },
       });
 
@@ -240,7 +238,10 @@ export class OnionSkinService {
     return ids;
   }
 
-  private createTransparentOnionPreview(source: HTMLCanvasElement, backgroundColor: string): string {
+  private createTransparentOnionPreview(
+    source: HTMLCanvasElement,
+    backgroundColor: string
+  ): string {
     const width = source.width;
     const height = source.height;
     if (width <= 0 || height <= 0) {
@@ -287,6 +288,7 @@ export class OnionSkinService {
     const normalized = { ...snapshot };
     delete (normalized as { position?: unknown }).position;
     delete (normalized as { scale?: unknown }).scale;
+    delete (normalized as { imageSize?: unknown }).imageSize;
     return normalized;
   }
 

@@ -150,6 +150,7 @@ export class CanvasPersistenceService {
     const normalized = { ...snapshot };
     delete (normalized as { position?: unknown }).position;
     delete (normalized as { scale?: unknown }).scale;
+    delete (normalized as { imageSize?: unknown }).imageSize;
     return normalized;
   }
 }
