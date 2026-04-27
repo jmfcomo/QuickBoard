@@ -36,7 +36,6 @@ export class WindowScalingService {
       return;
     }
 
-    const canvasAspectRatio = this.store.width() / this.store.height();
     const startY = event.clientY;
     const startHeight = editors.getBoundingClientRect().height;
     const totalHeight = app.getBoundingClientRect().height;

@@ -25,8 +25,15 @@ export class BoardsTrackComponent {
   scale = input.required<number>();
   containerWidth = input.required<number>();
 
-  readonly MIN_DURATION = 1 / (this.store.fps() || 24);
-  readonly SNAP_PRECISION = 1 / (this.store.fps() || 24);
+  private get timelineFps() {
+    return this.store.fps() || 24;
+  }
+  get MIN_DURATION() {
+    return 1 / this.timelineFps;
+  }
+  get SNAP_PRECISION() {
+    return 1 / this.timelineFps;
+  }
 
   // Resize state
   private isResizing = signal(false);

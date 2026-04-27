@@ -4,6 +4,7 @@ import { computed } from '@angular/core';
 import type { OutputData } from '@editorjs/editorjs';
 import { CanvasDataService } from '../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
+import { sanitizeFps, sanitizeResolution, extractProjectDimensions } from './app-state-validation';
 
 export interface Board {
   id: string;
@@ -217,6 +218,13 @@ export const AppStore = signalStore(
                     : laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1,
               }))
             : [];
+
+          const dimensions = extractProjectDimensions(
+            data,
+            cleanedBoards as Array<{ id: string }>,
+            canvasDataService
+          );
+
           patchState(store, {
             boards: cleanedBoards as Board[],
             currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
@@ -224,18 +232,9 @@ export const AppStore = signalStore(
             audioTracks: normalizedTracks,
             audioLaneCount: laneCount,
             audioLaneMixers: laneMixers,
-            fps:
-              typeof (data as Partial<AppState>).fps === 'number'
-                ? (data as AppState).fps
-                : appSettings.board.defaultFps,
-            width:
-              typeof (data as Partial<AppState>).width === 'number'
-                ? (data as AppState).width
-                : appSettings.board.width,
-            height:
-              typeof (data as Partial<AppState>).height === 'number'
-                ? (data as AppState).height
-                : appSettings.board.height,
+            fps: dimensions.fps,
+            width: dimensions.width,
+            height: dimensions.height,
           });
         } catch (error) {
           console.error('Failed to load JSON:', error);
@@ -266,11 +265,13 @@ export const AppStore = signalStore(
       },
 
       setFps(fps: number) {
-        patchState(store, { fps });
+        const sanitized = sanitizeFps(fps, store.fps());
+        patchState(store, { fps: sanitized });
       },
 
       setResolution(width: number, height: number) {
-        patchState(store, { width, height });
+        const sanitized = sanitizeResolution(width, height, store.width(), store.height());
+        patchState(store, { width: sanitized.width, height: sanitized.height });
       },
 
       updateAudioUrl(trackId: string, url: string) {
