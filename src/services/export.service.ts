@@ -486,8 +486,13 @@ export class ExportService {
       abortSignal,
     );
 
+    if (abortSignal?.aborted) throw new Error('Export canceled by user.');
+
     const pdfBlob = doc.output('blob');
     const arrayBuffer = await pdfBlob.arrayBuffer();
+
+    if (abortSignal?.aborted) throw new Error('Export canceled by user.');
+    
     return new Uint8Array(arrayBuffer);
   }
 }
