@@ -221,7 +221,7 @@ export const AppStore = signalStore(
 
           const dimensions = extractProjectDimensions(
             data,
-            cleanedBoards as Array<{ id: string }>,
+            cleanedBoards as { id: string }[],
             canvasDataService
           );
 
