@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Clear Angular build cache
+        run: Remove-Item -Path ".angular" -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Build Angular app
         run: npm run build
 
@@ -57,6 +60,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Clear Angular build cache
+        run: rm -rf .angular
 
       - name: Build Angular app
         run: npm run build
@@ -90,6 +96,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Clear Angular build cache
+        run: rm -rf .angular
 
       - name: Build Angular app
         run: npm run build
