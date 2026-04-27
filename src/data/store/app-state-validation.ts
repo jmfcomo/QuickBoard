@@ -42,7 +42,7 @@ export function extractProjectDimensions(
     width?: unknown;
     height?: unknown;
   },
-  cleanedBoards: Array<{ id: string }>,
+  cleanedBoards: { id: string }[],
   canvasDataService: CanvasDataService
 ): ProjectDimensions {
   let fps = typeof data.fps === 'number' ? data.fps : appSettings.board.defaultFps;
