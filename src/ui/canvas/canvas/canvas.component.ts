@@ -50,10 +50,6 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly isCanvasFullscreen = input(false);
   readonly canvasFullscreenToggled = output<void>();
 
-  private readonly defaultCanvasSize = {
-    width: appSettings.board.width,
-    height: appSettings.board.height,
-  };
   readonly onionSkinLayers = inject(OnionSkinService).onionSkinLayers;
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
@@ -302,7 +298,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
 
     ensureSquareBrushShapeRegistered();
 
-    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+    this.lc.setImageSize(this.store.width(), this.store.height());
 
     const initialCanvasData = currentBoard
       ? this.canvasDataService.getCanvasData(currentBoard.id)
@@ -473,7 +469,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc.repaintLayer('main');
       this.canvasPersistence.setLastLoadedCanvasData(null);
     }
-    this.lc.setImageSize(this.defaultCanvasSize.width, this.defaultCanvasSize.height);
+    this.lc.setImageSize(this.store.width(), this.store.height());
     const boardBackground = board?.backgroundColor ?? '#ffffff';
     this.lc.setColor('background', boardBackground);
     this.backgroundColor.set(boardBackground);
@@ -503,7 +499,7 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
       this.lc,
       this.currentBoardId,
       this.currentBoardId,
-      includePreviews,
+      includePreviews
     );
     this.store.updateBackgroundColor(this.currentBoardId, this.lc.getColor('background'));
     this._canvasDirty = false;
@@ -571,12 +567,12 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const toolsBarWidth = toolsBar ? toolsBar.offsetWidth + gap : 0;
     const availableCanvasWidth = Math.max(1, availableHostWidth - toolsBarWidth);
 
-    const heightScale = height / this.defaultCanvasSize.height;
-    const widthScale = availableCanvasWidth / this.defaultCanvasSize.width;
+    const heightScale = height / this.store.height();
+    const widthScale = availableCanvasWidth / this.store.width();
     const scale = Math.min(heightScale, widthScale);
     if (!Number.isFinite(scale) || scale <= 0) return;
 
-    const fittedCanvasWidth = Math.floor(this.defaultCanvasSize.width * scale);
+    const fittedCanvasWidth = Math.floor(this.store.width() * scale);
     host.style.width = Math.ceil(fittedCanvasWidth + toolsBarWidth) + 'px';
 
     if (this.lc.respondToSizeChange) {
@@ -636,8 +632,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
     const renderScale = this.lc.getRenderScale?.() || this.lc.scale * backingScale || backingScale;
     const imageLeft = this.lc.position.x / backingScale;
     const imageTop = this.lc.position.y / backingScale;
-    const imageWidth = (this.defaultCanvasSize.width * renderScale) / backingScale;
-    const imageHeight = (this.defaultCanvasSize.height * renderScale) / backingScale;
+    const imageWidth = (this.store.width() * renderScale) / backingScale;
+    const imageHeight = (this.store.height() * renderScale) / backingScale;
 
     this.onionImageRect.set({
       left: imageLeft,

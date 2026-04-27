@@ -22,7 +22,7 @@ export class ExportService {
   async renderBoardsAtScale(
     scale: number,
     prefix: string,
-    onProgress?: (current: number, total: number, fileName: string) => void,
+    onProgress?: (current: number, total: number, fileName: string) => void
   ): Promise<{ name: string; dataUrl: string }[]> {
     const boards = this.store.boards();
     const padLength = Math.max(3, String(boards.length).length);
@@ -33,7 +33,11 @@ export class ExportService {
       const frameNum = String(index + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}.png`;
 
-      const dataUrl = await this.renderSingleBoard(this.canvasDataService.getCanvasData(board.id), board.backgroundColor, scale);
+      const dataUrl = await this.renderSingleBoard(
+        this.canvasDataService.getCanvasData(board.id),
+        board.backgroundColor,
+        scale
+      );
       frames.push({ name: fileName, dataUrl });
       onProgress?.(index + 1, boards.length, fileName);
     }
@@ -45,7 +49,7 @@ export class ExportService {
     canvasData: Record<string, unknown> | null,
     backgroundColor: string,
     scale: number,
-    mimeType = 'image/png',
+    mimeType = 'image/png'
   ): Promise<string> {
     return new Promise((resolve) => {
       const container = document.createElement('div');
@@ -56,7 +60,7 @@ export class ExportService {
       let lc: LCInstance | null = null;
       try {
         lc = LC.init(container, { imageURLPrefix: 'assets/lc-images' });
-        lc.setImageSize(appSettings.board.width, appSettings.board.height);
+        lc.setImageSize(this.store.width(), this.store.height());
         if (canvasData) {
           lc.loadSnapshot(canvasData);
         } else {
@@ -68,8 +72,8 @@ export class ExportService {
       } catch {
         // Fall back to a blank white frame on error
         const canvas = document.createElement('canvas');
-        canvas.width = Math.round(appSettings.board.width * scale);
-        canvas.height = Math.round(appSettings.board.height * scale);
+        canvas.width = Math.round(this.store.width() * scale);
+        canvas.height = Math.round(this.store.height() * scale);
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.fillStyle = backgroundColor ?? appSettings.board.defaultBackgroundColor;
@@ -93,12 +97,12 @@ export class ExportService {
     onFrame: (
       frame: { name: string; dataUrl: string },
       current: number,
-      total: number,
+      total: number
     ) => Promise<void>,
     mimeType = 'image/png',
     abortSignal?: AbortSignal,
     startIndex = 0,
-    endIndex?: number,
+    endIndex?: number
   ): Promise<void> {
     const allBoards = this.store.boards();
     const end = endIndex ?? allBoards.length - 1;
@@ -116,7 +120,7 @@ export class ExportService {
         this.canvasDataService.getCanvasData(board.id),
         board.backgroundColor,
         scale,
-        mimeType,
+        mimeType
       );
       await onFrame({ name: fileName, dataUrl }, i + 1, boards.length);
     }
@@ -152,7 +156,7 @@ export class ExportService {
     onFrameProgress?: (current: number, total: number, fileName: string) => void,
     onPhaseMessage?: (message: string) => void,
     onEncodingProgress?: (progress: number) => void,
-    abortSignal?: AbortSignal,
+    abortSignal?: AbortSignal
   ): Promise<Uint8Array> {
     const allBoards = this.store.boards();
     const audioTracks = this.store.audioTracks();
@@ -201,7 +205,7 @@ export class ExportService {
       'image/jpeg',
       abortSignal,
       startIndex,
-      endIndex,
+      endIndex
     );
 
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');
@@ -337,7 +341,7 @@ export class ExportService {
       'yuv420p',
       '-t',
       String(exportDuration),
-      'output.mp4',
+      'output.mp4'
     );
 
     onPhaseMessage?.('Encoding video...');
@@ -410,13 +414,16 @@ export class ExportService {
   async exportPDFWithSettings(
     settings: ExportSettings,
     onProgress?: (current: number, total: number, fileName: string) => void,
-    abortSignal?: AbortSignal,
+    abortSignal?: AbortSignal
   ): Promise<Uint8Array> {
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
       orientation: 'landscape',
       unit: 'px',
-      format: [appSettings.board.width * settings.resolution.scale, appSettings.board.height * settings.resolution.scale],
+      format: [
+        this.store.width() * settings.resolution.scale,
+        this.store.height() * settings.resolution.scale,
+      ],
     });
 
     const allBoards = this.store.boards();
@@ -426,7 +433,7 @@ export class ExportService {
     const pageHeight = doc.internal.pageSize.getHeight();
     const cellWidth = pageWidth / cols;
     const cellHeight = pageHeight / rows;
-    const boardAspectRatio = appSettings.board.height / appSettings.board.width;
+    const boardAspectRatio = this.store.height() / this.store.width();
     const baseImageWidth = cellWidth * 0.9;
     const targetImageWidth = baseImageWidth * 1.5;
     const maxImageWidth = cellWidth * 0.98;
@@ -453,13 +460,14 @@ export class ExportService {
         const imgX = cellX + (cellWidth - imageWidth) / 2;
         const imgY = cellY + cellHeight * 0.05;
         const captionY = imgY + imageHeight + 50;
-        const scriptText = board?.scriptData?.blocks
-          ?.map((block) => {
-            const text = typeof block?.data?.text === 'string' ? block.data.text : '';
-            return text.length > 0 ? `"${text}"` : '';
-          })
-          .filter((text) => text.length > 0)
-          .join(', ') ?? '';
+        const scriptText =
+          board?.scriptData?.blocks
+            ?.map((block) => {
+              const text = typeof block?.data?.text === 'string' ? block.data.text : '';
+              return text.length > 0 ? `"${text}"` : '';
+            })
+            .filter((text) => text.length > 0)
+            .join(', ') ?? '';
 
         doc.setDrawColor(0);
         doc.setLineWidth(0.5);
@@ -483,7 +491,7 @@ export class ExportService {
         onProgress?.(current, total, frame.name);
       },
       'image/png',
-      abortSignal,
+      abortSignal
     );
 
     const pdfBlob = doc.output('blob');

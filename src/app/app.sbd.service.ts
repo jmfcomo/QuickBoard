@@ -104,6 +104,10 @@ export class SbdService {
               );
             }
 
+            if (board.canvasData && board.canvasData['imageSize']) {
+              delete board.canvasData['imageSize'];
+            }
+
             return {
               ...board,
               previewUrl: previewExtUrl,
@@ -190,6 +194,10 @@ export class SbdService {
                   return shape;
                 })
               );
+            }
+
+            if (board.canvasData && board.canvasData['imageSize']) {
+              delete board.canvasData['imageSize'];
             }
           }
         )

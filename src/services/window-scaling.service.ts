@@ -1,13 +1,13 @@
-import { Injectable } from '@angular/core';
-import { appSettings } from 'src/settings-loader';
+import { Injectable, inject } from '@angular/core';
+import { AppStore } from '../data/store/app.store';
 
 @Injectable({ providedIn: 'root' })
 export class WindowScalingService {
+  private readonly store = inject(AppStore);
   private readonly minTimelineHeight = 120;
   private readonly minScriptWidth = 120;
   private readonly editorsGap = 8;
   private readonly defaultToolbarWidth = 52;
-  private readonly canvasAspectRatio = appSettings.board.width / appSettings.board.height;
 
   init(host: HTMLElement): () => void {
     const onWindowResize = () => this.clampEditorsHeightToBounds(host);
@@ -223,8 +223,9 @@ export class WindowScalingService {
       ? toolsBar.getBoundingClientRect().width + 8
       : this.defaultToolbarWidth;
     const availableCanvasHostWidth = editorsWidth - scriptMinWidth - this.editorsGap;
+    const canvasAspectRatio = this.store.width() / this.store.height();
     const maxByHorizontal = Math.floor(
-      Math.max(0, availableCanvasHostWidth - toolsBarWidth) / this.canvasAspectRatio
+      Math.max(0, availableCanvasHostWidth - toolsBarWidth) / canvasAspectRatio
     );
 
     const maxHeight = Math.floor(Math.min(maxByVertical, maxByHorizontal));
