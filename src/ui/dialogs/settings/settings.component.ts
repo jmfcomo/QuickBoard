@@ -87,6 +87,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly platformFile = inject(PlatformFileService);
   private readonly injector = inject(Injector);
+  readonly isMobile = this.platformFile.isNative;
   private readonly settingsHydrated = signal(false);
   private static readonly MS_PER_MINUTE = 60_000;
   private readonly defaultIpadDir = IOS_DEFAULT_FOLDER;
@@ -115,7 +116,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly initialDir = signal<string>(
     this.platformFile.isIos
       ? this.defaultIpadDir
-      : (this.getSafeSettingValue('saving.initialDir', 'documents') as string),
+      : (this.getSafeSettingValue('saving.initialDir', 'documents') as string)
   );
   readonly autosave = signal<boolean>(this.getSafeSettingValue('saving.autosave', true) as boolean);
   readonly autosaveDuration = signal<number>(
@@ -491,7 +492,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   close(): void {
     // Attempt window.close() first (works for web popups even with noopener).
-    // If we're in a regular browser tab or Android WebView where window.close() is a no-op, 
+    // If we're in a regular browser tab or Android WebView where window.close() is a no-op,
     // it won't do anything, but we also call history.back() just in case.
     window.close();
     window.history.back();

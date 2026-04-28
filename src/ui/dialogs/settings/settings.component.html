@@ -4,9 +4,11 @@
       <p class="eyebrow">Configuration</p>
       <div class="header-row">
         <h3 class="title" id="settings-title">Settings</h3>
+        @if (isMobile) {
         <button type="button" class="close-button" aria-label="Close settings" (click)="close()">
           &#x2715;
         </button>
+        }
       </div>
     </header>
 
