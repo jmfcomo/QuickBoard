@@ -16,7 +16,7 @@ export class BucketFill {
 
   begin(x: number, y: number, lc: LCInstance): void {
     const color = lc.getColor('secondary') || '#000000';
-    const fillColor = this.hexToRgba(color);
+    const fillColor = parseFillColor(color);
     if (!fillColor) return;
 
     const srcScale = BucketFill.SRC_SCALE;
@@ -107,17 +107,6 @@ export class BucketFill {
     return true;
   }
 
-  // Returns null for non-hex colors (e.g. 'transparent' → 'hsla(...)').
-  private hexToRgba(hex: string): number[] | null {
-    const clean = hex.replace('#', '');
-    if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(clean)) return null;
-    const expanded = clean.length === 3
-      ? clean.split('').map((c) => c + c).join('')
-      : clean;
-    const num = parseInt(expanded, 16);
-    return [(num >> 16) & 255, (num >> 8) & 255, num & 255, 255];
-  }
-
   end(): void { /* no-op */ }
   ['continue'](): void { /* no-op */ }
 
@@ -125,4 +114,122 @@ export class BucketFill {
   didBecomeActive(): void { /* no-op */ }
   willBecomeInactive(): void { /* no-op */ }
   didBecomeInactive(): void { /* no-op */ }
+}
+
+function parseFillColor(value: string): number[] | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'transparent') {
+    return [0, 0, 0, 0];
+  }
+
+  const hexMatch = /^#([0-9a-f]{3,8})$/i.exec(normalized);
+  if (hexMatch) {
+    const hex = hexMatch[1];
+    if (hex.length === 3) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      return [r, g, b, 255];
+    }
+    if (hex.length === 6 || hex.length === 8) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) : 255;
+      return [r, g, b, a];
+    }
+  }
+
+  const rgbMatch = /^rgba?\((.+)\)$/i.exec(normalized);
+  if (rgbMatch) {
+    const parts = rgbMatch[1].split(',').map((part) => part.trim());
+    if (parts.length < 3) return null;
+    const r = parseRgbChannel(parts[0]);
+    const g = parseRgbChannel(parts[1]);
+    const b = parseRgbChannel(parts[2]);
+    const a = parts.length > 3 ? parseAlphaChannel(parts[3]) : 255;
+    return [r, g, b, a];
+  }
+
+  const hslMatch = /^hsla?\((.+)\)$/i.exec(normalized);
+  if (hslMatch) {
+    const parts = hslMatch[1].split(',').map((part) => part.trim());
+    if (parts.length < 3) return null;
+    const h = parseHue(parts[0]);
+    const s = parsePercent(parts[1]);
+    const l = parsePercent(parts[2]);
+    const a = parts.length > 3 ? parseAlphaChannel(parts[3]) : 255;
+    const rgb = hslToRgb(h, s, l);
+    return [rgb.r, rgb.g, rgb.b, a];
+  }
+
+  return null;
+}
+
+function parseRgbChannel(value: string): number {
+  if (value.endsWith('%')) {
+    const percent = parseFloat(value);
+    return clamp(Math.round((percent / 100) * 255), 0, 255);
+  }
+  return clamp(Math.round(parseFloat(value)), 0, 255);
+}
+
+function parseAlphaChannel(value: string): number {
+  if (value.endsWith('%')) {
+    const percent = parseFloat(value);
+    return clamp(Math.round((percent / 100) * 255), 0, 255);
+  }
+  const num = parseFloat(value);
+  if (Number.isNaN(num)) return 255;
+  const normalized = num <= 1 ? num : 1;
+  return clamp(Math.round(normalized * 255), 0, 255);
+}
+
+function parseHue(value: string): number {
+  return ((parseFloat(value) % 360) + 360) % 360;
+}
+
+function parsePercent(value: string): number {
+  const num = parseFloat(value);
+  return clamp(num, 0, 100) / 100;
+}
+
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+
+  let r1 = 0;
+  let g1 = 0;
+  let b1 = 0;
+
+  if (h < 60) {
+    r1 = c;
+    g1 = x;
+  } else if (h < 120) {
+    r1 = x;
+    g1 = c;
+  } else if (h < 180) {
+    g1 = c;
+    b1 = x;
+  } else if (h < 240) {
+    g1 = x;
+    b1 = c;
+  } else if (h < 300) {
+    r1 = x;
+    b1 = c;
+  } else {
+    r1 = c;
+    b1 = x;
+  }
+
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
