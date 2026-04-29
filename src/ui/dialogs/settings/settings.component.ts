@@ -15,6 +15,7 @@ import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
 import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../../services/platform-file.service';
 import themes from '../../../shared/themes.json';
+import { ColorPickerComponent } from '../../canvas/color-picker/color-picker.component';
 
 // Tool options for default tool dropdown
 const AVAILABLE_TOOLS = [
@@ -78,7 +79,7 @@ interface ColorFieldConfig {
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ColorPickerComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

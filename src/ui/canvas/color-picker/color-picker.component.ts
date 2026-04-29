@@ -49,6 +49,7 @@ export class ColorPickerComponent {
   readonly colorChange = output<string>();
 
   readonly isOpen = signal(false);
+  readonly panelAlignment = signal<'left' | 'right'>('right');
   readonly hue = signal(0);
   readonly saturation = signal(1);
   readonly value = signal(1);
@@ -134,7 +135,29 @@ export class ColorPickerComponent {
   }
 
   toggleOpen(): void {
+    if (!this.isOpen()) {
+      this.updatePanelAlignment();
+    }
     this.isOpen.set(!this.isOpen());
+  }
+
+  private updatePanelAlignment(): void {
+    const trigger = this.host.nativeElement;
+    const rect = trigger.getBoundingClientRect();
+    const windowWidth = window.innerWidth;
+    const estimatedPanelWidth = 210;
+
+    const spaceLeft = rect.right;
+    const spaceRight = windowWidth - rect.left;
+
+    if (spaceLeft >= estimatedPanelWidth && spaceRight < estimatedPanelWidth) {
+      this.panelAlignment.set('right'); // Align right (expands to the left)
+    } else if (spaceRight >= estimatedPanelWidth && spaceLeft < estimatedPanelWidth) {
+      this.panelAlignment.set('left'); // Align left (expands to the right)
+    } else {
+      // If both fit or neither fit perfectly, default to the one with more space
+      this.panelAlignment.set(spaceLeft > spaceRight ? 'right' : 'left');
+    }
   }
 
   onDocumentClick(event: MouseEvent): void {

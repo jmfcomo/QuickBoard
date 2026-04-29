@@ -8,19 +8,21 @@
   display: inline-flex;
   align-items: center;
   position: relative;
+  width: 100%;
 }
 
 .color-trigger {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
+  width: var(--trigger-width, 28px);
+  height: var(--trigger-height, 28px);
+  padding: var(--trigger-padding, 0);
+  border: var(--trigger-border, 1px solid var(--border-default));
+  border-radius: var(--trigger-radius, 3px);
   background-color: var(--bg-body);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .color-trigger:hover {
@@ -42,8 +44,7 @@
 
 .color-panel {
   position: absolute;
-  top: 34px;
-  right: 0;
+  top: calc(100% + 6px);
   width: 190px;
   padding: 10px;
   background-color: var(--bg-panel);
@@ -54,6 +55,16 @@
   flex-direction: column;
   gap: 8px;
   z-index: 20;
+}
+
+.color-panel.align-right {
+  right: 0;
+  left: auto;
+}
+
+.color-panel.align-left {
+  left: 0;
+  right: auto;
 }
 
 .sv-area {

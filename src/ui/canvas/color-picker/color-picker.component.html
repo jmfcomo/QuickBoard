@@ -17,6 +17,8 @@
   @if (isOpen()) {
     <div
       class="color-panel"
+      [class.align-left]="panelAlignment() === 'left'"
+      [class.align-right]="panelAlignment() === 'right'"
       role="dialog"
       [id]="panelId"
       [attr.aria-label]="label() + ' color picker'"

@@ -184,6 +184,18 @@
   border: 1px solid color-mix(in srgb, var(--border-default) 55%, transparent);
 }
 
+app-color-picker.color-input {
+  padding: 0;
+  border: none;
+  background: transparent;
+  height: auto;
+  --trigger-width: 100%;
+  --trigger-height: 34px;
+  --trigger-padding: 4px;
+  --trigger-radius: 8px;
+  --trigger-border: 1px solid var(--border-default);
+}
+
 .canvas-grid {
   grid-template-columns: minmax(84px, 0.65fr) minmax(84px, 0.65fr) minmax(84px, 0.65fr) minmax(
       140px,
