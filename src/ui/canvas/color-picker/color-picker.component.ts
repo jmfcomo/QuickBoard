@@ -26,7 +26,7 @@ interface Hsv {
 }
 
 const HUE_GRADIENT =
-  'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)';
+  'linear-gradient(to right in oklch, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)';
 const ALPHA_GRADIENT =
   'linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1))';
 const VALUE_CURVE = 0.7;
