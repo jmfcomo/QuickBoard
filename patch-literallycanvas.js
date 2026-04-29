@@ -16,15 +16,17 @@ const capacitorCordovaUmbrellaHeaderPath = path.join(
 
 try {
   let content = fs.readFileSync(filePath, 'utf8');
-  let lines = content.split('\n');
   let patched = false;
 
-  if (lines.length > 3407 && lines[3406].includes('requestAnimationFrame:')) {
-    lines[3406] = '';
+  const duplicateRafAssign =
+    '  requestAnimationFrame: (window.requestAnimationFrame || window.setTimeout).bind(window),\n';
+
+  if (content.includes(duplicateRafAssign)) {
+    content = content.replace(duplicateRafAssign, '');
     patched = true;
     console.log('✓ Patched: removed duplicate requestAnimationFrame warning');
   } else {
-    console.log('! requestAnimationFrame patch: pattern not found');
+    console.log('✓ requestAnimationFrame patch already applied');
   }
 
   const noopLine = '    this.respondToSizeChange = function() {};';
@@ -35,7 +37,6 @@ try {
   if (content.includes(brokenPattern)) {
     // Not yet patched — apply fix
     content = content.replace(brokenPattern, fixedPattern);
-    lines = content.split('\n');
     patched = true;
     console.log('✓ Patched: fixed respondToSizeChange no-op overwrite');
   } else if (content.includes(fixedPattern)) {
@@ -45,7 +46,7 @@ try {
   }
 
   if (patched) {
-    fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+    fs.writeFileSync(filePath, content, 'utf8');
   }
 } catch (error) {
   console.error('Error patching literallycanvas:', error.message);
