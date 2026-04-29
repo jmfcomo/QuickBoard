@@ -6,7 +6,69 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
 import type { AudioTrack } from '../data';
+import type { Board } from '../data/store/app.store';
 import { appSettings } from 'src/settings-loader';
+
+interface JsPdfInstance {
+  internal: {
+    pageSize: {
+      getWidth(): number;
+      getHeight(): number;
+    };
+  };
+  setDrawColor(...args: number[]): void;
+  setFillColor(...args: number[]): void;
+  setLineWidth(width: number): void;
+  setFont(fontName: string, fontStyle?: string): void;
+  setFontSize(size: number): void;
+  addImage(
+    imageData: string,
+    format: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void;
+  rect(x: number, y: number, width: number, height: number, style?: string): void;
+  line(x1: number, y1: number, x2: number, y2: number): void;
+  text(text: string | string[], x: number, y: number, options?: Record<string, unknown>): void;
+  splitTextToSize(text: string, maxWidth: number): string[];
+  getTextWidth(text: string): number;
+  addPage(): void;
+  setPage(pageNumber: number): void;
+  output(type: 'arraybuffer'): unknown;
+}
+
+interface PdfLayoutMetrics {
+  pageWidth: number;
+  pageHeight: number;
+  marginX: number;
+  marginTop: number;
+  marginBottom: number;
+  gutterX: number;
+  gutterY: number;
+  boardsPerRow: number;
+  cardWidth: number;
+  cardPadding: number;
+  contentWidth: number;
+  imageHeight: number;
+  headerHeight: number;
+  imgGap: number;
+  metaGap: number;
+  metadataHeight: number;
+  scriptGap: number;
+  lineHeight: number;
+  bottomPad: number;
+  scriptHeight: number;
+  cardHeight: number;
+}
+
+interface BoardLayoutEntry {
+  page: number;
+  cardX: number;
+  cardY: number;
+  cardHeight: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
@@ -423,6 +485,230 @@ export class ExportService {
     });
   }
 
+  private formatStoryboardTimestamp(seconds: number): string {
+    const wholeSeconds = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(wholeSeconds / 60);
+    const remainingSeconds = wholeSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+  }
+
+  private formatStoryboardDuration(seconds: number): string {
+    const safeSeconds = Math.max(0, seconds || 0);
+    if (Number.isInteger(safeSeconds)) {
+      return `${safeSeconds}s`;
+    }
+    return `${safeSeconds.toFixed(1)}s`;
+  }
+
+  private extractScriptText(board: Board | undefined): string {
+    const blocks = board?.scriptData?.blocks ?? [];
+    return blocks
+      .map((block) => {
+        const text = typeof block?.data?.text === 'string' ? block.data.text : '';
+        return text
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      })
+      .filter((text) => text.length > 0)
+      .join('\n');
+  }
+
+  private buildPdfLayout(
+    pageWidth: number,
+    pageHeight: number,
+    boardsPerRow: number
+  ): PdfLayoutMetrics {
+    const safeBoardsPerRow = Math.max(1, Math.min(4, boardsPerRow));
+    const marginX = 28;
+    const marginTop = 28;
+    const marginBottom = 28;
+    const gutterX = 12;
+    const gutterY = 12;
+    const cardPadding = 7;
+    const availableWidth = pageWidth - marginX * 2 - gutterX * (safeBoardsPerRow - 1);
+    const cardWidth = availableWidth / safeBoardsPerRow;
+    const contentWidth = cardWidth - cardPadding * 2;
+    const imageHeight = cardWidth * (this.store.height() / this.store.width());
+    const headerHeight = 26;
+    const imgGap = 1;
+    const metaGap = 4;
+    const metadataHeight = 13;
+    const scriptGap = 3;
+    const lineHeight = 11;
+    const bottomPad = 6;
+    // Compute scriptHeight so that 3 rows fit on the page.
+    const fixedOverhead = headerHeight + imgGap + metaGap + metadataHeight + scriptGap + bottomPad;
+    const usableHeight = pageHeight - marginTop - marginBottom;
+    const targetCardHeight = (usableHeight - gutterY * 2) / 3;
+    const scriptHeight = Math.max(
+      lineHeight,
+      Math.floor(targetCardHeight - imageHeight - fixedOverhead)
+    );
+    const cardHeight = fixedOverhead + imageHeight + scriptHeight;
+
+    return {
+      pageWidth,
+      pageHeight,
+      marginX,
+      marginTop,
+      marginBottom,
+      gutterX,
+      gutterY,
+      boardsPerRow: safeBoardsPerRow,
+      cardWidth,
+      cardPadding,
+      contentWidth,
+      imageHeight,
+      headerHeight,
+      imgGap,
+      metaGap,
+      metadataHeight,
+      scriptGap,
+      lineHeight,
+      bottomPad,
+      scriptHeight,
+      cardHeight,
+    };
+  }
+
+  private buildFullScriptLayout(
+    boards: Board[],
+    layout: PdfLayoutMetrics,
+    doc: JsPdfInstance
+  ): BoardLayoutEntry[] {
+    const fixedOverhead =
+      layout.headerHeight +
+      layout.imgGap +
+      layout.imageHeight +
+      layout.metaGap +
+      layout.metadataHeight +
+      layout.scriptGap +
+      layout.bottomPad;
+    const pageBottom = layout.pageHeight - layout.marginBottom;
+    const results: BoardLayoutEntry[] = [];
+    let currentPage = 1;
+    let currentY = layout.marginTop;
+
+    for (let i = 0; i < boards.length; i += layout.boardsPerRow) {
+      const rowBoards = boards.slice(i, i + layout.boardsPerRow);
+      let maxLines = 1;
+      for (const board of rowBoards) {
+        const scriptText = this.extractScriptText(board);
+        if (scriptText) {
+          const lines = doc.splitTextToSize(scriptText, layout.contentWidth);
+          maxLines = Math.max(maxLines, lines.length);
+        }
+      }
+      const rowCardHeight = Math.ceil(fixedOverhead + maxLines * layout.lineHeight);
+      // Start a new page if this row doesn't fit (skip check on first row to avoid infinite loop).
+      if (results.length > 0 && currentY + rowCardHeight > pageBottom) {
+        currentPage++;
+        currentY = layout.marginTop;
+      }
+      for (let j = 0; j < rowBoards.length; j++) {
+        const cardX = layout.marginX + j * (layout.cardWidth + layout.gutterX);
+        results.push({ page: currentPage, cardX, cardY: currentY, cardHeight: rowCardHeight });
+      }
+      currentY += rowCardHeight + layout.gutterY;
+    }
+
+    return results;
+  }
+
+  private drawStoryboardBoard(
+    doc: JsPdfInstance,
+    frameDataUrl: string,
+    board: Board | undefined,
+    boardNumber: number,
+    startTimeSeconds: number,
+    x: number,
+    y: number,
+    layout: PdfLayoutMetrics,
+    options: { fullScript?: boolean; actualCardHeight?: number } = {}
+  ): void {
+    const { fullScript = false, actualCardHeight = layout.cardHeight } = options;
+    const { cardPadding, contentWidth } = layout;
+    const headerBottom = y + layout.headerHeight;
+    const imageY = headerBottom + layout.imgGap;
+    const metadataY = imageY + layout.imageHeight + layout.metaGap;
+    const scriptY = metadataY + layout.metadataHeight + layout.scriptGap;
+    const boardDuration = board?.duration ?? appSettings.board.defaultDuration;
+    const timestampText = this.formatStoryboardTimestamp(startTimeSeconds);
+    const durationText = this.formatStoryboardDuration(boardDuration);
+    const scriptText = this.extractScriptText(board);
+
+    // Card outline
+    doc.setDrawColor(32, 32, 32);
+    doc.setLineWidth(0.8);
+    doc.rect(x, y, layout.cardWidth, actualCardHeight, 'S');
+    doc.line(x, headerBottom, x + layout.cardWidth, headerBottom);
+
+    // Header section dividers
+    const sectionWidth = layout.cardWidth / 3;
+    doc.line(x + sectionWidth, y, x + sectionWidth, headerBottom);
+    doc.line(x + sectionWidth * 2, y, x + sectionWidth * 2, headerBottom);
+
+    // Header labels
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('BOARD#', x + 5, y + 10);
+    doc.text('TIME', x + sectionWidth + 5, y + 10);
+    doc.text('LENGTH', x + sectionWidth * 2 + 5, y + 10);
+
+    // Header values
+    doc.setFontSize(10);
+    doc.text(String(boardNumber), x + 5, y + 23);
+    doc.text(timestampText, x + sectionWidth + 5, y + 23);
+    doc.text(durationText, x + sectionWidth * 2 + 5, y + 23);
+
+    // Board image
+    doc.addImage(frameDataUrl, 'JPEG', x + cardPadding, imageY, contentWidth, layout.imageHeight);
+    doc.rect(x + cardPadding, imageY, contentWidth, layout.imageHeight, 'S');
+
+    // Metadata line below image
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(`Board ${boardNumber}`, x + cardPadding, metadataY + 8);
+    doc.text(
+      `${timestampText} / ${durationText}`,
+      x + layout.cardWidth - cardPadding,
+      metadataY + 8,
+      {
+        align: 'right',
+      }
+    );
+
+    // Script text
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const scriptLines = scriptText
+      ? doc.splitTextToSize(scriptText, contentWidth)
+      : ['No script for this board.'];
+
+    if (fullScript) {
+      doc.text(scriptLines, x + cardPadding, scriptY, { maxWidth: contentWidth, baseline: 'top' });
+    } else {
+      const availableScriptH =
+        actualCardHeight -
+        (layout.headerHeight +
+          layout.imgGap +
+          layout.imageHeight +
+          layout.metaGap +
+          layout.metadataHeight +
+          layout.scriptGap +
+          layout.bottomPad);
+      const maxLines = Math.max(1, Math.floor(availableScriptH / layout.lineHeight));
+      const trimmedLines = scriptLines.slice(0, maxLines);
+      if (scriptLines.length > maxLines && trimmedLines.length > 0) {
+        const lastLine = trimmedLines[trimmedLines.length - 1] ?? '';
+        trimmedLines[trimmedLines.length - 1] = `${lastLine.replace(/[.\s]+$/, '')}...`;
+      }
+      doc.text(trimmedLines, x + cardPadding, scriptY, { maxWidth: contentWidth, baseline: 'top' });
+    }
+  }
+
   async exportPDFWithSettings(
     settings: ExportSettings,
     onProgress?: (current: number, total: number, fileName: string) => void,
@@ -430,14 +716,12 @@ export class ExportService {
   ): Promise<Uint8Array> {
     this.throwIfAborted(abortSignal);
     const { jsPDF } = await import('jspdf');
+    const pageFormat = settings.pdfPageSize === 'a4' ? 'a4' : 'letter';
     const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'px',
-      format: [
-        this.store.width() * settings.resolution.scale,
-        this.store.height() * settings.resolution.scale,
-      ],
-    });
+      orientation: 'portrait',
+      unit: 'pt',
+      format: pageFormat,
+    }) as JsPdfInstance;
 
     const allBoards = this.store.boards();
     const boards = allBoards.slice(settings.startIndex, settings.endIndex + 1);
@@ -445,24 +729,33 @@ export class ExportService {
     if (!boards.length) {
       throw new Error('There are no boards to export in the selected range.');
     }
-    const [cols, rows] = settings.table.split('x').map((value) => Number(value));
-    const boardsPerPage = cols * rows;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const cellWidth = pageWidth / cols;
-    const cellHeight = pageHeight / rows;
-    const boardAspectRatio = this.store.height() / this.store.width();
-    const baseImageWidth = cellWidth * 0.9;
-    const targetImageWidth = baseImageWidth * 1.5;
-    const maxImageWidth = cellWidth * 0.98;
-    let imageWidth = Math.min(targetImageWidth, maxImageWidth);
-    let imageHeight = imageWidth * boardAspectRatio;
-    const maxImageHeight = cellHeight * 0.75;
-    if (imageHeight > maxImageHeight) {
-      imageHeight = maxImageHeight;
-      imageWidth = imageHeight / boardAspectRatio;
+    const layout = this.buildPdfLayout(pageWidth, pageHeight, settings.boardsPerRow);
+    const isFullScript = settings.pdfScriptMode === 'full';
+
+    // For full-script mode pre-compute per-board layout and pre-create pages.
+    let boardLayouts: BoardLayoutEntry[] | null = null;
+    let boardsPerPage = 0;
+
+    if (isFullScript) {
+      boardLayouts = this.buildFullScriptLayout(boards, layout, doc);
+      const totalPages = boardLayouts.reduce((max, l) => Math.max(max, l.page), 1);
+      for (let p = 1; p < totalPages; p++) {
+        doc.addPage();
+      }
+    } else {
+      const usableHeight = pageHeight - layout.marginTop - layout.marginBottom;
+      const boardsPerColumn = Math.max(
+        1,
+        Math.floor((usableHeight + layout.gutterY) / (layout.cardHeight + layout.gutterY))
+      );
+      boardsPerPage = layout.boardsPerRow * boardsPerColumn;
     }
-    const textFontSize = 24;
+
+    let runningTimestampSeconds = allBoards
+      .slice(0, settings.startIndex)
+      .reduce((sum, board) => sum + (board.duration ?? appSettings.board.defaultDuration), 0);
 
     await this.renderBoardsAtScaleStreaming(
       settings.resolution.scale,
@@ -471,41 +764,48 @@ export class ExportService {
         this.throwIfAborted(abortSignal);
         const boardIndex = current - 1;
         const board = boards[boardIndex];
-        const pageSlot = boardIndex % boardsPerPage;
-        const colIndex = pageSlot % cols;
-        const rowIndex = Math.floor(pageSlot / cols);
-        const cellX = colIndex * cellWidth;
-        const cellY = rowIndex * cellHeight;
-        const imgX = cellX + (cellWidth - imageWidth) / 2;
-        const imgY = cellY + cellHeight * 0.05;
-        const captionY = imgY + imageHeight + 50;
-        const scriptText =
-          board?.scriptData?.blocks
-            ?.map((block) => {
-              const text = typeof block?.data?.text === 'string' ? block.data.text : '';
-              return text.length > 0 ? `"${text}"` : '';
-            })
-            .filter((text) => text.length > 0)
-            .join(', ') ?? '';
 
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.5);
-        doc.rect(cellX + 2, cellY + 2, cellWidth - 4, cellHeight - 4, 'S');
+        let cardX: number;
+        let cardY: number;
+        let actualCardHeight: number;
 
-        doc.addImage(frame.dataUrl, 'JPEG', imgX, imgY, imageWidth, imageHeight);
-        doc.rect(imgX, imgY, imageWidth, imageHeight, 'S');
-
-        if (scriptText) {
-          doc.setFontSize(textFontSize);
-          doc.text(scriptText.split(/\r?\n/), cellX + cellWidth / 2, captionY, {
-            align: 'center' as const,
-            maxWidth: imageWidth,
-          });
+        if (boardLayouts) {
+          const entry = boardLayouts[boardIndex];
+          if (!entry) {
+            return;
+          }
+          doc.setPage(entry.page);
+          cardX = entry.cardX;
+          cardY = entry.cardY;
+          actualCardHeight = entry.cardHeight;
+        } else {
+          const pageSlot = boardIndex % boardsPerPage;
+          const colIndex = pageSlot % layout.boardsPerRow;
+          const rowIndex = Math.floor(pageSlot / layout.boardsPerRow);
+          cardX = layout.marginX + colIndex * (layout.cardWidth + layout.gutterX);
+          cardY = layout.marginTop + rowIndex * (layout.cardHeight + layout.gutterY);
+          actualCardHeight = layout.cardHeight;
+          if (pageSlot === boardsPerPage - 1 && current < total) {
+            doc.addPage();
+          }
         }
 
-        if (pageSlot === boardsPerPage - 1 && current < total) {
-          doc.addPage();
-        }
+        this.drawStoryboardBoard(
+          doc,
+          frame.dataUrl,
+          board,
+          settings.startIndex + current,
+          runningTimestampSeconds,
+          cardX,
+          cardY,
+          layout,
+          {
+            fullScript: isFullScript,
+            actualCardHeight,
+          }
+        );
+
+        runningTimestampSeconds += board?.duration ?? appSettings.board.defaultDuration;
 
         onProgress?.(current, total, frame.name);
 

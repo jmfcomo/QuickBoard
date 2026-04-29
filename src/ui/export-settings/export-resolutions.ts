@@ -1,4 +1,4 @@
-import { appSettings } from "src/settings-loader";
+import { appSettings } from 'src/settings-loader';
 
 export interface ExportResolution {
   label: string;
@@ -7,15 +7,31 @@ export interface ExportResolution {
   height: number;
 }
 
+export type PdfPageSize = 'letter' | 'a4';
+
+export type PdfScriptMode = 'truncate' | 'full';
+
+export interface PdfPageSizeOption {
+  value: PdfPageSize;
+  label: string;
+}
+
 export interface ExportSettings {
   format: 'png' | 'video' | 'pdf';
   resolution: ExportResolution;
   prefix: string;
-  table: '1x1' | '2x2' | '3x3';
+  pdfPageSize: PdfPageSize;
+  boardsPerRow: number;
+  pdfScriptMode: PdfScriptMode;
   dirPath: string;
   startIndex: number;
   endIndex: number;
 }
+
+export const PDF_PAGE_SIZES: PdfPageSizeOption[] = [
+  { value: 'letter', label: 'Letter · 8.5 × 11 in' },
+  { value: 'a4', label: 'A4 · 210 × 297 mm' },
+];
 
 export const EXPORT_RESOLUTIONS: ExportResolution[] = appSettings.export.resolutions ?? [
   { label: '480 × 270  — Draft', scale: 0.25, width: 480, height: 270 },
