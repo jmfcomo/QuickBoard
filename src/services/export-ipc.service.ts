@@ -28,6 +28,7 @@ export class ExportIpcService {
   readonly exportTotal = signal(0);
   readonly exportProgressPercent = signal(0);
   readonly exportFrameCount = signal(0);
+  readonly exportProgressPercent = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -191,6 +192,9 @@ export class ExportIpcService {
 
     try {
       const frameCount = settings.endIndex - settings.startIndex + 1;
+      const RENDER_PHASE_MAX = 70;
+      const ENCODE_PHASE_MIN = 70;
+      const ENCODE_PHASE_MAX = 98;
       const mp4Bytes = await this.exportService.exportVideoWithSettings(
         settings,
         (current, total, fileName) => {
@@ -199,14 +203,18 @@ export class ExportIpcService {
           this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering frames... (${current}/${total})`);
+          const renderProgress = total > 0 ? Math.round((current / total) * RENDER_PHASE_MAX) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(RENDER_PHASE_MAX, renderProgress)));
         },
         (message) => {
           this.exportMessage.set(message);
           this.exportFileName.set('');
           if (message === 'Encoding video...' || message === 'Processing audio...') {
             this.exportCurrent.set(frameCount);
+            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN));
           } else if (message === 'Saving file...') {
             this.exportCurrent.set(frameCount);
+            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX));
           }
         },
         (progress) => {
@@ -285,6 +293,8 @@ export class ExportIpcService {
           this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering pages... (${current}/${total})`);
+          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, percent)));
         },
         this.abortController.signal
       );
