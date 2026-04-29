@@ -110,9 +110,7 @@ export class ExportService {
     const padLength = Math.max(3, String(allBoards.length).length);
     const ext = mimeType === 'image/jpeg' ? '.jpg' : '.png';
     for (let i = 0; i < boards.length; i++) {
-      if (abortSignal?.aborted) {
-        throw new Error('Export canceled by user.');
-      }
+      this.throwIfAborted(abortSignal);
       const board = boards[i];
       const frameNum = String(startIndex + i + 1).padStart(padLength, '0');
       const fileName = `${prefix}_${frameNum}${ext}`;
@@ -122,7 +120,15 @@ export class ExportService {
         scale,
         mimeType
       );
+      this.throwIfAborted(abortSignal);
       await onFrame({ name: fileName, dataUrl }, i + 1, boards.length);
+      this.throwIfAborted(abortSignal);
+    }
+  }
+
+  private throwIfAborted(abortSignal?: AbortSignal): void {
+    if (abortSignal?.aborted) {
+      throw new Error('Export canceled by user.');
     }
   }
 
@@ -422,6 +428,7 @@ export class ExportService {
     onProgress?: (current: number, total: number, fileName: string) => void,
     abortSignal?: AbortSignal
   ): Promise<Uint8Array> {
+    this.throwIfAborted(abortSignal);
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
       orientation: 'landscape',
@@ -461,6 +468,7 @@ export class ExportService {
       settings.resolution.scale,
       settings.prefix,
       async (frame, current, total) => {
+        this.throwIfAborted(abortSignal);
         const boardIndex = current - 1;
         const board = boards[boardIndex];
         const pageSlot = boardIndex % boardsPerPage;
@@ -503,6 +511,7 @@ export class ExportService {
 
         // Allow the browser to paint progress updates during long PDF builds.
         await this.yieldToMainThread();
+        this.throwIfAborted(abortSignal);
       },
       'image/jpeg',
       abortSignal,
@@ -510,6 +519,7 @@ export class ExportService {
       settings.endIndex
     );
 
+    this.throwIfAborted(abortSignal);
     const output: unknown = doc.output('arraybuffer');
     if (output instanceof ArrayBuffer) {
       return new Uint8Array(output);

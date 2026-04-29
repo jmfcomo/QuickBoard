@@ -289,10 +289,17 @@ export class ExportIpcService {
         this.abortController.signal
       );
 
+      if (this.abortController.signal.aborted) {
+        throw new Error('Export canceled by user.');
+      }
+
       this.exportProgressPercent.set(95);
       this.exportMessage.set('Finalizing PDF...');
 
       const outputName = `${prefix}.pdf`;
+      if (this.abortController.signal.aborted) {
+        throw new Error('Export canceled by user.');
+      }
       this.exportProgressPercent.set(98);
       this.exportMessage.set('Saving file...');
       const result = await window.quickboard?.sendVideoFile({
