@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   AfterViewInit,
@@ -37,6 +38,7 @@ import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-canvas',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ClearCanvasConfirmComponent,
     PropertiesBarComponent,

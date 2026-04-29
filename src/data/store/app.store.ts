@@ -5,6 +5,7 @@ import type { OutputData } from '@editorjs/editorjs';
 import { CanvasDataService } from '../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
 import { sanitizeFps, sanitizeResolution, extractProjectDimensions } from './app-state-validation';
+import type { PersistedProjectData } from './persisted-data.types';
 
 export interface Board {
   id: string;
@@ -152,14 +153,13 @@ export const AppStore = signalStore(
 
       loadFromJson(jsonString: string) {
         try {
-          const data = JSON.parse(jsonString) as AppState & { boards: unknown[] };
+          const data = JSON.parse(jsonString) as PersistedProjectData;
           if (!data || !Array.isArray(data.boards)) {
             throw new Error('Invalid JSON structure: "boards" array is required');
           }
 
           canvasDataService.clear();
-          const cleanedBoards = (data.boards as unknown[]).map((iterBoard) => {
-            const b = iterBoard as { id: string; canvasData?: unknown };
+          const cleanedBoards = data.boards.map((b) => {
             if (b.canvasData) {
               let shapes: unknown[] = [];
               let backgroundShapes: unknown[] = [];
@@ -168,7 +168,7 @@ export const AppStore = signalStore(
               const parsedCanvasData =
                 typeof b.canvasData === 'string'
                   ? (JSON.parse(b.canvasData) as Record<string, unknown>)
-                  : (b.canvasData as Record<string, unknown>);
+                  : (b.canvasData as unknown as Record<string, unknown>);
 
               // Only attempt pre-hydration if LC is globally available (standard browser environment)
               if (typeof LC !== 'undefined' && LC.snapshotJSONToShapes) {
@@ -206,18 +206,14 @@ export const AppStore = signalStore(
             volume: 1,
             muted: false,
           }));
-          const laneMixers = Array.isArray(data.audioLaneMixers)
-            ? data.audioLaneMixers
-            : defaultMixers;
-          const normalizedTracks = Array.isArray(data.audioTracks)
-            ? data.audioTracks.map((track) => ({
-                ...track,
-                volume:
-                  typeof (track as Partial<AudioTrack>).volume === 'number'
-                    ? (track as AudioTrack).volume
-                    : laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1,
-              }))
-            : [];
+          const laneMixers = data.audioLaneMixers ?? defaultMixers;
+          const normalizedTracks = (data.audioTracks ?? []).map((track) => ({
+            ...track,
+            volume:
+              typeof track.volume === 'number'
+                ? track.volume
+                : laneMixers[track.laneIndex]?.volume ?? 1,
+          }));
 
           const dimensions = extractProjectDimensions(
             data,
@@ -228,7 +224,7 @@ export const AppStore = signalStore(
           patchState(store, {
             boards: cleanedBoards as Board[],
             currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
-            onionSkinEnabled: Boolean((data as Partial<AppState>).onionSkinEnabled),
+            onionSkinEnabled: data.onionSkinEnabled ?? false,
             audioTracks: normalizedTracks,
             audioLaneCount: laneCount,
             audioLaneMixers: laneMixers,

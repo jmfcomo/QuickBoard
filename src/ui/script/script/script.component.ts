@@ -1,4 +1,12 @@
-import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, effect } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  PLATFORM_ID,
+  effect,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import EditorJS from '@editorjs/editorjs';
 import type { OutputData, OutputBlockData } from '@editorjs/editorjs';
@@ -10,6 +18,7 @@ import { UndoRedoService, UndoReservation } from '../../../services/undo-redo.se
 
 @Component({
   selector: 'app-script',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './script.component.html',
   styleUrls: ['./script.component.css'],
 })
@@ -242,7 +251,7 @@ export class ScriptComponent implements OnInit, OnDestroy {
             block.data.text = '';
           }
           return true;
-        },
+        }
       );
 
       // If all blocks were filtered out, use empty data

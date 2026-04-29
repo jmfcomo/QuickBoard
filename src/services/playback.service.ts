@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, inject, effect } from '@angular/core';
+import { Injectable, inject, effect, DestroyRef } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
 import * as Tone from 'tone';
 
@@ -9,8 +9,9 @@ interface BoardTimeRange {
 }
 
 @Injectable({ providedIn: 'root' })
-export class PlaybackService implements OnDestroy {
+export class PlaybackService {
   readonly store = inject(AppStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   private playbackFrameId: number | null = null;
   private boardTimeRanges: BoardTimeRange[] = [];
@@ -20,6 +21,11 @@ export class PlaybackService implements OnDestroy {
     // Precompute time ranges whenever boards change
     effect(() => {
       this.precomputeTimeRanges(this.store.boards());
+    });
+
+    // Clean up on service destruction
+    this.destroyRef.onDestroy(() => {
+      this.stop();
     });
   }
 
@@ -181,9 +187,5 @@ export class PlaybackService implements OnDestroy {
     // If not found in any range, return the closest valid index
     // Clamp to last board if time is beyond all boards
     return Math.min(left, this.boardTimeRanges.length - 1);
-  }
-
-  ngOnDestroy() {
-    this.stop();
   }
 }

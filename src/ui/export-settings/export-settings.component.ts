@@ -1,4 +1,12 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { inject } from '@angular/core';
 import { EXPORT_RESOLUTIONS } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
@@ -7,7 +15,7 @@ import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform
 @Component({
   selector: 'app-export-settings',
   standalone: true,
-  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './export-settings.component.html',
   styleUrl: './export-settings.component.css',
 })
@@ -47,7 +55,9 @@ export class ExportSettingsComponent {
         this.selectedFormat.set(this.exportType());
         this.selectedTable.set(this.tableLayout());
         this.prefix.set(this.defaultPrefix() || 'board');
-        this.dirPath.set(this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : ''));
+        this.dirPath.set(
+          this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : '')
+        );
         this.startIndex.set(0);
         this.endIndex.set(this.boardCount() - 1);
         this.startRaw.set('1');

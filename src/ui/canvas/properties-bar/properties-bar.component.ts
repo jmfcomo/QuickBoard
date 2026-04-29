@@ -1,4 +1,11 @@
-import { Component, WritableSignal, computed, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  WritableSignal,
+  computed,
+  input,
+  output,
+} from '@angular/core';
 
 export interface ColorPicker {
   label: string;
@@ -9,6 +16,7 @@ export interface ColorPicker {
 
 @Component({
   selector: 'app-properties-bar',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './properties-bar.component.html',
   styleUrls: ['./properties-bar.component.css'],
 })
@@ -44,7 +52,7 @@ export class PropertiesBarComponent {
   readonly strokeSizeSliderPos = computed(() => {
     const v = this.strokeSize();
     if (v <= 1) return 0;
-    return Math.min(100, Math.round(Math.log(v) / Math.log(500) * 100));
+    return Math.min(100, Math.round((Math.log(v) / Math.log(500)) * 100));
   });
 
   readonly zoomLevelSliderPos = computed(() => {

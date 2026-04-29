@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { SbdService } from '../../app/app.sbd.service';
 import { UndoRedoService } from '../../services/undo-redo.service';
 import { ExportIpcService } from '../../services/export-ipc.service';
@@ -9,7 +9,7 @@ import { PlatformFileService } from '../../services/platform-file.service';
 @Component({
   standalone: true,
   selector: 'app-web-toolbar',
-  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './web-toolbar.component.html',
   styleUrl: './web-toolbar.component.css',
 })
