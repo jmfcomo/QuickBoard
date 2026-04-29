@@ -3,15 +3,15 @@ const path = require('path');
 
 const filePath = path.join(
   __dirname,
-  'node_modules/literallycanvas/lib/js/literallycanvas-core.js',
+  'node_modules/literallycanvas/lib/js/literallycanvas-core.js'
 );
 const capacitorCordovaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h',
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h'
 );
 const capacitorCordovaUmbrellaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h',
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h'
 );
 
 try {
