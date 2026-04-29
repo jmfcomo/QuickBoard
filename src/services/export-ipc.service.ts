@@ -279,7 +279,9 @@ export class ExportIpcService {
         settings,
         (current, total, fileName) => {
           this.exportCurrent.set(current);
-          const rawPercent = total > 0 ? Math.round((current / total) * 100) : 0;
+          // Reserve the last 10% for PDF finalization + file save.
+          const renderPercent = total > 0 ? (current / total) * 90 : 0;
+          const rawPercent = Math.round(renderPercent);
           this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering pages... (${current}/${total})`);
@@ -287,7 +289,12 @@ export class ExportIpcService {
         this.abortController.signal
       );
 
+      this.exportProgressPercent.set(95);
+      this.exportMessage.set('Finalizing PDF...');
+
       const outputName = `${prefix}.pdf`;
+      this.exportProgressPercent.set(98);
+      this.exportMessage.set('Saving file...');
       const result = await window.quickboard?.sendVideoFile({
         dirPath,
         name: outputName,

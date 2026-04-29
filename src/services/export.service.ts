@@ -411,6 +411,12 @@ export class ExportService {
     return prefix.replace(/['"\r\n/\\]/g, '_');
   }
 
+  private async yieldToMainThread(): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+  }
+
   async exportPDFWithSettings(
     settings: ExportSettings,
     onProgress?: (current: number, total: number, fileName: string) => void,
@@ -427,6 +433,11 @@ export class ExportService {
     });
 
     const allBoards = this.store.boards();
+    const boards = allBoards.slice(settings.startIndex, settings.endIndex + 1);
+
+    if (!boards.length) {
+      throw new Error('There are no boards to export in the selected range.');
+    }
     const [cols, rows] = settings.table.split('x').map((value) => Number(value));
     const boardsPerPage = cols * rows;
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -451,7 +462,7 @@ export class ExportService {
       settings.prefix,
       async (frame, current, total) => {
         const boardIndex = current - 1;
-        const board = allBoards[settings.startIndex + boardIndex];
+        const board = boards[boardIndex];
         const pageSlot = boardIndex % boardsPerPage;
         const colIndex = pageSlot % cols;
         const rowIndex = Math.floor(pageSlot / cols);
@@ -473,7 +484,7 @@ export class ExportService {
         doc.setLineWidth(0.5);
         doc.rect(cellX + 2, cellY + 2, cellWidth - 4, cellHeight - 4, 'S');
 
-        doc.addImage(frame.dataUrl, 'PNG', imgX, imgY, imageWidth, imageHeight);
+        doc.addImage(frame.dataUrl, 'JPEG', imgX, imgY, imageWidth, imageHeight);
         doc.rect(imgX, imgY, imageWidth, imageHeight, 'S');
 
         if (scriptText) {
@@ -489,13 +500,29 @@ export class ExportService {
         }
 
         onProgress?.(current, total, frame.name);
+
+        // Allow the browser to paint progress updates during long PDF builds.
+        await this.yieldToMainThread();
       },
-      'image/png',
-      abortSignal
+      'image/jpeg',
+      abortSignal,
+      settings.startIndex,
+      settings.endIndex
     );
 
-    const pdfBlob = doc.output('blob');
-    const arrayBuffer = await pdfBlob.arrayBuffer();
-    return new Uint8Array(arrayBuffer);
+    const output: unknown = doc.output('arraybuffer');
+    if (output instanceof ArrayBuffer) {
+      return new Uint8Array(output);
+    }
+
+    if (ArrayBuffer.isView(output)) {
+      return new Uint8Array(output.buffer, output.byteOffset, output.byteLength);
+    }
+
+    if (output && typeof output === 'object' && 'byteLength' in output) {
+      return new Uint8Array(output as ArrayBufferLike);
+    }
+
+    throw new Error('Failed to generate PDF binary output.');
   }
 }
