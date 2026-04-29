@@ -29,6 +29,7 @@ const HUE_GRADIENT =
   'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)';
 const ALPHA_GRADIENT =
   'linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1))';
+const VALUE_CURVE = 0.7;
 let colorPickerId = 0;
 
 @Component({
@@ -54,6 +55,7 @@ export class ColorPickerComponent {
   readonly alpha = signal(1);
   readonly hexText = signal('');
   readonly alphaText = signal('');
+  private ignoreNextColorSync = false;
 
   readonly hueId = `color-picker-hue-${++colorPickerId}`;
   readonly alphaId = `color-picker-alpha-${colorPickerId}`;
@@ -89,6 +91,10 @@ export class ColorPickerComponent {
   readonly isTransparent = computed(() => this.alpha() <= 0);
   readonly saturationPercentValue = computed(() => Math.round(this.saturation() * 100));
   readonly brightnessPercentValue = computed(() => Math.round(this.value() * 100));
+  readonly valueHandlePercent = computed(() => {
+    const curved = invertValueCurve(this.value());
+    return (1 - curved) * 100;
+  });
   readonly svValueText = computed(() => {
     return `Saturation ${this.saturationPercentValue()} percent, Brightness ${this.brightnessPercentValue()} percent`;
   });
@@ -96,12 +102,21 @@ export class ColorPickerComponent {
   constructor() {
     effect(() => {
       const incoming = this.color();
+      if (this.ignoreNextColorSync) {
+        this.ignoreNextColorSync = false;
+        return;
+      }
       const parsed = parseColor(incoming);
       if (!parsed) return;
       const hsv = rgbToHsv(parsed);
-      const nextHue = hsv.s === 0 ? untracked(() => this.hue()) : hsv.h;
+      const currentHue = untracked(() => this.hue());
+      const currentSaturation = untracked(() => this.saturation());
+      const isGray = hsv.s === 0;
+      const isBlack = hsv.v === 0;
+      const nextHue = isGray ? currentHue : hsv.h;
+      const nextSaturation = isBlack ? currentSaturation : hsv.s;
       this.hue.set(nextHue);
-      this.saturation.set(hsv.s);
+      this.saturation.set(nextSaturation);
       this.value.set(hsv.v);
       this.alpha.set(parsed.a);
     });
@@ -262,20 +277,25 @@ export class ColorPickerComponent {
     const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
     const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
     this.saturation.set(x);
-    this.value.set(1 - y);
+    this.value.set(applyValueCurve(1 - y));
     this.emitColor();
   }
 
   private emitColor(): void {
     const rgb = hsvToRgb(this.hue(), this.saturation(), this.value());
-    this.colorChange.emit(formatRgba(rgb, this.alpha()));
+    const colorValue = formatRgba(rgb, this.alpha());
+    this.ignoreNextColorSync = true;
+    this.colorChange.emit(colorValue);
   }
 
   private applyParsedColor(parsed: Rgba): void {
     const hsv = rgbToHsv(parsed);
-    const nextHue = hsv.s === 0 ? this.hue() : hsv.h;
+    const isGray = hsv.s === 0;
+    const isBlack = hsv.v === 0;
+    const nextHue = isGray ? this.hue() : hsv.h;
+    const nextSaturation = isBlack ? this.saturation() : hsv.s;
     this.hue.set(nextHue);
-    this.saturation.set(hsv.s);
+    this.saturation.set(nextSaturation);
     this.value.set(hsv.v);
     this.alpha.set(parsed.a);
     this.emitColor();
@@ -288,6 +308,14 @@ function clamp(value: number, min: number, max: number): number {
 
 function clamp01(value: number): number {
   return clamp(value, 0, 1);
+}
+
+function applyValueCurve(value: number): number {
+  return Math.pow(clamp01(value), VALUE_CURVE);
+}
+
+function invertValueCurve(value: number): number {
+  return Math.pow(clamp01(value), 1 / VALUE_CURVE);
 }
 
 function parseColor(value: string): Rgba | null {

@@ -42,7 +42,7 @@
         <span
           class="sv-handle"
           [style.left.%]="saturation() * 100"
-          [style.top.%]="(1 - value()) * 100"
+          [style.top.%]="valueHandlePercent()"
         ></span>
       </div>
 
