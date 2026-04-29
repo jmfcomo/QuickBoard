@@ -27,6 +27,7 @@ export class ExportIpcService {
   readonly exportCurrent = signal(0);
   readonly exportTotal = signal(0);
   readonly exportFrameCount = signal(0);
+  readonly exportProgressPercent = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -108,6 +109,7 @@ export class ExportIpcService {
     this.exportTotal.set(frameCount);
     this.exportFrameCount.set(frameCount);
     this.exportCurrent.set(0);
+    this.exportProgressPercent.set(0);
     this.exportFileName.set('');
     this.exportStatus.set('exporting');
     this.exportVisible.set(true);
@@ -129,6 +131,8 @@ export class ExportIpcService {
             throw new Error(result?.message ?? 'An unknown error occurred.');
           }
           this.exportCurrent.set(current);
+          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, percent)));
           this.exportFileName.set(frame.name);
         },
         'image/png',
@@ -176,6 +180,7 @@ export class ExportIpcService {
     this.exportTotal.set(settings.endIndex - settings.startIndex + 1);
     this.exportFrameCount.set(settings.endIndex - settings.startIndex + 1);
     this.exportCurrent.set(0);
+    this.exportProgressPercent.set(0);
     this.exportFileName.set('');
     this.exportMessage.set('');
     this.exportStatus.set('exporting');
@@ -185,24 +190,36 @@ export class ExportIpcService {
 
     try {
       const frameCount = settings.endIndex - settings.startIndex + 1;
+      const RENDER_PHASE_MAX = 70;
+      const ENCODE_PHASE_MIN = 70;
+      const ENCODE_PHASE_MAX = 98;
       const mp4Bytes = await this.exportService.exportVideoWithSettings(
         settings,
         (current, total, fileName) => {
           this.exportCurrent.set(current);
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering frames... (${current}/${total})`);
+          const renderProgress = total > 0 ? Math.round((current / total) * RENDER_PHASE_MAX) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(RENDER_PHASE_MAX, renderProgress)));
         },
         (message) => {
           this.exportMessage.set(message);
           this.exportFileName.set('');
           if (message === 'Encoding video...' || message === 'Processing audio...') {
             this.exportCurrent.set(frameCount);
+            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN));
           } else if (message === 'Saving file...') {
             this.exportCurrent.set(frameCount);
+            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX));
           }
         },
         (progress) => {
           this.exportMessage.set(`Encoding video... ${progress}%`);
+          const nextEncodingPercent =
+            ENCODE_PHASE_MIN + Math.round((Math.max(0, Math.min(100, progress)) / 100) * (ENCODE_PHASE_MAX - ENCODE_PHASE_MIN));
+          this.exportProgressPercent.set(
+            Math.max(this.exportProgressPercent(), Math.max(ENCODE_PHASE_MIN, nextEncodingPercent)),
+          );
         },
         this.abortController.signal,
       );
@@ -219,8 +236,7 @@ export class ExportIpcService {
       }
 
       this.exportCurrent.set(frameCount);
-
-      this.exportCurrent.set(100);
+      this.exportProgressPercent.set(100);
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
         this.successTimeout = null;
@@ -239,7 +255,7 @@ export class ExportIpcService {
     }
   }
 
-private async runPDFExport(settings: ExportSettings): Promise<void> {
+  private async runPDFExport(settings: ExportSettings): Promise<void> {
     this.settingsVisible.set(false);
     const { prefix, dirPath } = settings;
 
@@ -258,6 +274,7 @@ private async runPDFExport(settings: ExportSettings): Promise<void> {
     this.exportTotal.set(settings.endIndex - settings.startIndex + 1);
     this.exportFrameCount.set(settings.endIndex - settings.startIndex + 1);
     this.exportCurrent.set(0);
+    this.exportProgressPercent.set(0);
     this.exportFileName.set('');
     this.exportMessage.set('');
     this.exportStatus.set('exporting');
@@ -272,6 +289,8 @@ private async runPDFExport(settings: ExportSettings): Promise<void> {
           this.exportCurrent.set(current);
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering pages... (${current}/${total})`);
+          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, percent)));
         },
         this.abortController.signal,
       );
@@ -288,6 +307,7 @@ private async runPDFExport(settings: ExportSettings): Promise<void> {
       }
 
       this.exportCurrent.set(settings.endIndex - settings.startIndex + 1);
+      this.exportProgressPercent.set(100);
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
         this.successTimeout = null;

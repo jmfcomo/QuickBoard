@@ -175,13 +175,13 @@
           @for (field of canvasColorFields; track field.id) {
           <div [class]="field.fieldClass ? 'field ' + field.fieldClass : 'field'">
             <label [for]="field.id" class="field-label">{{ field.label }}</label>
-            <input
+            <app-color-picker
               [id]="field.id"
-              type="color"
               class="color-input"
-              [value]="field.value()"
-              (change)="setStringSignalFromInput($event, field.value)"
-            />
+              [label]="field.label"
+              [color]="field.value()"
+              (colorChange)="field.value.set($event)"
+            ></app-color-picker>
           </div>
           } @for (field of canvasSelectFields; track field.id) {
           <div class="field">
