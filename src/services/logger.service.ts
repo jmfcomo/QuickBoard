@@ -90,6 +90,8 @@ export class LoggerService {
         return 'warn';
       case LogLevel.ERROR:
         return 'error';
+      default:
+        return 'log';
     }
   }
 

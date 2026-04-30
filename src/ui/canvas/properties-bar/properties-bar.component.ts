@@ -17,7 +17,6 @@ export interface ColorPicker {
 
 @Component({
   selector: 'app-properties-bar',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ColorPickerComponent],
   templateUrl: './properties-bar.component.html',
   styleUrls: ['./properties-bar.component.css'],

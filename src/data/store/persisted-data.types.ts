@@ -1,14 +1,25 @@
 import type { OutputData } from '@editorjs/editorjs';
 
 /**
- * Internal type for canvas data stored in persistence.
- * This is what gets serialized/deserialized from JSON.
+ * Current canvas snapshot format stored in persistence.
+ * AppStore.exportAsJson() writes the Literally Canvas snapshot object directly.
  */
-export interface PersistedCanvasData {
-  snapshot: Record<string, unknown>;
+export type PersistedCanvasSnapshot = Record<string, unknown>;
+
+/**
+ * Legacy wrapped canvas format for backward compatibility.
+ */
+export interface LegacyPersistedCanvasData {
+  snapshot: PersistedCanvasSnapshot | string;
   shapes?: unknown[];
   backgroundShapes?: unknown[];
 }
+
+/**
+ * Internal type for canvas data stored in persistence.
+ * Supports current and legacy serialized shapes.
+ */
+export type PersistedCanvasData = PersistedCanvasSnapshot | LegacyPersistedCanvasData;
 
 /**
  * Board as serialized in JSON format.
@@ -26,10 +37,10 @@ export interface PersistedBoard {
  * Complete project data as serialized to JSON file.
  */
 export interface PersistedProjectData {
-  boards: (PersistedBoard & { canvasData?: PersistedCanvasData })[];
+  boards: (PersistedBoard & { canvasData?: PersistedCanvasData | string })[];
   currentBoardId: string | null;
-  onionSkinEnabled: boolean;
-  audioTracks: {
+  onionSkinEnabled?: boolean;
+  audioTracks?: {
     id: string;
     name: string;
     url: string;
@@ -40,8 +51,8 @@ export interface PersistedProjectData {
     laneIndex: number;
     volume: number;
   }[];
-  audioLaneCount: number;
-  audioLaneMixers: {
+  audioLaneCount?: number;
+  audioLaneMixers?: {
     volume: number;
     muted: boolean;
   }[];

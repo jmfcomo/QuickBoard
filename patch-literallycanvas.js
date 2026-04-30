@@ -26,7 +26,17 @@ try {
     patched = true;
     console.log('✓ Patched: removed duplicate requestAnimationFrame warning');
   } else {
-    console.log('✓ requestAnimationFrame patch already applied');
+    const hasSingleRafAssign =
+      content.match(
+        /requestAnimationFrame: \(window\.requestAnimationFrame \|\| window\.setTimeout\)\.bind\(window\),/g
+      )?.length === 1;
+    if (hasSingleRafAssign) {
+      console.log('✓ requestAnimationFrame patch already applied');
+    } else {
+      console.log(
+        '! requestAnimationFrame patch: expected duplicate pattern not found (upstream file may have changed)'
+      );
+    }
   }
 
   const noopLine = '    this.respondToSizeChange = function() {};';

@@ -169,10 +169,20 @@ export const AppStore = signalStore(
               let backgroundShapes: unknown[] = [];
 
               // Handle case where canvasData might be a serialized string in deeply old files
-              const parsedCanvasData =
+              const rawCanvasData =
                 typeof b.canvasData === 'string'
-                  ? (JSON.parse(b.canvasData) as Record<string, unknown>)
-                  : (b.canvasData as unknown as Record<string, unknown>);
+                  ? (JSON.parse(b.canvasData) as unknown)
+                  : (b.canvasData as unknown);
+              const wrappedSnapshot =
+                typeof rawCanvasData === 'object' &&
+                rawCanvasData !== null &&
+                'snapshot' in rawCanvasData
+                  ? (rawCanvasData as { snapshot: unknown }).snapshot
+                  : rawCanvasData;
+              const parsedCanvasData =
+                typeof wrappedSnapshot === 'string'
+                  ? (JSON.parse(wrappedSnapshot) as Record<string, unknown>)
+                  : (wrappedSnapshot as Record<string, unknown>);
 
               // Only attempt pre-hydration if LC is globally available (standard browser environment)
               if (typeof LC !== 'undefined' && LC.snapshotJSONToShapes) {
@@ -205,19 +215,37 @@ export const AppStore = signalStore(
             return rest;
           });
 
-          const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
+          const laneCount =
+            typeof data.audioLaneCount === 'number' && Number.isInteger(data.audioLaneCount)
+              ? Math.max(1, data.audioLaneCount)
+              : 1;
           const defaultMixers = Array.from({ length: laneCount }, () => ({
             volume: 1,
             muted: false,
           }));
-          const laneMixers = data.audioLaneMixers ?? defaultMixers;
-          const normalizedTracks = (data.audioTracks ?? []).map((track) => ({
-            ...track,
-            volume:
-              typeof track.volume === 'number'
-                ? track.volume
-                : laneMixers[track.laneIndex]?.volume ?? 1,
-          }));
+          const rawLaneMixers = Array.isArray(data.audioLaneMixers) ? data.audioLaneMixers : null;
+          const laneMixers =
+            rawLaneMixers &&
+            rawLaneMixers.every(
+              (mixer) => typeof mixer === 'object' && mixer !== null && !Array.isArray(mixer)
+            )
+              ? rawLaneMixers.map((mixer) => ({
+                  volume: typeof mixer.volume === 'number' ? mixer.volume : 1,
+                  muted: typeof mixer.muted === 'boolean' ? mixer.muted : false,
+                }))
+              : defaultMixers;
+
+          const rawAudioTracks = Array.isArray(data.audioTracks) ? data.audioTracks : [];
+          const normalizedTracks = rawAudioTracks
+            .filter((track) => typeof track === 'object' && track !== null && !Array.isArray(track))
+            .map((track) => ({
+              ...track,
+              volume:
+                typeof track.volume === 'number'
+                  ? track.volume
+                  : laneMixers[typeof track.laneIndex === 'number' ? track.laneIndex : -1]
+                      ?.volume ?? 1,
+            }));
 
           const dimensions = extractProjectDimensions(
             data,
