@@ -28,7 +28,6 @@ export class ExportIpcService {
   readonly exportTotal = signal(0);
   readonly exportProgressPercent = signal(0);
   readonly exportFrameCount = signal(0);
-  readonly exportProgressPercent = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -211,10 +210,14 @@ export class ExportIpcService {
           this.exportFileName.set('');
           if (message === 'Encoding video...' || message === 'Processing audio...') {
             this.exportCurrent.set(frameCount);
-            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN));
+            this.exportProgressPercent.set(
+              Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN)
+            );
           } else if (message === 'Saving file...') {
             this.exportCurrent.set(frameCount);
-            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX));
+            this.exportProgressPercent.set(
+              Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX)
+            );
           }
         },
         (progress) => {
