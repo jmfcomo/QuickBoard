@@ -3,15 +3,15 @@ const path = require('path');
 
 const filePath = path.join(
   __dirname,
-  'node_modules/literallycanvas/lib/js/literallycanvas-core.js'
+  'node_modules/literallycanvas/lib/js/literallycanvas-core.js',
 );
 const capacitorCordovaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h'
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h',
 );
 const capacitorCordovaUmbrellaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h'
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h',
 );
 
 try {
@@ -24,18 +24,7 @@ try {
     patched = true;
     console.log('✓ Patched: removed duplicate requestAnimationFrame warning');
   } else {
-    const rafAssignOccurrences = lines.filter((line) =>
-      line.includes(
-        'requestAnimationFrame: (window.requestAnimationFrame || window.setTimeout).bind(window),'
-      )
-    ).length;
-    if (rafAssignOccurrences === 1) {
-      console.log('✓ requestAnimationFrame patch already applied');
-    } else {
-      console.log(
-        '! requestAnimationFrame patch: expected duplicate pattern not found (upstream file may have changed)'
-      );
-    }
+    console.log('! requestAnimationFrame patch: pattern not found');
   }
 
   const noopLine = '    this.respondToSizeChange = function() {};';

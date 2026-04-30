@@ -201,56 +201,23 @@ export const AppStore = signalStore(
             return rest;
           });
 
-          const laneCount =
-            typeof data.audioLaneCount === 'number' && Number.isInteger(data.audioLaneCount)
-              ? Math.max(1, data.audioLaneCount)
-              : 1;
+          const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
           const defaultMixers = Array.from({ length: laneCount }, () => ({
             volume: 1,
             muted: false,
           }));
-          const rawLaneMixers = Array.isArray(data.audioLaneMixers) ? data.audioLaneMixers : null;
-          const laneMixers =
-            rawLaneMixers &&
-            rawLaneMixers.every(
-              (mixer) => typeof mixer === 'object' && mixer !== null && !Array.isArray(mixer)
-            )
-              ? rawLaneMixers.map((mixer) => ({
-                  volume:
-                    typeof (mixer as Partial<AudioLaneMixer>).volume === 'number'
-                      ? (mixer as AudioLaneMixer).volume
-                      : 1,
-                  muted:
-                    typeof (mixer as Partial<AudioLaneMixer>).muted === 'boolean'
-                      ? (mixer as AudioLaneMixer).muted
-                      : false,
-                }))
-              : defaultMixers;
-          const rawAudioTracks = Array.isArray(data.audioTracks) ? data.audioTracks : [];
-          const normalizedTracks: AudioTrack[] = rawAudioTracks
-            .filter((track) => typeof track === 'object' && track !== null && !Array.isArray(track))
-            .map((track) => {
-              const audioTrack = track as Partial<AudioTrack>;
-              const laneIndex =
-                typeof audioTrack.laneIndex === 'number' && Number.isInteger(audioTrack.laneIndex)
-                  ? Math.max(0, audioTrack.laneIndex)
-                  : 0;
-              return {
-                id: typeof audioTrack.id === 'string' ? audioTrack.id : crypto.randomUUID(),
-                name: typeof audioTrack.name === 'string' ? audioTrack.name : 'Untitled Track',
-                url: typeof audioTrack.url === 'string' ? audioTrack.url : '',
-                startTime: typeof audioTrack.startTime === 'number' ? audioTrack.startTime : 0,
-                duration: typeof audioTrack.duration === 'number' ? audioTrack.duration : 0,
-                trimStart: typeof audioTrack.trimStart === 'number' ? audioTrack.trimStart : 0,
-                fileDuration:
-                  typeof audioTrack.fileDuration === 'number' ? audioTrack.fileDuration : 0,
-                laneIndex,
+          const laneMixers = Array.isArray(data.audioLaneMixers)
+            ? data.audioLaneMixers
+            : defaultMixers;
+          const normalizedTracks = Array.isArray(data.audioTracks)
+            ? data.audioTracks.map((track) => ({
+                ...track,
                 volume:
-                  typeof audioTrack.volume === 'number'
-                    ? audioTrack.volume
-                    : laneMixers[laneIndex]?.volume ?? 1,
-              };
-            });
+                  typeof (track as Partial<AudioTrack>).volume === 'number'
+                    ? (track as AudioTrack).volume
+                    : laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1,
+              }))
+            : [];
 
           const dimensions = extractProjectDimensions(
             data,
