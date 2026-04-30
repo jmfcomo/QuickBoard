@@ -125,7 +125,10 @@ export class ScriptComponent implements OnInit, OnDestroy {
       time: Date.now(),
       version: '2.28.0',
     };
-    this._scriptBaseline = JSON.parse(JSON.stringify(initialData));
+    this._scriptBaseline =
+      typeof structuredClone === 'function'
+        ? (structuredClone(initialData) as OutputData)
+        : (JSON.parse(JSON.stringify(initialData)) as OutputData);
 
     this.editor = new EditorJS({
       holder: 'editorjs',
@@ -171,7 +174,10 @@ export class ScriptComponent implements OnInit, OnDestroy {
     const reservation = this.undoRedo.reserve();
     this._editingSession = {
       reservation,
-      afterData: JSON.parse(JSON.stringify(this._scriptBaseline)),
+      afterData:
+        typeof structuredClone === 'function'
+          ? (structuredClone(this._scriptBaseline) as OutputData)
+          : (JSON.parse(JSON.stringify(this._scriptBaseline)) as OutputData),
       boardId: this.currentBoardId,
     };
   }
@@ -227,17 +233,20 @@ export class ScriptComponent implements OnInit, OnDestroy {
     this.currentBoardId = boardId;
 
     // Prepare default empty data
-    const emptyData = {
-      blocks: [],
+    const emptyData: OutputData = {
+      blocks: [] as OutputBlockData[],
       time: Date.now(),
       version: '2.28.0',
     };
 
-    let dataToRender = emptyData;
+    let dataToRender: OutputData = emptyData;
 
     if (board?.scriptData && board.scriptData.blocks && board.scriptData.blocks.length > 0) {
       // Deep clone to ensure data integrity
-      dataToRender = JSON.parse(JSON.stringify(board.scriptData));
+      dataToRender =
+        typeof structuredClone === 'function'
+          ? (structuredClone(board.scriptData) as OutputData)
+          : (JSON.parse(JSON.stringify(board.scriptData)) as OutputData);
 
       // Validate and sanitize blocks
       dataToRender.blocks = dataToRender.blocks.filter(
@@ -274,7 +283,10 @@ export class ScriptComponent implements OnInit, OnDestroy {
     }
 
     // Snapshot the data we just loaded as the baseline for undo tracking
-    this._scriptBaseline = JSON.parse(JSON.stringify(dataToRender));
+    this._scriptBaseline =
+      typeof structuredClone === 'function'
+        ? (structuredClone(dataToRender) as OutputData)
+        : (JSON.parse(JSON.stringify(dataToRender)) as OutputData);
     // Release any suppression held by undo/redo-triggered board switches.
     this._suppressScriptHistory = false;
   }

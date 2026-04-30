@@ -123,7 +123,11 @@ export const AppStore = signalStore(
       },
 
       updateScriptData(boardId: string, scriptData: OutputData) {
-        const clonedData = JSON.parse(JSON.stringify(scriptData)) as OutputData;
+        // Use structuredClone for better performance (native API is ~10x faster than JSON)
+        const clonedData =
+          typeof structuredClone === 'function'
+            ? (structuredClone(scriptData) as OutputData)
+            : (JSON.parse(JSON.stringify(scriptData)) as OutputData);
         const boards = store
           .boards()
           .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));

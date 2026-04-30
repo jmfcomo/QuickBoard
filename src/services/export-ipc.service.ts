@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal, DestroyRef } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
@@ -17,6 +17,7 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 @Injectable({ providedIn: 'root' })
 export class ExportIpcService {
   private readonly exportService = inject(ExportService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly settingsMode = signal<'png' | 'video' | 'pdf'>('png');
   readonly settingsVisible = signal(false);
@@ -41,7 +42,7 @@ export class ExportIpcService {
       } catch {
         return '';
       }
-    })(),
+    })()
   );
   readonly defaultDirPath = computed(() => {
     const lastPath = this._lastExportPath();
@@ -57,6 +58,16 @@ export class ExportIpcService {
   private successTimeout: ReturnType<typeof setTimeout> | null = null;
   private abortController: AbortController | null = null;
 
+  constructor() {
+    // Clean up success timeout on service destruction
+    this.destroyRef.onDestroy(() => {
+      if (this.successTimeout !== null) {
+        clearTimeout(this.successTimeout);
+        this.successTimeout = null;
+      }
+    });
+  }
+
   setProjectName(name: string): void {
     this.projectName.set(name);
   }
@@ -70,7 +81,7 @@ export class ExportIpcService {
           this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
           this.settingsBoardCount.set(this.exportService.store.boards().length);
           this.settingsVisible.set(true);
-        }),
+        })
       );
     }
 
@@ -134,7 +145,7 @@ export class ExportIpcService {
         'image/png',
         this.abortController.signal,
         settings.startIndex,
-        settings.endIndex,
+        settings.endIndex
       );
       this.exportStatus.set('success');
       this.successTimeout = setTimeout(() => {
@@ -204,7 +215,7 @@ export class ExportIpcService {
         (progress) => {
           this.exportMessage.set(`Encoding video... ${progress}%`);
         },
-        this.abortController.signal,
+        this.abortController.signal
       );
 
       const outputName = `${prefix}.mp4`;
@@ -239,7 +250,7 @@ export class ExportIpcService {
     }
   }
 
-private async runPDFExport(settings: ExportSettings): Promise<void> {
+  private async runPDFExport(settings: ExportSettings): Promise<void> {
     this.settingsVisible.set(false);
     const { prefix, dirPath } = settings;
 
@@ -273,7 +284,7 @@ private async runPDFExport(settings: ExportSettings): Promise<void> {
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering pages... (${current}/${total})`);
         },
-        this.abortController.signal,
+        this.abortController.signal
       );
 
       const outputName = `${prefix}.pdf`;
@@ -304,7 +315,7 @@ private async runPDFExport(settings: ExportSettings): Promise<void> {
     } finally {
       this.abortController = null;
     }
-  }  
+  }
 
   onCancelExport(): void {
     if (this.abortController) {

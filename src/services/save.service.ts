@@ -1,4 +1,12 @@
-import { Injectable, inject, signal, effect, Injector, type EffectRef } from '@angular/core';
+import {
+  Injectable,
+  inject,
+  signal,
+  effect,
+  Injector,
+  type EffectRef,
+  DestroyRef,
+} from '@angular/core';
 import { SbdService } from '../app/app.sbd.service';
 import { UndoRedoService } from './undo-redo.service';
 import { ExportIpcService } from './export-ipc.service';
@@ -25,6 +33,7 @@ export class SaveService {
   private readonly undoRedo = inject(UndoRedoService);
   private readonly exportIpc = inject(ExportIpcService);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   private currentFilePath: string | null = null;
   private autosaveTimer: ReturnType<typeof setInterval> | null = null;
@@ -37,6 +46,13 @@ export class SaveService {
   private removeRequestSaveListener?: () => void;
   private removeLoadDataListener?: () => void;
   private removeSaveResultListener?: () => void;
+
+  constructor() {
+    // Automatically clean up resources on service destruction
+    this.destroyRef.onDestroy(() => {
+      this.cleanup();
+    });
+  }
 
   private getSavingSettings(): {
     autosave: boolean;
@@ -92,7 +108,7 @@ export class SaveService {
         this.initialSavePrompted = true;
         this.requestSave();
       },
-      { injector: this.injector },
+      { injector: this.injector }
     );
 
     if (window.quickboard?.onRequestSave) {
@@ -140,25 +156,22 @@ export class SaveService {
     const { autosave, autosaveDurationMs } = this.getSavingSettings();
 
     if (autosave) {
-      this.autosaveTimer = setInterval(
-        async () => {
-          if (this.saveInProgress) return;
-          if (this.currentFilePath && window.quickboard?.sendSaveBinary) {
-            this.saveInProgress = true;
-            try {
-              const zipData = await this.sbd.buildSbdZip();
-              window.quickboard.sendSaveBinary({
-                filePath: this.currentFilePath,
-                data: zipData,
-              });
-            } catch (err) {
-              console.error('Autosave failed:', err);
-              this.saveInProgress = false;
-            }
+      this.autosaveTimer = setInterval(async () => {
+        if (this.saveInProgress) return;
+        if (this.currentFilePath && window.quickboard?.sendSaveBinary) {
+          this.saveInProgress = true;
+          try {
+            const zipData = await this.sbd.buildSbdZip();
+            window.quickboard.sendSaveBinary({
+              filePath: this.currentFilePath,
+              data: zipData,
+            });
+          } catch (err) {
+            console.error('Autosave failed:', err);
+            this.saveInProgress = false;
           }
-        },
-        autosaveDurationMs,
-      );
+        }
+      }, autosaveDurationMs);
     }
 
     if (window.quickboard?.onSaveResult) {
@@ -181,6 +194,12 @@ export class SaveService {
   }
 
   destroy(): void {
+    // Note: cleanup is now handled automatically by DestroyRef in constructor
+    // This method is kept for backward compatibility if called manually
+    this.cleanup();
+  }
+
+  private cleanup(): void {
     if (this.autosaveTimer) {
       clearInterval(this.autosaveTimer);
     }

@@ -106,12 +106,14 @@ export class LoggerService {
 
   exportLogs(): string {
     return this.logs
-      .map(
-        (log) =>
-          `${log.timestamp.toISOString()} [${LogLevel[log.level]}] ${
-            log.context ? `[${log.context}]` : ''
-          } ${log.message} ${log.data ? JSON.stringify(log.data) : ''}`
-      )
+      .map((log) => {
+        const dataStr = log.data ? JSON.stringify(log.data) : '';
+        const contextStr = log.context ? `[${log.context}]` : '';
+        const timestamp = log.timestamp.toISOString();
+        const level = LogLevel[log.level];
+        // Use template literal for better performance than string concatenation
+        return `${timestamp} [${level}] ${contextStr} ${log.message} ${dataStr}`.trim();
+      })
       .join('\n');
   }
 }
