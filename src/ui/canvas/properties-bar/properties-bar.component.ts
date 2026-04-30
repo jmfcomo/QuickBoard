@@ -6,6 +6,7 @@ import {
   input,
   output,
 } from '@angular/core';
+import { ColorPickerComponent } from 'src/ui/canvas/color-picker/color-picker.component';
 
 export interface ColorPicker {
   label: string;
@@ -17,8 +18,10 @@ export interface ColorPicker {
 @Component({
   selector: 'app-properties-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ColorPickerComponent],
   templateUrl: './properties-bar.component.html',
   styleUrls: ['./properties-bar.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PropertiesBarComponent {
   readonly activeTool = input.required<string>();
