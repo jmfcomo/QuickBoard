@@ -20,6 +20,14 @@ export class ExportProgressComponent {
   cancelExport = output<void>();
 
   protected percent = computed(() => {
-    return Math.max(0, Math.min(100, Math.round(this.progressPercent())));
+    const accuratePercent = this.progressPercent();
+    if (Number.isFinite(accuratePercent)) {
+      return Math.max(0, Math.min(100, Math.round(accuratePercent)));
+    }
+
+    const t = this.total();
+    if (t === 0) return 0;
+    const fallbackPercent = Math.round((this.current() / t) * 100);
+    return Math.max(0, Math.min(100, fallbackPercent));
   });
 }

@@ -26,8 +26,8 @@ export class ExportIpcService {
   readonly exportStatus = signal<'exporting' | 'success' | 'error'>('exporting');
   readonly exportCurrent = signal(0);
   readonly exportTotal = signal(0);
-  readonly exportFrameCount = signal(0);
   readonly exportProgressPercent = signal(0);
+  readonly exportFrameCount = signal(0);
   readonly exportFileName = signal('');
   readonly exportMessage = signal('');
 
@@ -42,7 +42,7 @@ export class ExportIpcService {
       } catch {
         return '';
       }
-    })(),
+    })()
   );
   readonly defaultDirPath = computed(() => {
     const lastPath = this._lastExportPath();
@@ -71,7 +71,7 @@ export class ExportIpcService {
           this.systemDocumentsPath.set(payload.defaultDirPath ?? '');
           this.settingsBoardCount.set(this.exportService.store.boards().length);
           this.settingsVisible.set(true);
-        }),
+        })
       );
     }
 
@@ -131,16 +131,17 @@ export class ExportIpcService {
             throw new Error(result?.message ?? 'An unknown error occurred.');
           }
           this.exportCurrent.set(current);
-          const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-          this.exportProgressPercent.set(Math.max(0, Math.min(100, percent)));
+          const rawPercent = total > 0 ? Math.round((current / total) * 100) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(frame.name);
         },
         'image/png',
         this.abortController.signal,
         settings.startIndex,
-        settings.endIndex,
+        settings.endIndex
       );
       this.exportStatus.set('success');
+      this.exportProgressPercent.set(100);
       this.successTimeout = setTimeout(() => {
         this.successTimeout = null;
         this.exportVisible.set(false);
@@ -197,6 +198,8 @@ export class ExportIpcService {
         settings,
         (current, total, fileName) => {
           this.exportCurrent.set(current);
+          const rawPercent = total > 0 ? Math.round((current / total) * 100) : 0;
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering frames... (${current}/${total})`);
           const renderProgress = total > 0 ? Math.round((current / total) * RENDER_PHASE_MAX) : 0;
@@ -207,21 +210,21 @@ export class ExportIpcService {
           this.exportFileName.set('');
           if (message === 'Encoding video...' || message === 'Processing audio...') {
             this.exportCurrent.set(frameCount);
-            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN));
+            this.exportProgressPercent.set(
+              Math.max(this.exportProgressPercent(), ENCODE_PHASE_MIN)
+            );
           } else if (message === 'Saving file...') {
             this.exportCurrent.set(frameCount);
-            this.exportProgressPercent.set(Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX));
+            this.exportProgressPercent.set(
+              Math.max(this.exportProgressPercent(), ENCODE_PHASE_MAX)
+            );
           }
         },
         (progress) => {
-          this.exportMessage.set(`Encoding video... ${progress}%`);
-          const nextEncodingPercent =
-            ENCODE_PHASE_MIN + Math.round((Math.max(0, Math.min(100, progress)) / 100) * (ENCODE_PHASE_MAX - ENCODE_PHASE_MIN));
-          this.exportProgressPercent.set(
-            Math.max(this.exportProgressPercent(), Math.max(ENCODE_PHASE_MIN, nextEncodingPercent)),
-          );
+          this.exportMessage.set('Encoding video...');
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, Math.round(progress))));
         },
-        this.abortController.signal,
+        this.abortController.signal
       );
 
       const outputName = `${prefix}.mp4`;
@@ -287,15 +290,31 @@ export class ExportIpcService {
         settings,
         (current, total, fileName) => {
           this.exportCurrent.set(current);
+          // Reserve the last 10% for PDF finalization + file save.
+          const renderPercent = total > 0 ? (current / total) * 90 : 0;
+          const rawPercent = Math.round(renderPercent);
+          this.exportProgressPercent.set(Math.max(0, Math.min(100, rawPercent)));
           this.exportFileName.set(fileName);
           this.exportMessage.set(`Rendering pages... (${current}/${total})`);
           const percent = total > 0 ? Math.round((current / total) * 100) : 0;
           this.exportProgressPercent.set(Math.max(0, Math.min(100, percent)));
         },
-        this.abortController.signal,
+        this.abortController.signal
       );
 
+      if (this.abortController.signal.aborted) {
+        throw new Error('Export canceled by user.');
+      }
+
+      this.exportProgressPercent.set(95);
+      this.exportMessage.set('Finalizing PDF...');
+
       const outputName = `${prefix}.pdf`;
+      if (this.abortController.signal.aborted) {
+        throw new Error('Export canceled by user.');
+      }
+      this.exportProgressPercent.set(98);
+      this.exportMessage.set('Saving file...');
       const result = await window.quickboard?.sendVideoFile({
         dirPath,
         name: outputName,
@@ -324,7 +343,7 @@ export class ExportIpcService {
     } finally {
       this.abortController = null;
     }
-  }  
+  }
 
   onCancelExport(): void {
     if (this.abortController) {
