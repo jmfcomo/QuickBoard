@@ -32,7 +32,7 @@ export class ExportSettingsComponent {
   protected selectedFormat = signal<'png' | 'video' | 'pdf'>('png');
   protected selectedPdfPageSize = signal<PdfPageSize>('letter');
   protected boardsPerRow = signal(3);
-  protected pdfScriptMode = signal<PdfScriptMode>('truncate');
+  protected pdfScriptMode = signal<PdfScriptMode>('full');
   protected prefix = signal('board');
   protected dirPath = signal('');
   protected isBrowsing = signal(false);
@@ -51,7 +51,7 @@ export class ExportSettingsComponent {
         this.selectedFormat.set(this.exportType());
         this.selectedPdfPageSize.set('letter');
         this.boardsPerRow.set(3);
-        this.pdfScriptMode.set('truncate');
+        this.pdfScriptMode.set('full');
         this.prefix.set(this.defaultPrefix() || 'board');
         this.dirPath.set(
           this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : '')

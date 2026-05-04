@@ -54,9 +54,8 @@ interface PdfLayoutMetrics {
   imageHeight: number;
   headerHeight: number;
   imgGap: number;
-  metaGap: number;
-  metadataHeight: number;
   scriptGap: number;
+  scriptFontSize: number;
   lineHeight: number;
   bottomPad: number;
   scriptHeight: number;
@@ -164,9 +163,10 @@ export class ExportService {
     mimeType = 'image/png',
     abortSignal?: AbortSignal,
     startIndex = 0,
-    endIndex?: number
+    endIndex?: number,
+    boardsSnapshot?: Board[]
   ): Promise<void> {
-    const allBoards = this.store.boards();
+    const allBoards = boardsSnapshot ?? this.store.boards();
     const end = endIndex ?? allBoards.length - 1;
     const boards = allBoards.slice(startIndex, end + 1);
     const padLength = Math.max(3, String(allBoards.length).length);
@@ -226,7 +226,7 @@ export class ExportService {
     onEncodingProgress?: (progress: number) => void,
     abortSignal?: AbortSignal
   ): Promise<Uint8Array> {
-    const allBoards = this.store.boards();
+    const allBoards = this.store.boards().slice();
     const audioTracks = this.store.audioTracks();
     const startIndex = settings.startIndex;
     const endIndex = settings.endIndex;
@@ -273,7 +273,8 @@ export class ExportService {
       'image/jpeg',
       abortSignal,
       startIndex,
-      endIndex
+      endIndex,
+      allBoards
     );
 
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');
@@ -526,20 +527,19 @@ export class ExportService {
     const marginBottom = 28;
     const gutterX = 12;
     const gutterY = 12;
-    const cardPadding = 7;
+    const cardPadding = 6;
     const availableWidth = pageWidth - marginX * 2 - gutterX * (safeBoardsPerRow - 1);
     const cardWidth = availableWidth / safeBoardsPerRow;
     const contentWidth = cardWidth - cardPadding * 2;
     const imageHeight = cardWidth * (this.store.height() / this.store.width());
     const headerHeight = 26;
-    const imgGap = 1;
-    const metaGap = 4;
-    const metadataHeight = 13;
-    const scriptGap = 3;
+    const imgGap = cardPadding;
+    const scriptGap = cardPadding;
+    const scriptFontSize = 9;
     const lineHeight = 11;
     const bottomPad = 6;
     // Compute scriptHeight so that 3 rows fit on the page.
-    const fixedOverhead = headerHeight + imgGap + metaGap + metadataHeight + scriptGap + bottomPad;
+    const fixedOverhead = headerHeight + imgGap + scriptGap + bottomPad;
     const usableHeight = pageHeight - marginTop - marginBottom;
     const targetCardHeight = (usableHeight - gutterY * 2) / 3;
     const scriptHeight = Math.max(
@@ -563,9 +563,8 @@ export class ExportService {
       imageHeight,
       headerHeight,
       imgGap,
-      metaGap,
-      metadataHeight,
       scriptGap,
+      scriptFontSize,
       lineHeight,
       bottomPad,
       scriptHeight,
@@ -582,8 +581,6 @@ export class ExportService {
       layout.headerHeight +
       layout.imgGap +
       layout.imageHeight +
-      layout.metaGap +
-      layout.metadataHeight +
       layout.scriptGap +
       layout.bottomPad;
     const pageBottom = layout.pageHeight - layout.marginBottom;
@@ -632,8 +629,7 @@ export class ExportService {
     const { cardPadding, contentWidth } = layout;
     const headerBottom = y + layout.headerHeight;
     const imageY = headerBottom + layout.imgGap;
-    const metadataY = imageY + layout.imageHeight + layout.metaGap;
-    const scriptY = metadataY + layout.metadataHeight + layout.scriptGap;
+    const scriptY = imageY + layout.imageHeight + layout.scriptGap;
     const boardDuration = board?.duration ?? appSettings.board.defaultDuration;
     const timestampText = this.formatStoryboardTimestamp(startTimeSeconds);
     const durationText = this.formatStoryboardDuration(boardDuration);
@@ -653,7 +649,7 @@ export class ExportService {
     // Header labels
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
-    doc.text('BOARD#', x + 5, y + 10);
+    doc.text('BOARD', x + 5, y + 10);
     doc.text('TIME', x + sectionWidth + 5, y + 10);
     doc.text('LENGTH', x + sectionWidth * 2 + 5, y + 10);
 
@@ -667,22 +663,9 @@ export class ExportService {
     doc.addImage(frameDataUrl, 'JPEG', x + cardPadding, imageY, contentWidth, layout.imageHeight);
     doc.rect(x + cardPadding, imageY, contentWidth, layout.imageHeight, 'S');
 
-    // Metadata line below image
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text(`Board ${boardNumber}`, x + cardPadding, metadataY + 8);
-    doc.text(
-      `${timestampText} / ${durationText}`,
-      x + layout.cardWidth - cardPadding,
-      metadataY + 8,
-      {
-        align: 'right',
-      }
-    );
-
     // Script text
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(layout.scriptFontSize);
     const scriptLines = scriptText
       ? doc.splitTextToSize(scriptText, contentWidth)
       : ['No script for this board.'];
@@ -695,8 +678,6 @@ export class ExportService {
         (layout.headerHeight +
           layout.imgGap +
           layout.imageHeight +
-          layout.metaGap +
-          layout.metadataHeight +
           layout.scriptGap +
           layout.bottomPad);
       const maxLines = Math.max(1, Math.floor(availableScriptH / layout.lineHeight));
@@ -723,7 +704,7 @@ export class ExportService {
       format: pageFormat,
     }) as JsPdfInstance;
 
-    const allBoards = this.store.boards();
+    const allBoards = this.store.boards().slice();
     const boards = allBoards.slice(settings.startIndex, settings.endIndex + 1);
 
     if (!boards.length) {
@@ -737,8 +718,11 @@ export class ExportService {
     // For full-script mode pre-compute per-board layout and pre-create pages.
     let boardLayouts: BoardLayoutEntry[] | null = null;
     let boardsPerPage = 0;
+    let currentPage = 1;
 
     if (isFullScript) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(layout.scriptFontSize);
       boardLayouts = this.buildFullScriptLayout(boards, layout, doc);
       const totalPages = boardLayouts.reduce((max, l) => Math.max(max, l.page), 1);
       for (let p = 1; p < totalPages; p++) {
@@ -779,15 +763,17 @@ export class ExportService {
           cardY = entry.cardY;
           actualCardHeight = entry.cardHeight;
         } else {
+          const nextPage = Math.floor(boardIndex / boardsPerPage) + 1;
+          if (nextPage > currentPage) {
+            doc.addPage();
+            currentPage = nextPage;
+          }
           const pageSlot = boardIndex % boardsPerPage;
           const colIndex = pageSlot % layout.boardsPerRow;
           const rowIndex = Math.floor(pageSlot / layout.boardsPerRow);
           cardX = layout.marginX + colIndex * (layout.cardWidth + layout.gutterX);
           cardY = layout.marginTop + rowIndex * (layout.cardHeight + layout.gutterY);
           actualCardHeight = layout.cardHeight;
-          if (pageSlot === boardsPerPage - 1 && current < total) {
-            doc.addPage();
-          }
         }
 
         this.drawStoryboardBoard(
@@ -816,7 +802,8 @@ export class ExportService {
       'image/jpeg',
       abortSignal,
       settings.startIndex,
-      settings.endIndex
+      settings.endIndex,
+      allBoards
     );
 
     this.throwIfAborted(abortSignal);
