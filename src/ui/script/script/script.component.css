@@ -4,6 +4,7 @@
   height: 100%;
   overflow: hidden;
   position: relative;
+  --editorjs-toolbar-gutter: 44px;
 }
 
 #editorjs {
@@ -26,34 +27,16 @@
   margin-right: 0 !important;
 }
 
-/* Remove Editor.js fixed 650px lane to avoid huge whitespace in wide layouts. */
+/* Let script content span wide while leaving a gutter for toolbar icons. */
 :host ::ng-deep #editorjs .ce-block__content,
 :host ::ng-deep #editorjs .ce-toolbar__content {
-  max-width: none;
-  margin-left: 0;
+  max-width: calc(100% - var(--editorjs-toolbar-gutter));
+  margin-left: var(--editorjs-toolbar-gutter);
   margin-right: 0;
 }
 
-/* Keep room on both sides so controls are visible even when layout gets tight. */
+/* Keep toolbar padding aligned with the gutter to prevent icon clipping. */
 :host ::ng-deep #editorjs .ce-toolbar__content {
-  padding-left: 40px;
-  padding-right: 40px;
-}
-
-/* Force the plus control to the right side. */
-:host ::ng-deep #editorjs .ce-toolbar__plus,
-:host ::ng-deep #editorjs .codex-editor--narrow .ce-toolbar__plus,
-:host ::ng-deep #editorjs .codex-editor--narrow.codex-editor--rtl .ce-toolbar__plus {
-  left: auto !important;
-  right: 6px !important;
-}
-
-/* Keep actions attached to the plus and fully visible. */
-:host ::ng-deep #editorjs .ce-toolbar__actions,
-:host ::ng-deep #editorjs .codex-editor--narrow .ce-toolbar__actions,
-:host ::ng-deep #editorjs .codex-editor--narrow.codex-editor--rtl .ce-toolbar__actions {
-  left: auto !important;
-  right: 38px !important;
-  padding-left: 8px;
+  padding-left: 0;
   padding-right: 0;
 }
