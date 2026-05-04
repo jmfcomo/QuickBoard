@@ -5,6 +5,11 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function deepClone<T>(value: T): T {
+  // Use native structuredClone if available (much faster than JSON.parse/stringify)
+  // Fallback to JSON for older environments
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value) as T;
+  }
   return JSON.parse(JSON.stringify(value)) as T;
 }
 

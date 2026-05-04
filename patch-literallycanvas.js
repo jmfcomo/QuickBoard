@@ -3,28 +3,40 @@ const path = require('path');
 
 const filePath = path.join(
   __dirname,
-  'node_modules/literallycanvas/lib/js/literallycanvas-core.js',
+  'node_modules/literallycanvas/lib/js/literallycanvas-core.js'
 );
 const capacitorCordovaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h',
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/Classes/Public/CDVWebViewProcessPoolFactory.h'
 );
 const capacitorCordovaUmbrellaHeaderPath = path.join(
   __dirname,
-  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h',
+  'node_modules/@capacitor/ios/CapacitorCordova/CapacitorCordova/CapacitorCordova.h'
 );
 
 try {
   let content = fs.readFileSync(filePath, 'utf8');
-  let lines = content.split('\n');
   let patched = false;
 
-  if (lines.length > 3407 && lines[3406].includes('requestAnimationFrame:')) {
-    lines[3406] = '';
+  const duplicateRafAssign =
+    '  requestAnimationFrame: (window.requestAnimationFrame || window.setTimeout).bind(window),\n';
+
+  if (content.includes(duplicateRafAssign)) {
+    content = content.replace(duplicateRafAssign, '');
     patched = true;
     console.log('✓ Patched: removed duplicate requestAnimationFrame warning');
   } else {
-    console.log('! requestAnimationFrame patch: pattern not found');
+    const hasSingleRafAssign =
+      content.match(
+        /requestAnimationFrame: \(window\.requestAnimationFrame \|\| window\.setTimeout\)\.bind\(window\),/g
+      )?.length === 1;
+    if (hasSingleRafAssign) {
+      console.log('✓ requestAnimationFrame patch already applied');
+    } else {
+      console.log(
+        '! requestAnimationFrame patch: expected duplicate pattern not found (upstream file may have changed)'
+      );
+    }
   }
 
   const noopLine = '    this.respondToSizeChange = function() {};';
@@ -35,7 +47,6 @@ try {
   if (content.includes(brokenPattern)) {
     // Not yet patched — apply fix
     content = content.replace(brokenPattern, fixedPattern);
-    lines = content.split('\n');
     patched = true;
     console.log('✓ Patched: fixed respondToSizeChange no-op overwrite');
   } else if (content.includes(fixedPattern)) {
@@ -45,7 +56,7 @@ try {
   }
 
   if (patched) {
-    fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+    fs.writeFileSync(filePath, content, 'utf8');
   }
 } catch (error) {
   console.error('Error patching literallycanvas:', error.message);

@@ -5,6 +5,7 @@ import type { OutputData } from '@editorjs/editorjs';
 import { CanvasDataService } from '../../services/canvas-data.service';
 import { appSettings } from 'src/settings-loader';
 import { sanitizeFps, sanitizeResolution, extractProjectDimensions } from './app-state-validation';
+import type { PersistedProjectData } from './persisted-data.types';
 
 export interface Board {
   id: string;
@@ -122,7 +123,11 @@ export const AppStore = signalStore(
       },
 
       updateScriptData(boardId: string, scriptData: OutputData) {
-        const clonedData = JSON.parse(JSON.stringify(scriptData)) as OutputData;
+        // Use structuredClone for better performance (native API is ~10x faster than JSON)
+        const clonedData =
+          typeof structuredClone === 'function'
+            ? (structuredClone(scriptData) as OutputData)
+            : (JSON.parse(JSON.stringify(scriptData)) as OutputData);
         const boards = store
           .boards()
           .map((board) => (board.id === boardId ? { ...board, scriptData: clonedData } : board));
@@ -152,23 +157,32 @@ export const AppStore = signalStore(
 
       loadFromJson(jsonString: string) {
         try {
-          const data = JSON.parse(jsonString) as AppState & { boards: unknown[] };
+          const data = JSON.parse(jsonString) as PersistedProjectData;
           if (!data || !Array.isArray(data.boards)) {
             throw new Error('Invalid JSON structure: "boards" array is required');
           }
 
           canvasDataService.clear();
-          const cleanedBoards = (data.boards as unknown[]).map((iterBoard) => {
-            const b = iterBoard as { id: string; canvasData?: unknown };
+          const cleanedBoards = data.boards.map((b) => {
             if (b.canvasData) {
               let shapes: unknown[] = [];
               let backgroundShapes: unknown[] = [];
 
               // Handle case where canvasData might be a serialized string in deeply old files
-              const parsedCanvasData =
+              const rawCanvasData =
                 typeof b.canvasData === 'string'
-                  ? (JSON.parse(b.canvasData) as Record<string, unknown>)
-                  : (b.canvasData as Record<string, unknown>);
+                  ? (JSON.parse(b.canvasData) as unknown)
+                  : (b.canvasData as unknown);
+              const wrappedSnapshot =
+                typeof rawCanvasData === 'object' &&
+                rawCanvasData !== null &&
+                'snapshot' in rawCanvasData
+                  ? (rawCanvasData as { snapshot: unknown }).snapshot
+                  : rawCanvasData;
+              const parsedCanvasData =
+                typeof wrappedSnapshot === 'string'
+                  ? (JSON.parse(wrappedSnapshot) as Record<string, unknown>)
+                  : (wrappedSnapshot as Record<string, unknown>);
 
               // Only attempt pre-hydration if LC is globally available (standard browser environment)
               if (typeof LC !== 'undefined' && LC.snapshotJSONToShapes) {
@@ -201,23 +215,37 @@ export const AppStore = signalStore(
             return rest;
           });
 
-          const laneCount = typeof data.audioLaneCount === 'number' ? data.audioLaneCount : 1;
+          const laneCount =
+            typeof data.audioLaneCount === 'number' && Number.isInteger(data.audioLaneCount)
+              ? Math.max(1, data.audioLaneCount)
+              : 1;
           const defaultMixers = Array.from({ length: laneCount }, () => ({
             volume: 1,
             muted: false,
           }));
-          const laneMixers = Array.isArray(data.audioLaneMixers)
-            ? data.audioLaneMixers
-            : defaultMixers;
-          const normalizedTracks = Array.isArray(data.audioTracks)
-            ? data.audioTracks.map((track) => ({
-                ...track,
-                volume:
-                  typeof (track as Partial<AudioTrack>).volume === 'number'
-                    ? (track as AudioTrack).volume
-                    : laneMixers[(track as AudioTrack).laneIndex]?.volume ?? 1,
-              }))
-            : [];
+          const rawLaneMixers = Array.isArray(data.audioLaneMixers) ? data.audioLaneMixers : null;
+          const laneMixers =
+            rawLaneMixers &&
+            rawLaneMixers.every(
+              (mixer) => typeof mixer === 'object' && mixer !== null && !Array.isArray(mixer)
+            )
+              ? rawLaneMixers.map((mixer) => ({
+                  volume: typeof mixer.volume === 'number' ? mixer.volume : 1,
+                  muted: typeof mixer.muted === 'boolean' ? mixer.muted : false,
+                }))
+              : defaultMixers;
+
+          const rawAudioTracks = Array.isArray(data.audioTracks) ? data.audioTracks : [];
+          const normalizedTracks = rawAudioTracks
+            .filter((track) => typeof track === 'object' && track !== null && !Array.isArray(track))
+            .map((track) => ({
+              ...track,
+              volume:
+                typeof track.volume === 'number'
+                  ? track.volume
+                  : laneMixers[typeof track.laneIndex === 'number' ? track.laneIndex : -1]
+                      ?.volume ?? 1,
+            }));
 
           const dimensions = extractProjectDimensions(
             data,
@@ -228,7 +256,7 @@ export const AppStore = signalStore(
           patchState(store, {
             boards: cleanedBoards as Board[],
             currentBoardId: data.currentBoardId || data.boards[0]?.id || null,
-            onionSkinEnabled: Boolean((data as Partial<AppState>).onionSkinEnabled),
+            onionSkinEnabled: data.onionSkinEnabled ?? false,
             audioTracks: normalizedTracks,
             audioLaneCount: laneCount,
             audioLaneMixers: laneMixers,

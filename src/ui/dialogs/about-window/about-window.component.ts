@@ -1,8 +1,9 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/core';
 
 @Component({
   selector: 'app-about-window',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './about-window.component.html',
   styleUrl: './about-window.component.css',
 })

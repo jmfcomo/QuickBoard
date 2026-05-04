@@ -1,6 +1,8 @@
 export { AppSettingsService } from './app-settings.service';
 export { AudioService } from './audio.service';
 export { ExportIpcService } from './export-ipc.service';
+export { LoggerService, LogLevel } from './logger.service';
+export type { LogEntry } from './logger.service';
 export { PlatformFileService } from './platform-file.service';
 export { PlaybackService } from './playback.service';
 export { ThemeService } from './theme.service';

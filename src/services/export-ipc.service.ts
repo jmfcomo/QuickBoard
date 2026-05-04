@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal, DestroyRef } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
@@ -17,6 +17,7 @@ function dataUrlToUint8Array(dataUrl: string): Uint8Array {
 @Injectable({ providedIn: 'root' })
 export class ExportIpcService {
   private readonly exportService = inject(ExportService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly settingsMode = signal<'png' | 'video' | 'pdf'>('png');
   readonly settingsVisible = signal(false);
@@ -57,6 +58,16 @@ export class ExportIpcService {
   });
   private successTimeout: ReturnType<typeof setTimeout> | null = null;
   private abortController: AbortController | null = null;
+
+  constructor() {
+    // Clean up success timeout on service destruction
+    this.destroyRef.onDestroy(() => {
+      if (this.successTimeout !== null) {
+        clearTimeout(this.successTimeout);
+        this.successTimeout = null;
+      }
+    });
+  }
 
   setProjectName(name: string): void {
     this.projectName.set(name);

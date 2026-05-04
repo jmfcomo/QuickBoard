@@ -1,4 +1,12 @@
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { inject } from '@angular/core';
 import { EXPORT_RESOLUTIONS, PDF_PAGE_SIZES } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
@@ -8,7 +16,7 @@ import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform
 @Component({
   selector: 'app-export-settings',
   standalone: true,
-  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './export-settings.component.html',
   styleUrl: './export-settings.component.css',
 })

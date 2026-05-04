@@ -1,9 +1,9 @@
-import { Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-export-progress',
   standalone: true,
-  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './export-progress.component.html',
   styleUrl: './export-progress.component.css',
 })
