@@ -8,8 +8,9 @@ import {
   signal,
 } from '@angular/core';
 import { inject } from '@angular/core';
-import { EXPORT_RESOLUTIONS } from './export-resolutions';
+import { EXPORT_RESOLUTIONS, PDF_PAGE_SIZES } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
+import type { PdfPageSize, PdfScriptMode } from './export-resolutions';
 import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform-file.service';
 
 @Component({
@@ -26,21 +27,24 @@ export class ExportSettingsComponent {
   defaultPrefix = input<string>('board');
   defaultDirPath = input<string>('');
   exportType = input<'png' | 'video' | 'pdf'>('png');
-  tableLayout = input<'1x1' | '2x2' | '3x3'>('1x1');
   confirmExport = output<ExportSettings>();
   cancelExport = output<void>();
 
   protected readonly resolutions = EXPORT_RESOLUTIONS;
+  protected readonly pdfPageSizes = PDF_PAGE_SIZES;
   protected selectedIndex = signal(Math.min(2, this.resolutions.length - 1)); // default: Full HD
   protected startIndex = signal(0);
   protected endIndex = signal(this.boardCount() - 1);
   protected startRaw = signal('1');
   protected endRaw = signal(String(this.boardCount()));
   protected selectedFormat = signal<'png' | 'video' | 'pdf'>('png');
-  protected selectedTable = signal<'1x1' | '2x2' | '3x3'>('1x1');
+  protected selectedPdfPageSize = signal<PdfPageSize>('letter');
+  protected boardsPerRow = signal(3);
+  protected pdfScriptMode = signal<PdfScriptMode>('full');
   protected prefix = signal('board');
   protected dirPath = signal('');
   protected isBrowsing = signal(false);
+  protected readonly boardsPerPageEstimate = computed(() => this.boardsPerRow() * 3);
 
   protected readonly selectedResolution = computed(() => {
     const idx = Math.max(0, Math.min(this.selectedIndex(), this.resolutions.length - 1));
@@ -53,7 +57,9 @@ export class ExportSettingsComponent {
     effect(() => {
       if (this.visible()) {
         this.selectedFormat.set(this.exportType());
-        this.selectedTable.set(this.tableLayout());
+        this.selectedPdfPageSize.set('letter');
+        this.boardsPerRow.set(3);
+        this.pdfScriptMode.set('full');
         this.prefix.set(this.defaultPrefix() || 'board');
         this.dirPath.set(
           this.defaultDirPath() || (this.platformFile.isIos ? this.defaultIpadDir : '')
@@ -71,9 +77,20 @@ export class ExportSettingsComponent {
     this.selectedFormat.set(nextValue === 'video' ? 'video' : nextValue === 'pdf' ? 'pdf' : 'png');
   }
 
-  protected onTableChange(event: Event): void {
+  protected onPdfPageSizeChange(event: Event): void {
     const nextValue = (event.target as HTMLSelectElement).value;
-    this.selectedTable.set(nextValue === '2x2' ? '2x2' : nextValue === '3x3' ? '3x3' : '1x1');
+    this.selectedPdfPageSize.set(nextValue === 'a4' ? 'a4' : 'letter');
+  }
+
+  protected onBoardsPerRowChange(event: Event): void {
+    const parsed = parseInt((event.target as HTMLSelectElement).value, 10);
+    const nextValue = Number.isNaN(parsed) ? this.boardsPerRow() : parsed;
+    this.boardsPerRow.set(Math.max(1, Math.min(4, nextValue)));
+  }
+
+  protected onPdfScriptModeChange(event: Event): void {
+    const nextValue = (event.target as HTMLSelectElement).value;
+    this.pdfScriptMode.set(nextValue === 'full' ? 'full' : 'truncate');
   }
 
   protected onSelectChange(event: Event): void {
@@ -146,7 +163,9 @@ export class ExportSettingsComponent {
     this.confirmExport.emit({
       format: this.selectedFormat(),
       resolution: this.selectedResolution(),
-      table: this.selectedTable(),
+      pdfPageSize: this.selectedPdfPageSize(),
+      boardsPerRow: this.boardsPerRow(),
+      pdfScriptMode: this.pdfScriptMode(),
       prefix: safePrefix,
       dirPath: this.dirPath(),
       startIndex,

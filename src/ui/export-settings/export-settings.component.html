@@ -1,131 +1,165 @@
 @if (visible()) {
-  <div class="overlay">
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="export-settings-title">
-      <header class="dialog-header">
-        <p class="eyebrow">Export Setup</p>
-        <h3 class="title" id="export-settings-title">
-          {{ selectedFormat() === 'video' ? 'Export MP4 Video' : 'Export PNG Sequence' }}
-        </h3>
-        <p class="subtitle">
-          {{ boardCount() }} board{{ boardCount() !== 1 ? 's' : '' }} ready for export.
-        </p>
-      </header>
+<div class="overlay">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="export-settings-title">
+    <header class="dialog-header">
+      <p class="eyebrow">Export Setup</p>
+      <h3 class="title" id="export-settings-title">
+        @if (selectedFormat() === 'video') { Export MP4 Video } @else if (selectedFormat() ===
+        'pdf') { Export Storyboard PDF } @else { Export PNG Sequence }
+      </h3>
+      <p class="subtitle">
+        {{ boardCount() }} board{{ boardCount() !== 1 ? 's' : '' }} ready for export.
+      </p>
+    </header>
 
-      <section class="summary-strip" aria-label="Export summary">
-        <div class="summary-item">
-          <label class="summary-label" for="format-select">Format</label>
-          <select
-            id="format-select"
-            class="summary-select"
-            [value]="selectedFormat()"
-            (change)="onFormatChange($event)"
-          >
-            <option value="png">PNG Sequence</option>
-            <option value="video">MP4 Video</option>
-            <option value="pdf">PDF Document(s)</option>
-          </select>
-          <label class="summary-label" for="table-select">Frames per Page</label>
-          <select
-            id="table-select"
-            class="summary-select"
-            [value]="selectedTable()"
-            (change)="onTableChange($event)"
-            [disabled]="selectedFormat() !== 'pdf'"
-          >
-            <option value="1x1">1x1</option>
-            <option value="2x2">2x2</option>
-            <option value="3x3">3x3</option>
-          </select>
-        </div>
-        <div class="summary-item">
-          <span class="summary-label">Boards</span>
-          <span class="range-inputs" [class.is-disabled]="selectedFormat() === 'video'">
-            <input
-              class="text-input"
-              type="number"
-              [disabled]="selectedFormat() === 'video'"
-              [value]="selectedFormat() === 'video' ? '1' : startRaw()"
-              (input)="onStartInput($event)"
-              (blur)="onStartBlur()"
-              min="1"
-              [max]="boardCount()"
-              step="1"
-            />
-            <p class="hint">
-              Starting board: {{ selectedFormat() === 'video' ? 1 : startIndex() + 1 }}
-            </p>
-            <input
-              class="text-input"
-              type="number"
-              [disabled]="selectedFormat() === 'video'"
-              [value]="selectedFormat() === 'video' ? boardCount() : endRaw()"
-              (input)="onEndInput($event)"
-              (blur)="onEndBlur()"
-              min="1"
-              [max]="boardCount()"
-              step="1"
-            />
-            <p class="hint">
-              Ending board: {{ selectedFormat() === 'video' ? boardCount() : endIndex() + 1 }}
-            </p>
-          </span>
-        </div>
-      </section>
+    <section class="summary-strip" aria-label="Export summary">
+      <div class="summary-item">
+        <label class="summary-label" for="format-select">Format</label>
+        <select
+          id="format-select"
+          class="summary-select"
+          [value]="selectedFormat()"
+          (change)="onFormatChange($event)"
+        >
+          <option value="png">PNG Sequence</option>
+          <option value="video">MP4 Video</option>
+          <option value="pdf">Storyboard PDF</option>
+        </select>
 
-      <div class="content-grid">
-        <div class="field field-card">
-          <label class="field-label" for="resolution-select">Resolution</label>
-          <select
-            id="resolution-select"
-            class="resolution-select"
-            [value]="selectedIndex()"
-            (change)="onSelectChange($event)"
-          >
-            @for (res of resolutions; track $index) {
-              <option [value]="$index">{{ res.label }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="field field-card">
-          <label class="field-label" for="prefix-input">File Name Prefix</label>
-          <input
-            id="prefix-input"
-            class="text-input"
-            type="text"
-            [value]="prefix()"
-            (input)="onPrefixChange($event)"
-            placeholder="board"
-            spellcheck="false"
-          />
-          @if (selectedFormat() === 'video') {
-            <p class="hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
-          } @else if (selectedFormat() === 'pdf') {
-            <p class="hint">Output file: {{ prefix().trim() || 'board' }}.pdf</p>
-          } @else {
-            <p class="hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
+        @if (selectedFormat() === 'pdf') {
+        <label class="summary-label" for="pdf-page-size-select">Page Size</label>
+        <select
+          id="pdf-page-size-select"
+          class="summary-select"
+          [value]="selectedPdfPageSize()"
+          (change)="onPdfPageSizeChange($event)"
+        >
+          @for (pageSize of pdfPageSizes; track pageSize.value) {
+          <option [value]="pageSize.value">{{ pageSize.label }}</option>
           }
-        </div>
+        </select>
 
-        <div class="field field-card folder-card">
-          <span class="field-label" id="folder-label">Export Folder</span>
-          <div class="path-row" aria-labelledby="folder-label">
-            <span class="path-display" [title]="dirPath()">{{
-              dirPath() || 'No folder selected'
-            }}</span>
-            <button class="btn-browse" type="button" [disabled]="isBrowsing()" (click)="onBrowse()">
-              {{ isBrowsing() ? 'Opening…' : 'Choose Folder' }}
-            </button>
-          </div>
-        </div>
+        <label class="summary-label" for="boards-per-row-select">Boards Per Row</label>
+        <select
+          id="boards-per-row-select"
+          class="summary-select"
+          [value]="boardsPerRow()"
+          (change)="onBoardsPerRowChange($event)"
+        >
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+
+        <label class="summary-label" for="pdf-script-mode-select">Script</label>
+        <select
+          id="pdf-script-mode-select"
+          class="summary-select"
+          [value]="pdfScriptMode()"
+          (change)="onPdfScriptModeChange($event)"
+        >
+          <option value="truncate">Truncate (fixed grid)</option>
+          <option value="full">Full Script (variable height)</option>
+        </select>
+        }
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Boards</span>
+        <span class="range-inputs" [class.is-disabled]="selectedFormat() === 'video'">
+          <input
+            class="text-input"
+            type="number"
+            [disabled]="selectedFormat() === 'video'"
+            [value]="selectedFormat() === 'video' ? '1' : startRaw()"
+            (input)="onStartInput($event)"
+            (blur)="onStartBlur()"
+            min="1"
+            [max]="boardCount()"
+            step="1"
+          />
+          <p class="hint">
+            Starting board: {{ selectedFormat() === 'video' ? 1 : startIndex() + 1 }}
+          </p>
+          <input
+            class="text-input"
+            type="number"
+            [disabled]="selectedFormat() === 'video'"
+            [value]="selectedFormat() === 'video' ? boardCount() : endRaw()"
+            (input)="onEndInput($event)"
+            (blur)="onEndBlur()"
+            min="1"
+            [max]="boardCount()"
+            step="1"
+          />
+          <p class="hint">
+            Ending board: {{ selectedFormat() === 'video' ? boardCount() : endIndex() + 1 }}
+          </p>
+          @if (selectedFormat() === 'pdf') {
+          <p class="hint">
+            Portrait page, about {{ boardsPerPageEstimate() }} boards per page depending on script
+            length.
+          </p>
+          }
+        </span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div class="field field-card">
+        <label class="field-label" for="resolution-select">Resolution</label>
+        <select
+          id="resolution-select"
+          class="resolution-select"
+          [value]="selectedIndex()"
+          (change)="onSelectChange($event)"
+        >
+          @for (res of resolutions; track $index) {
+          <option [value]="$index">{{ res.label }}</option>
+          }
+        </select>
       </div>
 
-      <div class="actions">
-        <button class="btn-cancel" type="button" (click)="onCancel()">Cancel</button>
-        <button class="btn-export" [disabled]="!dirPath() || isBrowsing()" (click)="onConfirm()">
-          {{ selectedFormat() === 'video' ? 'Export Video' : 'Export Sequence' }}
-        </button>
+      <div class="field field-card">
+        <label class="field-label" for="prefix-input">File Name Prefix</label>
+        <input
+          id="prefix-input"
+          class="text-input"
+          type="text"
+          [value]="prefix()"
+          (input)="onPrefixChange($event)"
+          placeholder="board"
+          spellcheck="false"
+        />
+        @if (selectedFormat() === 'video') {
+        <p class="hint">Output file: {{ prefix().trim() || 'board' }}.mp4</p>
+        } @else if (selectedFormat() === 'pdf') {
+        <p class="hint">Output file: {{ prefix().trim() || 'board' }}.pdf</p>
+        } @else {
+        <p class="hint">First file: {{ prefix().trim() || 'board' }}_001.png</p>
+        }
+      </div>
+
+      <div class="field field-card folder-card">
+        <span class="field-label" id="folder-label">Export Folder</span>
+        <div class="path-row" aria-labelledby="folder-label">
+          <span class="path-display" [title]="dirPath()">{{
+            dirPath() || 'No folder selected'
+          }}</span>
+          <button class="btn-browse" type="button" [disabled]="isBrowsing()" (click)="onBrowse()">
+            {{ isBrowsing() ? 'Opening…' : 'Choose Folder' }}
+          </button>
+        </div>
       </div>
     </div>
+
+    <div class="actions">
+      <button class="btn-cancel" type="button" (click)="onCancel()">Cancel</button>
+      <button class="btn-export" [disabled]="!dirPath() || isBrowsing()" (click)="onConfirm()">
+        @if (selectedFormat() === 'video') { Export Video } @else if (selectedFormat() === 'pdf') {
+        Export PDF } @else { Export Sequence }
+      </button>
+    </div>
   </div>
+</div>
 }
