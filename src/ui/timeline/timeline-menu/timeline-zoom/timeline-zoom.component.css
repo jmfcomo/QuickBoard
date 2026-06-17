@@ -1,0 +1,43 @@
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.zoom-btn {
+  height: 30px;
+  width: 30px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-default);
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+
+.zoom-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.zoom-slider {
+  width: 80px;
+}
+
+@media (max-width: 1080px) {
+  .timeline-zoom {
+    gap: 4px;
+  }
+}

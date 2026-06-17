@@ -1,0 +1,9 @@
+.onion-skin-icon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.onion-skin-icon .left {
+  stroke-dasharray: 2.1 2.1;
+}
