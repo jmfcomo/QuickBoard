@@ -67,21 +67,73 @@
         </div>
         }
       </div>
-      <button
-        class="onion-skin-btn"
-        [class.active]="store.onionSkinEnabled()"
-        [attr.aria-label]="
-          store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
-        "
-        [attr.title]="store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'"
-        [attr.aria-pressed]="store.onionSkinEnabled()"
-        (click)="toggleOnionSkin()"
-      >
-        <svg viewBox="0 0 24 24" class="onion-skin-icon" aria-hidden="true" focusable="false">
-          <circle cx="9" cy="12" r="5.6" class="left"></circle>
-          <circle cx="15" cy="12" r="5.6" class="right"></circle>
-        </svg>
-      </button>
+      <div class="onion-control">
+        <button
+          class="onion-skin-btn"
+          [class.active]="store.onionSkinEnabled()"
+          [attr.aria-label]="
+            store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
+          "
+          [attr.title]="
+            store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
+          "
+          [attr.aria-pressed]="store.onionSkinEnabled()"
+          (pointerdown)="onOnionPointerDown($event)"
+          (pointerup)="onOnionPointerUp()"
+          (pointercancel)="onOnionPointerCancel()"
+          (pointerleave)="onOnionPointerCancel()"
+          (contextmenu)="onOnionContextMenu($event)"
+        >
+          <svg viewBox="0 0 24 24" class="onion-skin-icon" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="12" r="5.6" class="left"></circle>
+            <circle cx="15" cy="12" r="5.6" class="right"></circle>
+          </svg>
+          @if (store.onionSkinEnabled()) {
+          <span class="boil-submenu-indicator" aria-hidden="true"></span>
+          }
+        </button>
+        @if (onionSubmenuOpen()) {
+        <div class="boil-submenu onion-submenu" role="group" aria-label="Onion skin parameters">
+          <div class="boil-submenu-title">Onion Skin</div>
+          <label class="boil-field">
+            <span>Frames Back</span>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              [value]="store.onionFramesBack()"
+              (change)="setOnionFramesBack($any($event.target).value)"
+            />
+          </label>
+          <label class="boil-field">
+            <span>Frames Forward</span>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              [value]="store.onionFramesForward()"
+              (change)="setOnionFramesForward($any($event.target).value)"
+            />
+          </label>
+          <label class="boil-field boil-field-color">
+            <span>Previous</span>
+            <input
+              type="color"
+              [value]="store.onionPrevColor()"
+              (input)="setOnionPrevColor($any($event.target).value)"
+            />
+          </label>
+          <label class="boil-field boil-field-color">
+            <span>Next</span>
+            <input
+              type="color"
+              [value]="store.onionNextColor()"
+              (input)="setOnionNextColor($any($event.target).value)"
+            />
+          </label>
+        </div>
+        }
+      </div>
     </div>
 
     <div class="playback-controls-group">

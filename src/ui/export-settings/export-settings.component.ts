@@ -12,6 +12,7 @@ import { EXPORT_RESOLUTIONS, PDF_PAGE_SIZES } from './export-resolutions';
 import type { ExportSettings } from './export-resolutions';
 import type { PdfPageSize, PdfScriptMode } from './export-resolutions';
 import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../services/platform-file.service';
+import { appSettings } from 'src/settings-loader';
 
 @Component({
   selector: 'app-export-settings',
@@ -32,7 +33,15 @@ export class ExportSettingsComponent {
 
   protected readonly resolutions = EXPORT_RESOLUTIONS;
   protected readonly pdfPageSizes = PDF_PAGE_SIZES;
-  protected selectedIndex = signal(Math.min(2, this.resolutions.length - 1)); // default: Full HD
+  protected selectedIndex = signal(
+    Math.max(
+      0,
+      Math.min(
+        (appSettings.export?.defaultResolutionIndex ?? 2) as number,
+        this.resolutions.length - 1
+      )
+    )
+  );
   protected startIndex = signal(0);
   protected endIndex = signal(this.boardCount() - 1);
   protected startRaw = signal('1');

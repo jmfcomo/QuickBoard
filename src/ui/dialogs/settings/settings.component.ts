@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
 import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../../services/platform-file.service';
+import { EXPORT_RESOLUTIONS } from '../../export-settings/export-resolutions';
 import themes from '../../../shared/themes.json';
 import { ColorPickerComponent } from '../../canvas/color-picker/color-picker.component';
 
@@ -37,6 +38,19 @@ const AVAILABLE_THEMES = themes
   .map((theme) => ({ id: theme.id, label: theme.label }));
 
 const AVAILABLE_THEME_IDS = new Set(AVAILABLE_THEMES.map((theme) => theme.id));
+
+// Export type options for the default export format dropdown
+const EXPORT_FORMATS = [
+  { id: 'png', label: 'PNG Sequence' },
+  { id: 'video', label: 'MP4 Video' },
+  { id: 'pdf', label: 'Storyboard PDF' },
+];
+
+// Export resolution options, indexed into the shared EXPORT_RESOLUTIONS list
+const EXPORT_RESOLUTION_OPTIONS = EXPORT_RESOLUTIONS.map((resolution, index) => ({
+  id: String(index),
+  label: resolution.label,
+}));
 
 interface SelectOption {
   id: string;
@@ -131,6 +145,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   );
   readonly initialSave = signal<boolean>(
     this.getSafeSettingValue('saving.initialSave', true) as boolean
+  );
+  readonly exportDefaultFormat = signal<string>(
+    this.getSafeSettingValue('export.defaultFormat', 'png') as string
+  );
+  readonly exportDefaultResolution = signal<string>(
+    String(this.getSafeSettingValue('export.defaultResolutionIndex', 2) as number)
   );
   readonly defaultLaneCount = signal<number>(
     this.getSafeSettingValue('audio.defaultLaneCount', 1) as number
@@ -249,6 +269,21 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly exportSelectFields: readonly SelectFieldConfig[] = [
+    {
+      id: 'export-default-format',
+      label: 'Export Type',
+      value: this.exportDefaultFormat,
+      options: EXPORT_FORMATS,
+    },
+    {
+      id: 'export-default-resolution',
+      label: 'Resolution',
+      value: this.exportDefaultResolution,
+      options: EXPORT_RESOLUTION_OPTIONS,
+    },
+  ];
+
   readonly canvasColorFields: readonly ColorFieldConfig[] = [
     {
       id: 'stroke-color',
@@ -356,6 +391,24 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly restoreConfirmTop = signal(0);
   readonly restoreConfirmRight = signal(8);
 
+  readonly restartShaking = signal(false);
+  readonly restartChanged = signal(false);
+  private restartShakeTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoSavePrimed = false;
+
+  private triggerRestartPulse(): void {
+    this.restartChanged.set(true);
+    if (this.restartShakeTimer !== null) {
+      clearTimeout(this.restartShakeTimer);
+    }
+    this.restartShaking.set(false);
+    requestAnimationFrame(() => this.restartShaking.set(true));
+    this.restartShakeTimer = setTimeout(() => {
+      this.restartShaking.set(false);
+      this.restartShakeTimer = null;
+    }, 600);
+  }
+
   private normalizeTheme(value: unknown, fallback: string): string {
     if (typeof value === 'string' && AVAILABLE_THEME_IDS.has(value)) {
       return value;
@@ -370,6 +423,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
       }
 
       void this.appSettingsService.saveAllSettings(this.buildSettingsPayload());
+
+      // The first run after hydration is the initial sync on open, not a user change.
+      if (!this.autoSavePrimed) {
+        this.autoSavePrimed = true;
+        return;
+      }
+
+      this.triggerRestartPulse();
     },
     { injector: this.injector }
   );
@@ -380,6 +441,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.autoSaveEffect.destroy();
+    if (this.restartShakeTimer !== null) {
+      clearTimeout(this.restartShakeTimer);
+    }
   }
 
   private async initializeSettings(): Promise<void> {
@@ -429,6 +493,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
         holdFrames: this.boilHoldFrames(),
         amount: this.boilAmount(),
         boilNewFrames: this.boilNewFrames(),
+      },
+      export: {
+        defaultFormat: this.exportDefaultFormat() as 'png' | 'video' | 'pdf',
+        defaultResolutionIndex: Number(this.exportDefaultResolution()) || 0,
       },
     };
   }
@@ -504,6 +572,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.boilHoldFrames.set(getValue(settings, 'boil.holdFrames', 2) as number);
       this.boilAmount.set(getValue(settings, 'boil.amount', 2.5) as number);
       this.boilNewFrames.set(getValue(settings, 'boil.boilNewFrames', false) as boolean);
+      this.exportDefaultFormat.set(getValue(settings, 'export.defaultFormat', 'png') as string);
+      this.exportDefaultResolution.set(
+        String(getValue(settings, 'export.defaultResolutionIndex', 2) as number)
+      );
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

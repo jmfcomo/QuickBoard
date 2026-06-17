@@ -25,6 +25,12 @@ export class TimelineMenu implements OnDestroy {
 
   readonly boilSubmenuOpen = signal(false);
 
+  private onionHoldTimer: number | null = null;
+  private onionPointerActive = false;
+  private onionHoldTriggered = false;
+
+  readonly onionSubmenuOpen = signal(false);
+
   readonly zoomScale = this.zoom.scale;
   readonly sliderPosition = this.zoom.sliderPosition;
   readonly zoomPercent = this.zoom.zoomPercent;
@@ -64,6 +70,7 @@ export class TimelineMenu implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearBoilHoldTimer();
+    this.clearOnionHoldTimer();
   }
 
   updateDuration(value: string) {
@@ -81,6 +88,105 @@ export class TimelineMenu implements OnDestroy {
 
   toggleOnionSkin() {
     this.store.toggleOnionSkin();
+    if (!this.store.onionSkinEnabled()) {
+      this.onionSubmenuOpen.set(false);
+    }
+  }
+
+  // --- Onion skin button: click toggles, Alt+click / press-and-hold / right-click opens submenu ---
+
+  onOnionPointerDown(event: PointerEvent) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    this.onionPointerActive = true;
+    this.onionHoldTriggered = false;
+    this.clearOnionHoldTimer();
+
+    // The submenu only adjusts an active onion skin, so it's gated behind onion being on.
+    if (!this.store.onionSkinEnabled()) {
+      return;
+    }
+
+    if (event.altKey) {
+      this.onionHoldTriggered = true;
+      this.onionSubmenuOpen.set(true);
+      return;
+    }
+
+    this.onionHoldTimer = window.setTimeout(() => {
+      if (!this.onionPointerActive) {
+        return;
+      }
+      this.onionHoldTriggered = true;
+      this.onionSubmenuOpen.set(true);
+    }, 300);
+  }
+
+  onOnionPointerUp() {
+    if (!this.onionPointerActive) {
+      return;
+    }
+
+    this.onionPointerActive = false;
+    const wasHold = this.onionHoldTriggered;
+    this.onionHoldTriggered = false;
+    this.clearOnionHoldTimer();
+
+    if (wasHold) {
+      return;
+    }
+
+    this.toggleOnionSkin();
+  }
+
+  onOnionPointerCancel() {
+    this.onionPointerActive = false;
+    this.onionHoldTriggered = false;
+    this.clearOnionHoldTimer();
+  }
+
+  onOnionContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    this.clearOnionHoldTimer();
+    this.onionPointerActive = false;
+    this.onionHoldTriggered = false;
+    if (!this.store.onionSkinEnabled()) {
+      return;
+    }
+    this.onionSubmenuOpen.set(true);
+  }
+
+  setOnionFramesBack(value: string) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+      return;
+    }
+    this.store.setOnionFramesBack(Math.max(0, Math.round(n)));
+  }
+
+  setOnionFramesForward(value: string) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+      return;
+    }
+    this.store.setOnionFramesForward(Math.max(0, Math.round(n)));
+  }
+
+  setOnionPrevColor(value: string) {
+    this.store.setOnionPrevColor(value);
+  }
+
+  setOnionNextColor(value: string) {
+    this.store.setOnionNextColor(value);
+  }
+
+  private clearOnionHoldTimer() {
+    if (this.onionHoldTimer !== null) {
+      clearTimeout(this.onionHoldTimer);
+      this.onionHoldTimer = null;
+    }
   }
 
   toggleBoil() {
@@ -173,14 +279,19 @@ export class TimelineMenu implements OnDestroy {
   }
 
   private handleDocumentPointerDown(event: PointerEvent) {
-    if (!this.boilSubmenuOpen()) {
-      return;
-    }
     const target = event.target as HTMLElement | null;
-    if (target && (target.closest('.boil-btn') || target.closest('.boil-submenu'))) {
-      return;
+
+    if (this.boilSubmenuOpen()) {
+      if (!(target && (target.closest('.boil-btn') || target.closest('.boil-submenu')))) {
+        this.boilSubmenuOpen.set(false);
+      }
     }
-    this.boilSubmenuOpen.set(false);
+
+    if (this.onionSubmenuOpen()) {
+      if (!(target && (target.closest('.onion-skin-btn') || target.closest('.onion-submenu')))) {
+        this.onionSubmenuOpen.set(false);
+      }
+    }
   }
 
   private clearBoilHoldTimer() {

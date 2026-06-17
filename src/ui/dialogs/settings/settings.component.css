@@ -329,6 +329,40 @@ app-color-picker.color-input {
   line-height: 1.25;
 }
 
+.restart-notice.changed {
+  color: #a855f7;
+  font-weight: 600;
+}
+
+.restart-notice.shake {
+  animation: restart-shake 0.5s ease-in-out;
+}
+
+@keyframes restart-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-4px);
+  }
+  30% {
+    transform: translateX(4px);
+  }
+  45% {
+    transform: translateX(-3px);
+  }
+  60% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+  90% {
+    transform: translateX(2px);
+  }
+}
+
 .restore-button {
   background: color-mix(in srgb, var(--warning) 12%, var(--bg-body));
   border-color: color-mix(in srgb, var(--warning) 35%, var(--border-default));

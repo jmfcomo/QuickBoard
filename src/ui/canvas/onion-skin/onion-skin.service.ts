@@ -29,56 +29,65 @@ export class OnionSkinService {
       return [] as OnionSkinLayer[];
     }
 
+    const framesBack = Math.max(0, this.store.onionFramesBack());
+    const framesForward = Math.max(0, this.store.onionFramesForward());
+    const prevColor = this.store.onionPrevColor();
+    const nextColor = this.store.onionNextColor();
     const cache = this.onionPreviewCache();
-    const overlays: OnionSkinLayer[] = [];
-    const previousBoard = currentIndex > 0 ? boards[currentIndex - 1] : null;
-    const nextBoard = currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null;
-    const previousOnionPreview = previousBoard ? cache[previousBoard.id] : undefined;
-    const nextOnionPreview = nextBoard ? cache[nextBoard.id] : undefined;
 
-    // For middle boards, render both neighbors together so onion skin does not pop in one side at a time.
-    if (previousBoard && nextBoard) {
-      if (!previousOnionPreview || !nextOnionPreview) {
-        return overlays;
+    interface Pending {
+      id: string;
+      distance: number;
+      position: 'prev' | 'next';
+      color: string;
+    }
+    const pending: Pending[] = [];
+
+    for (let distance = 1; distance <= framesBack; distance++) {
+      const board = boards[currentIndex - distance];
+      if (!board) {
+        break;
       }
-
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
-      return overlays;
+      pending.push({ id: board.id, distance, position: 'prev', color: prevColor });
     }
 
-    if (previousBoard && previousOnionPreview) {
-      overlays.push({
-        id: previousBoard.id,
-        onionPreviewUrl: previousOnionPreview,
-        position: 'prev',
-      });
+    for (let distance = 1; distance <= framesForward; distance++) {
+      const board = boards[currentIndex + distance];
+      if (!board) {
+        break;
+      }
+      pending.push({ id: board.id, distance, position: 'next', color: nextColor });
     }
 
-    if (nextBoard && nextOnionPreview) {
-      overlays.push({
-        id: nextBoard.id,
-        onionPreviewUrl: nextOnionPreview,
-        position: 'next',
-      });
+    if (pending.length === 0) {
+      return [] as OnionSkinLayer[];
     }
 
-    return overlays;
+    // Wait until every needed preview is cached so onion skin layers do not pop in one at a time.
+    if (pending.some((entry) => !cache[entry.id])) {
+      return [] as OnionSkinLayer[];
+    }
+
+    return pending.map((entry) => ({
+      id: entry.id,
+      onionPreviewUrl: cache[entry.id],
+      position: entry.position,
+      color: entry.color,
+      opacity: this.opacityForDistance(entry.distance),
+    }));
   });
+
+  private opacityForDistance(distance: number): number {
+    return 0.5 * Math.pow(0.6, distance - 1);
+  }
 
   constructor() {
     effect(() => {
       const onionSkinEnabled = this.store.onionSkinEnabled();
       const currentBoardId = this.store.currentBoardId();
       this.store.boards();
+      this.store.onionFramesBack();
+      this.store.onionFramesForward();
 
       if (!onionSkinEnabled || !currentBoardId) {
         return;
@@ -141,10 +150,22 @@ export class OnionSkinService {
       return;
     }
 
-    const adjacentBoards = [
-      currentIndex > 0 ? boards[currentIndex - 1] : null,
-      currentIndex < boards.length - 1 ? boards[currentIndex + 1] : null,
-    ].filter((board): board is NonNullable<typeof board> => Boolean(board));
+    const framesBack = Math.max(0, this.store.onionFramesBack());
+    const framesForward = Math.max(0, this.store.onionFramesForward());
+    const adjacentBoards: NonNullable<(typeof boards)[number]>[] = [];
+
+    for (let distance = 1; distance <= framesBack; distance++) {
+      const board = boards[currentIndex - distance];
+      if (board) {
+        adjacentBoards.push(board);
+      }
+    }
+    for (let distance = 1; distance <= framesForward; distance++) {
+      const board = boards[currentIndex + distance];
+      if (board) {
+        adjacentBoards.push(board);
+      }
+    }
 
     if (adjacentBoards.length === 0) {
       return;
@@ -228,12 +249,21 @@ export class OnionSkinService {
       return [boardId];
     }
 
+    const framesBack = Math.max(0, this.store.onionFramesBack());
+    const framesForward = Math.max(0, this.store.onionFramesForward());
     const ids = [boardId];
-    if (currentIndex > 0) {
-      ids.push(boards[currentIndex - 1].id);
+
+    for (let distance = 1; distance <= framesBack; distance++) {
+      const board = boards[currentIndex - distance];
+      if (board) {
+        ids.push(board.id);
+      }
     }
-    if (currentIndex < boards.length - 1) {
-      ids.push(boards[currentIndex + 1].id);
+    for (let distance = 1; distance <= framesForward; distance++) {
+      const board = boards[currentIndex + distance];
+      if (board) {
+        ids.push(board.id);
+      }
     }
     return ids;
   }

@@ -122,9 +122,33 @@
   border-bottom-color: color-mix(in srgb, var(--text-on-accent) 80%, var(--accent-light));
 }
 
+.onion-skin-btn:hover .boil-submenu-indicator {
+  border-bottom-color: color-mix(in srgb, var(--text-default) 88%, var(--accent-border));
+}
+
+.onion-skin-btn.active .boil-submenu-indicator {
+  border-bottom-color: color-mix(in srgb, var(--text-on-accent) 80%, var(--accent-light));
+}
+
 .boil-control {
   position: relative;
   display: inline-flex;
+}
+
+.onion-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.onion-skin-btn {
+  position: relative;
+}
+
+.boil-field-color input[type='color'] {
+  width: 40px;
+  height: 24px;
+  padding: 1px;
+  cursor: pointer;
 }
 
 .boil-submenu {

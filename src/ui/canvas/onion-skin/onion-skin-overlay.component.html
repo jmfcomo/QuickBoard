@@ -7,16 +7,18 @@
     [style.top.px]="layerRect().top"
     [style.width.px]="layerRect().width"
     [style.height.px]="layerRect().height"
+    [style.opacity]="layer.opacity"
   >
-    <img
-      [src]="layer.onionPreviewUrl"
+    <div
+      class="onion-skin-tint"
       [style.left.px]="imageRect().left"
       [style.top.px]="imageRect().top"
       [style.width.px]="imageRect().width"
       [style.height.px]="imageRect().height"
-      alt=""
+      [style.background-color]="layer.color"
+      [style.-webkit-mask-image]="'url(' + layer.onionPreviewUrl + ')'"
+      [style.mask-image]="'url(' + layer.onionPreviewUrl + ')'"
       aria-hidden="true"
-      draggable="false"
-    />
+    ></div>
   </div>
 }

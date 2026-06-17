@@ -93,6 +93,30 @@
         </div>
       </section>
 
+      <!-- Export Defaults Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Export Defaults</h4>
+        <div class="settings-grid">
+          @for (field of exportSelectFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <select
+              [id]="field.id"
+              class="select-input"
+              [value]="field.value()"
+              (change)="setStringSignalFromInput($event, field.value)"
+            >
+              @for (option of field.options; track option.id) {
+              <option [value]="option.id">
+                {{ option.label }}
+              </option>
+              }
+            </select>
+          </div>
+          }
+        </div>
+      </section>
+
       <!-- Audio Section -->
       <section class="settings-section">
         <h4 class="section-title">Audio</h4>
@@ -276,7 +300,7 @@
 
     <!-- Restore Defaults Button -->
     <div class="dialog-footer">
-      <p class="restart-notice">Restart the app to apply changes.</p>
+      <p class="restart-notice" [class.changed]="restartChanged()" [class.shake]="restartShaking()">Restart the app to apply changes.</p>
       <button
         type="button"
         class="restore-button"
