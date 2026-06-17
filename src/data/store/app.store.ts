@@ -288,13 +288,6 @@ export const AppStore = signalStore(
         patchState(store, { boards });
       },
 
-      setBoardBoil(boardId: string, boilEnabled: boolean) {
-        const boards = store
-          .boards()
-          .map((board) => (board.id === boardId ? { ...board, boilEnabled } : board));
-        patchState(store, { boards });
-      },
-
       toggleBoardBoil(boardId: string) {
         const boards = store
           .boards()

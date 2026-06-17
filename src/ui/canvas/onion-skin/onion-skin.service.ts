@@ -38,7 +38,6 @@ export class OnionSkinService {
     interface Pending {
       id: string;
       distance: number;
-      position: 'prev' | 'next';
       color: string;
     }
     const pending: Pending[] = [];
@@ -48,7 +47,7 @@ export class OnionSkinService {
       if (!board) {
         break;
       }
-      pending.push({ id: board.id, distance, position: 'prev', color: prevColor });
+      pending.push({ id: board.id, distance, color: prevColor });
     }
 
     for (let distance = 1; distance <= framesForward; distance++) {
@@ -56,7 +55,7 @@ export class OnionSkinService {
       if (!board) {
         break;
       }
-      pending.push({ id: board.id, distance, position: 'next', color: nextColor });
+      pending.push({ id: board.id, distance, color: nextColor });
     }
 
     if (pending.length === 0) {
@@ -71,7 +70,6 @@ export class OnionSkinService {
     return pending.map((entry) => ({
       id: entry.id,
       onionPreviewUrl: cache[entry.id],
-      position: entry.position,
       color: entry.color,
       opacity: this.opacityForDistance(entry.distance),
     }));

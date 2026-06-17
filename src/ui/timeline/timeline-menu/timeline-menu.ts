@@ -163,7 +163,7 @@ export class TimelineMenu implements OnDestroy {
     if (!Number.isFinite(n)) {
       return;
     }
-    this.store.setOnionFramesBack(Math.max(0, Math.round(n)));
+    this.store.setOnionFramesBack(n);
   }
 
   setOnionFramesForward(value: string) {
@@ -171,7 +171,7 @@ export class TimelineMenu implements OnDestroy {
     if (!Number.isFinite(n)) {
       return;
     }
-    this.store.setOnionFramesForward(Math.max(0, Math.round(n)));
+    this.store.setOnionFramesForward(n);
   }
 
   setOnionPrevColor(value: string) {

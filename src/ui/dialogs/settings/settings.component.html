@@ -100,6 +100,20 @@
           @for (field of exportSelectFields; track field.id) {
           <div class="field">
             <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            @if (field.useNgModel) {
+            <select
+              [id]="field.id"
+              class="select-input"
+              [ngModel]="field.value()"
+              (ngModelChange)="setStringSignalFromModel($event, field.value)"
+            >
+              @for (option of field.options; track option.id) {
+              <option [value]="option.id">
+                {{ option.label }}
+              </option>
+              }
+            </select>
+            } @else {
             <select
               [id]="field.id"
               class="select-input"
@@ -112,6 +126,7 @@
               </option>
               }
             </select>
+            }
           </div>
           }
         </div>
@@ -271,6 +286,38 @@
               />
               <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
             </div>
+          </div>
+          }
+        </div>
+      </section>
+
+      <!-- Onion Skin Section -->
+      <section class="settings-section">
+        <h4 class="section-title">Onion Skin Defaults</h4>
+        <div class="settings-grid">
+          @for (field of onionNumberFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <input
+              [id]="field.id"
+              type="number"
+              class="number-input"
+              [value]="field.value()"
+              (change)="setNumberSignalFromInput($event, field.value, field.min, field.max)"
+              [attr.min]="field.min ?? null"
+              [attr.max]="field.max ?? null"
+            />
+          </div>
+          } @for (field of onionColorFields; track field.id) {
+          <div [class]="field.fieldClass ? 'field ' + field.fieldClass : 'field'">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <app-color-picker
+              [id]="field.id"
+              class="color-input"
+              [label]="field.label"
+              [color]="field.value()"
+              (colorChange)="field.value.set($event)"
+            ></app-color-picker>
           </div>
           }
         </div>

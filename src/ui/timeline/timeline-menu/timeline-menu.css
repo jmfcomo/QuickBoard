@@ -140,10 +140,6 @@
   display: inline-flex;
 }
 
-.onion-skin-btn {
-  position: relative;
-}
-
 .boil-field-color input[type='color'] {
   width: 40px;
   height: 24px;
@@ -220,6 +216,7 @@
 }
 
 .onion-skin-btn {
+  position: relative;
   width: 34px;
   height: 34px;
   padding: 0;

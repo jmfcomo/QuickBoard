@@ -199,6 +199,18 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly boilNewFrames = signal<boolean>(
     this.getSafeSettingValue('boil.boilNewFrames', false) as boolean
   );
+  readonly onionFramesBack = signal<number>(
+    this.getSafeSettingValue('onionSkin.framesBack', 1) as number
+  );
+  readonly onionFramesForward = signal<number>(
+    this.getSafeSettingValue('onionSkin.framesForward', 1) as number
+  );
+  readonly onionPrevColor = signal<string>(
+    this.getSafeSettingValue('onionSkin.prevColor', '#ff00ff') as string
+  );
+  readonly onionNextColor = signal<string>(
+    this.getSafeSettingValue('onionSkin.nextColor', '#00b3ff') as string
+  );
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
     {
@@ -275,12 +287,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
       label: 'Export Type',
       value: this.exportDefaultFormat,
       options: EXPORT_FORMATS,
+      useNgModel: true,
     },
     {
       id: 'export-default-resolution',
       label: 'Resolution',
       value: this.exportDefaultResolution,
       options: EXPORT_RESOLUTION_OPTIONS,
+      useNgModel: true,
     },
   ];
 
@@ -379,6 +393,38 @@ export class SettingsComponent implements OnInit, OnDestroy {
       id: 'boil-new-frames',
       label: 'Boil New Frames',
       value: this.boilNewFrames,
+    },
+  ];
+
+  readonly onionNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'onion-frames-back',
+      label: 'Frames Back',
+      value: this.onionFramesBack,
+      min: 0,
+      max: 10,
+    },
+    {
+      id: 'onion-frames-forward',
+      label: 'Frames Forward',
+      value: this.onionFramesForward,
+      min: 0,
+      max: 10,
+    },
+  ];
+
+  readonly onionColorFields: readonly ColorFieldConfig[] = [
+    {
+      id: 'onion-prev-color',
+      label: 'Previous',
+      value: this.onionPrevColor,
+      fieldClass: 'compact-color-field',
+    },
+    {
+      id: 'onion-next-color',
+      label: 'Next',
+      value: this.onionNextColor,
+      fieldClass: 'compact-color-field',
     },
   ];
 
@@ -498,6 +544,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
         defaultFormat: this.exportDefaultFormat() as 'png' | 'video' | 'pdf',
         defaultResolutionIndex: Number(this.exportDefaultResolution()) || 0,
       },
+      onionSkin: {
+        framesBack: this.onionFramesBack(),
+        framesForward: this.onionFramesForward(),
+        prevColor: this.onionPrevColor(),
+        nextColor: this.onionNextColor(),
+      },
     };
   }
 
@@ -576,6 +628,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.exportDefaultResolution.set(
         String(getValue(settings, 'export.defaultResolutionIndex', 2) as number)
       );
+      this.onionFramesBack.set(getValue(settings, 'onionSkin.framesBack', 1) as number);
+      this.onionFramesForward.set(getValue(settings, 'onionSkin.framesForward', 1) as number);
+      this.onionPrevColor.set(getValue(settings, 'onionSkin.prevColor', '#ff00ff') as string);
+      this.onionNextColor.set(getValue(settings, 'onionSkin.nextColor', '#00b3ff') as string);
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

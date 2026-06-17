@@ -1,8 +1,6 @@
 @for (layer of layers(); track layer.id) {
   <div
     class="onion-skin-layer"
-    [class.previous]="layer.position === 'prev'"
-    [class.next]="layer.position === 'next'"
     [style.left.px]="layerRect().left"
     [style.top.px]="layerRect().top"
     [style.width.px]="layerRect().width"
