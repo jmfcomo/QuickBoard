@@ -4,85 +4,89 @@
   </div>
 
   <div class="menu-section menu-center">
-    <div class="boil-control">
+    <div class="frame-toggles">
+      <div class="boil-control">
+        <button
+          class="boil-btn"
+          [class.active]="currentBoilEnabled()"
+          [attr.aria-label]="
+            currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
+          "
+          [attr.title]="
+            currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
+          "
+          [attr.aria-pressed]="currentBoilEnabled()"
+          (pointerdown)="onBoilPointerDown($event)"
+          (pointerup)="onBoilPointerUp()"
+          (pointercancel)="onBoilPointerCancel()"
+          (pointerleave)="onBoilPointerCancel()"
+          (contextmenu)="onBoilContextMenu($event)"
+        >
+          <svg viewBox="0 0 24 24" class="boil-icon" aria-hidden="true" focusable="false">
+            <path d="M3 9c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
+            <path d="M3 15c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
+          </svg>
+          @if (currentBoilEnabled()) {
+          <span class="boil-submenu-indicator" aria-hidden="true"></span>
+          }
+        </button>
+        @if (boilSubmenuOpen()) {
+        <div class="boil-submenu" role="group" aria-label="Line boiling parameters">
+          <div class="boil-submenu-title">Line Boiling</div>
+          <label class="boil-field">
+            <span>Variations</span>
+            <input
+              type="number"
+              min="2"
+              max="12"
+              [value]="currentBoilParams().variations"
+              (change)="setBoilParam('variations', $any($event.target).value)"
+            />
+          </label>
+          <label class="boil-field">
+            <span>Hold Frames</span>
+            <input
+              type="number"
+              min="1"
+              max="24"
+              [value]="currentBoilParams().holdFrames"
+              (change)="setBoilParam('holdFrames', $any($event.target).value)"
+            />
+          </label>
+          <label class="boil-field">
+            <span>Jitter (px)</span>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              step="0.5"
+              [value]="currentBoilParams().amount"
+              (change)="setBoilParam('amount', $any($event.target).value)"
+            />
+          </label>
+        </div>
+        }
+      </div>
       <button
-        class="boil-btn"
-        [class.active]="currentBoilEnabled()"
+        class="onion-skin-btn"
+        [class.active]="store.onionSkinEnabled()"
         [attr.aria-label]="
-          currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
+          store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
         "
-        [attr.title]="
-          currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
-        "
-        [attr.aria-pressed]="currentBoilEnabled()"
-        (pointerdown)="onBoilPointerDown($event)"
-        (pointerup)="onBoilPointerUp()"
-        (pointercancel)="onBoilPointerCancel()"
-        (pointerleave)="onBoilPointerCancel()"
-        (contextmenu)="onBoilContextMenu($event)"
+        [attr.title]="store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'"
+        [attr.aria-pressed]="store.onionSkinEnabled()"
+        (click)="toggleOnionSkin()"
       >
-        <svg viewBox="0 0 24 24" class="boil-icon" aria-hidden="true" focusable="false">
-          <path d="M3 9c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
-          <path d="M3 15c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
+        <svg viewBox="0 0 24 24" class="onion-skin-icon" aria-hidden="true" focusable="false">
+          <circle cx="9" cy="12" r="5.6" class="left"></circle>
+          <circle cx="15" cy="12" r="5.6" class="right"></circle>
         </svg>
       </button>
-      @if (boilSubmenuOpen()) {
-      <div class="boil-submenu" role="group" aria-label="Line boiling parameters">
-        <div class="boil-submenu-title">Line Boiling</div>
-        <label class="boil-field">
-          <span>Variations</span>
-          <input
-            type="number"
-            min="2"
-            max="12"
-            [value]="currentBoilParams().variations"
-            (change)="setBoilParam('variations', $any($event.target).value)"
-          />
-        </label>
-        <label class="boil-field">
-          <span>Hold Frames</span>
-          <input
-            type="number"
-            min="1"
-            max="24"
-            [value]="currentBoilParams().holdFrames"
-            (change)="setBoilParam('holdFrames', $any($event.target).value)"
-          />
-        </label>
-        <label class="boil-field">
-          <span>Jitter (px)</span>
-          <input
-            type="number"
-            min="0"
-            max="20"
-            step="0.5"
-            [value]="currentBoilParams().amount"
-            (change)="setBoilParam('amount', $any($event.target).value)"
-          />
-        </label>
-      </div>
-      }
     </div>
-    <button
-      class="onion-skin-btn"
-      [class.active]="store.onionSkinEnabled()"
-      [attr.aria-label]="
-        store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
-      "
-      [attr.title]="store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'"
-      [attr.aria-pressed]="store.onionSkinEnabled()"
-      (click)="toggleOnionSkin()"
-    >
-      <svg viewBox="0 0 24 24" class="onion-skin-icon" aria-hidden="true" focusable="false">
-        <circle cx="9" cy="12" r="5.6" class="left"></circle>
-        <circle cx="15" cy="12" r="5.6" class="right"></circle>
-      </svg>
-    </button>
 
     <div class="playback-controls-group">
       <button
         class="back-to-start-btn"
-        [class.active]="store.isPlaying()"
         (click)="goToStart()"
         aria-label="Go to start"
       >
@@ -90,7 +94,6 @@
       </button>
       <button
         class="back-one-board-btn"
-        [class.active]="store.isPlaying()"
         (click)="backOneBoard()"
         aria-label="Back one board"
       >
@@ -109,7 +112,6 @@
       </button>
       <button
         class="forward-one-board-btn"
-        [class.active]="store.isPlaying()"
         (click)="forwardOneBoard()"
         aria-label="Forward one board"
       >
@@ -117,7 +119,6 @@
       </button>
       <button
         class="forward-to-end-btn"
-        [class.active]="store.isPlaying()"
         (click)="goToEnd()"
         aria-label="Go to end"
       >

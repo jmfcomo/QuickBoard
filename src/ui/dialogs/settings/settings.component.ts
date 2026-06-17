@@ -176,6 +176,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.getSafeSettingValue('boil.holdFrames', 2) as number
   );
   readonly boilAmount = signal<number>(this.getSafeSettingValue('boil.amount', 2.5) as number);
+  readonly boilNewFrames = signal<boolean>(
+    this.getSafeSettingValue('boil.boilNewFrames', false) as boolean
+  );
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
     {
@@ -336,6 +339,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly boilCheckboxFields: readonly CheckboxFieldConfig[] = [
+    {
+      id: 'boil-new-frames',
+      label: 'Boil New Frames',
+      value: this.boilNewFrames,
+    },
+  ];
+
   // UI states
   readonly showRestoreConfirm = signal(false);
   readonly saving = signal(false);
@@ -417,6 +428,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
         variations: this.boilVariations(),
         holdFrames: this.boilHoldFrames(),
         amount: this.boilAmount(),
+        boilNewFrames: this.boilNewFrames(),
       },
     };
   }
@@ -491,6 +503,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.boilVariations.set(getValue(settings, 'boil.variations', 3) as number);
       this.boilHoldFrames.set(getValue(settings, 'boil.holdFrames', 2) as number);
       this.boilAmount.set(getValue(settings, 'boil.amount', 2.5) as number);
+      this.boilNewFrames.set(getValue(settings, 'boil.boilNewFrames', false) as boolean);
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

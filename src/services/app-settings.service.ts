@@ -50,6 +50,7 @@ export interface AppSettings {
     variations: number;
     holdFrames: number;
     amount: number;
+    boilNewFrames: boolean;
   };
 }
 

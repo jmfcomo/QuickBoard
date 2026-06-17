@@ -88,6 +88,9 @@ export class TimelineMenu implements OnDestroy {
     if (id) {
       this.store.toggleBoardBoil(id);
     }
+    if (!this.currentBoilEnabled()) {
+      this.boilSubmenuOpen.set(false);
+    }
   }
 
   // --- Boil button: click toggles, Alt+click / press-and-hold / right-click opens submenu ---
@@ -100,6 +103,11 @@ export class TimelineMenu implements OnDestroy {
     this.boilPointerActive = true;
     this.boilHoldTriggered = false;
     this.clearBoilHoldTimer();
+
+    // The submenu only adjusts an active boil, so it's gated behind boil being on.
+    if (!this.currentBoilEnabled()) {
+      return;
+    }
 
     if (event.altKey) {
       this.boilHoldTriggered = true;
@@ -144,6 +152,9 @@ export class TimelineMenu implements OnDestroy {
     this.clearBoilHoldTimer();
     this.boilPointerActive = false;
     this.boilHoldTriggered = false;
+    if (!this.currentBoilEnabled()) {
+      return;
+    }
     this.boilSubmenuOpen.set(true);
   }
 

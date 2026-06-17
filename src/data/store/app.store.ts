@@ -93,6 +93,7 @@ export const AppStore = signalStore(
           previewUrl: null,
           backgroundColor,
           duration,
+          boilEnabled: appSettings.boil?.boilNewFrames ?? false,
         };
         patchState(store, { boards: [...store.boards(), newBoard] });
         return newBoard.id;

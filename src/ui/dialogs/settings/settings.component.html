@@ -217,11 +217,11 @@
         </div>
       </section>
 
-      <!-- Timeline Section -->
+      <!-- Line Boiling Section -->
       <section class="settings-section">
-        <h4 class="section-title">Timeline (Experimental)</h4>
+        <h4 class="section-title">Line Boiling Defaults</h4>
         <div class="settings-grid">
-          @for (field of timelineNumberFields; track field.id) {
+          @for (field of boilNumberFields; track field.id) {
           <div class="field">
             <label [for]="field.id" class="field-label">{{ field.label }}</label>
             <input
@@ -234,14 +234,29 @@
               [attr.max]="field.max ?? null"
             />
           </div>
+          } @for (field of boilCheckboxFields; track field.id) {
+          <div class="field">
+            <label [for]="field.id" class="field-label">{{ field.label }}</label>
+            <div class="checkbox-label">
+              <input
+                [id]="field.id"
+                type="checkbox"
+                class="checkbox"
+                [checked]="field.value()"
+                (change)="setBooleanSignalFromInput($event, field.value)"
+              />
+              <span class="checkbox-text">{{ field.value() ? 'ON' : 'OFF' }}</span>
+            </div>
+          </div>
           }
         </div>
       </section>
 
+      <!-- Timeline Section -->
       <section class="settings-section">
-        <h4 class="section-title">Line Boiling</h4>
+        <h4 class="section-title">Timeline (Experimental)</h4>
         <div class="settings-grid">
-          @for (field of boilNumberFields; track field.id) {
+          @for (field of timelineNumberFields; track field.id) {
           <div class="field">
             <label [for]="field.id" class="field-label">{{ field.label }}</label>
             <input
