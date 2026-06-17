@@ -11,6 +11,8 @@
 
 # Capacitor
 
+# Gradle
+.gradle/
 
 # Node
 /node_modules
