@@ -1,0 +1,11 @@
+:host {
+  display: contents;
+}
+
+.boil-overlay-img {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  z-index: 4;
+}

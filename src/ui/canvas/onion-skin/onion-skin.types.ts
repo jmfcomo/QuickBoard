@@ -8,5 +8,6 @@ export type OnionOverlayRect = Readonly<{
 export type OnionSkinLayer = Readonly<{
   id: string;
   onionPreviewUrl: string;
-  position: 'prev' | 'next';
+  color: string;
+  opacity: number;
 }>;

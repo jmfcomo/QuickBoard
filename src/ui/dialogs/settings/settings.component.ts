@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { appSettings } from 'src/settings-loader';
 import { AppSettingsService, type AppSettings } from '../../../services/app-settings.service';
 import { PlatformFileService, IOS_DEFAULT_FOLDER } from '../../../services/platform-file.service';
+import { EXPORT_RESOLUTIONS } from '../../export-settings/export-resolutions';
 import themes from '../../../shared/themes.json';
 import { ColorPickerComponent } from '../../canvas/color-picker/color-picker.component';
 
@@ -37,6 +38,19 @@ const AVAILABLE_THEMES = themes
   .map((theme) => ({ id: theme.id, label: theme.label }));
 
 const AVAILABLE_THEME_IDS = new Set(AVAILABLE_THEMES.map((theme) => theme.id));
+
+// Export type options for the default export format dropdown
+const EXPORT_FORMATS = [
+  { id: 'png', label: 'PNG Sequence' },
+  { id: 'video', label: 'MP4 Video' },
+  { id: 'pdf', label: 'Storyboard PDF' },
+];
+
+// Export resolution options, indexed into the shared EXPORT_RESOLUTIONS list
+const EXPORT_RESOLUTION_OPTIONS = EXPORT_RESOLUTIONS.map((resolution, index) => ({
+  id: String(index),
+  label: resolution.label,
+}));
 
 interface SelectOption {
   id: string;
@@ -132,6 +146,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly initialSave = signal<boolean>(
     this.getSafeSettingValue('saving.initialSave', true) as boolean
   );
+  readonly exportDefaultFormat = signal<string>(
+    this.getSafeSettingValue('export.defaultFormat', 'png') as string
+  );
+  readonly exportDefaultResolution = signal<string>(
+    String(this.getSafeSettingValue('export.defaultResolutionIndex', 2) as number)
+  );
   readonly defaultLaneCount = signal<number>(
     this.getSafeSettingValue('audio.defaultLaneCount', 1) as number
   );
@@ -168,6 +188,28 @@ export class SettingsComponent implements OnInit, OnDestroy {
   );
   readonly zoomStep = signal<number>(
     this.getSafeSettingValue('timeline.zoom.zoomStep', 100) as number
+  );
+  readonly boilVariations = signal<number>(
+    this.getSafeSettingValue('boil.variations', 3) as number
+  );
+  readonly boilHoldFrames = signal<number>(
+    this.getSafeSettingValue('boil.holdFrames', 2) as number
+  );
+  readonly boilAmount = signal<number>(this.getSafeSettingValue('boil.amount', 2.5) as number);
+  readonly boilNewFrames = signal<boolean>(
+    this.getSafeSettingValue('boil.boilNewFrames', false) as boolean
+  );
+  readonly onionFramesBack = signal<number>(
+    this.getSafeSettingValue('onionSkin.framesBack', 1) as number
+  );
+  readonly onionFramesForward = signal<number>(
+    this.getSafeSettingValue('onionSkin.framesForward', 1) as number
+  );
+  readonly onionPrevColor = signal<string>(
+    this.getSafeSettingValue('onionSkin.prevColor', '#ff00ff') as string
+  );
+  readonly onionNextColor = signal<string>(
+    this.getSafeSettingValue('onionSkin.nextColor', '#00b3ff') as string
   );
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
@@ -239,6 +281,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly exportSelectFields: readonly SelectFieldConfig[] = [
+    {
+      id: 'export-default-format',
+      label: 'Export Type',
+      value: this.exportDefaultFormat,
+      options: EXPORT_FORMATS,
+      useNgModel: true,
+    },
+    {
+      id: 'export-default-resolution',
+      label: 'Resolution',
+      value: this.exportDefaultResolution,
+      options: EXPORT_RESOLUTION_OPTIONS,
+      useNgModel: true,
+    },
+  ];
+
   readonly canvasColorFields: readonly ColorFieldConfig[] = [
     {
       id: 'stroke-color',
@@ -304,6 +363,71 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly boilNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'boil-variations',
+      label: 'Variations',
+      value: this.boilVariations,
+      min: 2,
+      max: 12,
+    },
+    {
+      id: 'boil-hold-frames',
+      label: 'Hold Frames',
+      value: this.boilHoldFrames,
+      min: 1,
+      max: 24,
+    },
+    {
+      id: 'boil-amount',
+      label: 'Jitter Amount',
+      value: this.boilAmount,
+      min: 0,
+      max: 20,
+      unit: 'px',
+    },
+  ];
+
+  readonly boilCheckboxFields: readonly CheckboxFieldConfig[] = [
+    {
+      id: 'boil-new-frames',
+      label: 'Boil New Frames',
+      value: this.boilNewFrames,
+    },
+  ];
+
+  readonly onionNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'onion-frames-back',
+      label: 'Frames Back',
+      value: this.onionFramesBack,
+      min: 0,
+      max: 10,
+    },
+    {
+      id: 'onion-frames-forward',
+      label: 'Frames Forward',
+      value: this.onionFramesForward,
+      min: 0,
+      max: 10,
+    },
+  ];
+
+  readonly onionColorFields: readonly ColorFieldConfig[] = [
+    {
+      id: 'onion-prev-color',
+      label: 'Previous',
+      value: this.onionPrevColor,
+      fieldClass: 'compact-color-field',
+    },
+    {
+      id: 'onion-next-color',
+      label: 'Next',
+      value: this.onionNextColor,
+      fieldClass: 'compact-color-field',
+    },
+  ];
+
   // UI states
   readonly showRestoreConfirm = signal(false);
   readonly saving = signal(false);
@@ -312,6 +436,24 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   readonly restoreConfirmTop = signal(0);
   readonly restoreConfirmRight = signal(8);
+
+  readonly restartShaking = signal(false);
+  readonly restartChanged = signal(false);
+  private restartShakeTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoSavePrimed = false;
+
+  private triggerRestartPulse(): void {
+    this.restartChanged.set(true);
+    if (this.restartShakeTimer !== null) {
+      clearTimeout(this.restartShakeTimer);
+    }
+    this.restartShaking.set(false);
+    requestAnimationFrame(() => this.restartShaking.set(true));
+    this.restartShakeTimer = setTimeout(() => {
+      this.restartShaking.set(false);
+      this.restartShakeTimer = null;
+    }, 600);
+  }
 
   private normalizeTheme(value: unknown, fallback: string): string {
     if (typeof value === 'string' && AVAILABLE_THEME_IDS.has(value)) {
@@ -327,6 +469,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
       }
 
       void this.appSettingsService.saveAllSettings(this.buildSettingsPayload());
+
+      // The first run after hydration is the initial sync on open, not a user change.
+      if (!this.autoSavePrimed) {
+        this.autoSavePrimed = true;
+        return;
+      }
+
+      this.triggerRestartPulse();
     },
     { injector: this.injector }
   );
@@ -337,6 +487,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.autoSaveEffect.destroy();
+    if (this.restartShakeTimer !== null) {
+      clearTimeout(this.restartShakeTimer);
+    }
   }
 
   private async initializeSettings(): Promise<void> {
@@ -380,6 +533,29 @@ export class SettingsComponent implements OnInit, OnDestroy {
           defaultZoom: this.defaultZoom(),
           zoomStep: this.zoomStep(),
         },
+      },
+      boil: {
+        variations: this.boilVariations(),
+        holdFrames: this.boilHoldFrames(),
+        amount: this.boilAmount(),
+        boilNewFrames: this.boilNewFrames(),
+      },
+      export: {
+        defaultFormat: (() => {
+          const v = this.exportDefaultFormat();
+          return v === 'video' || v === 'pdf' ? v : 'png';
+        })(),
+        defaultResolutionIndex: (() => {
+          const n = Number(this.exportDefaultResolution());
+          const idx = Number.isFinite(n) ? Math.round(n) : 0;
+          return Math.max(0, Math.min(idx, EXPORT_RESOLUTIONS.length - 1));
+        })(),
+      },
+      onionSkin: {
+        framesBack: this.onionFramesBack(),
+        framesForward: this.onionFramesForward(),
+        prevColor: this.onionPrevColor(),
+        nextColor: this.onionNextColor(),
       },
     };
   }
@@ -451,6 +627,18 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.maxZoom.set(getValue(settings, 'timeline.zoom.maxZoom', 2500) as number);
       this.defaultZoom.set(getValue(settings, 'timeline.zoom.defaultZoom', 40) as number);
       this.zoomStep.set(getValue(settings, 'timeline.zoom.zoomStep', 100) as number);
+      this.boilVariations.set(getValue(settings, 'boil.variations', 3) as number);
+      this.boilHoldFrames.set(getValue(settings, 'boil.holdFrames', 2) as number);
+      this.boilAmount.set(getValue(settings, 'boil.amount', 2.5) as number);
+      this.boilNewFrames.set(getValue(settings, 'boil.boilNewFrames', false) as boolean);
+      this.exportDefaultFormat.set(getValue(settings, 'export.defaultFormat', 'png') as string);
+      this.exportDefaultResolution.set(
+        String(getValue(settings, 'export.defaultResolutionIndex', 2) as number)
+      );
+      this.onionFramesBack.set(getValue(settings, 'onionSkin.framesBack', 1) as number);
+      this.onionFramesForward.set(getValue(settings, 'onionSkin.framesForward', 1) as number);
+      this.onionPrevColor.set(getValue(settings, 'onionSkin.prevColor', '#ff00ff') as string);
+      this.onionNextColor.set(getValue(settings, 'onionSkin.nextColor', '#00b3ff') as string);
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

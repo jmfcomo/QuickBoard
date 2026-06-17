@@ -13,6 +13,8 @@ export interface Board {
   previewUrl: string | null;
   backgroundColor: string;
   duration: number;
+  boilEnabled?: boolean;
+  boilParams?: { variations?: number; holdFrames?: number; amount?: number };
 }
 
 export interface AudioTrack {
@@ -36,6 +38,10 @@ interface AppState {
   boards: Board[];
   currentBoardId: string | null;
   onionSkinEnabled: boolean;
+  onionFramesBack: number;
+  onionFramesForward: number;
+  onionPrevColor: string;
+  onionNextColor: string;
   audioTracks: AudioTrack[];
   audioLaneCount: number;
   audioLaneMixers: AudioLaneMixer[];
@@ -60,6 +66,10 @@ const initialState: AppState = {
   ],
   currentBoardId: firstBoardId,
   onionSkinEnabled: false,
+  onionFramesBack: appSettings.onionSkin?.framesBack ?? 1,
+  onionFramesForward: appSettings.onionSkin?.framesForward ?? 1,
+  onionPrevColor: appSettings.onionSkin?.prevColor ?? '#ff00ff',
+  onionNextColor: appSettings.onionSkin?.nextColor ?? '#00b3ff',
   audioTracks: [],
   audioLaneCount: appSettings.audio.defaultLaneCount,
   audioLaneMixers: [{ volume: appSettings.audio.defaultVolume, muted: false }],
@@ -91,6 +101,7 @@ export const AppStore = signalStore(
           previewUrl: null,
           backgroundColor,
           duration,
+          boilEnabled: appSettings.boil?.boilNewFrames ?? false,
         };
         patchState(store, { boards: [...store.boards(), newBoard] });
         return newBoard.id;
@@ -277,6 +288,29 @@ export const AppStore = signalStore(
         patchState(store, { boards });
       },
 
+      toggleBoardBoil(boardId: string) {
+        const boards = store
+          .boards()
+          .map((board) =>
+            board.id === boardId ? { ...board, boilEnabled: !board.boilEnabled } : board
+          );
+        patchState(store, { boards });
+      },
+
+      setBoardBoilParams(
+        boardId: string,
+        params: { variations?: number; holdFrames?: number; amount?: number }
+      ) {
+        const boards = store
+          .boards()
+          .map((board) =>
+            board.id === boardId
+              ? { ...board, boilParams: { ...board.boilParams, ...params } }
+              : board
+          );
+        patchState(store, { boards });
+      },
+
       reorderBoards(fromIndex: number, toIndex: number) {
         const boards = [...store.boards()];
         const [movedBoard] = boards.splice(fromIndex, 1);
@@ -314,6 +348,26 @@ export const AppStore = signalStore(
 
       toggleOnionSkin() {
         patchState(store, { onionSkinEnabled: !store.onionSkinEnabled() });
+      },
+
+      setOnionFramesBack(onionFramesBack: number) {
+        patchState(store, {
+          onionFramesBack: Math.max(0, Math.min(10, Math.round(onionFramesBack))),
+        });
+      },
+
+      setOnionFramesForward(onionFramesForward: number) {
+        patchState(store, {
+          onionFramesForward: Math.max(0, Math.min(10, Math.round(onionFramesForward))),
+        });
+      },
+
+      setOnionPrevColor(onionPrevColor: string) {
+        patchState(store, { onionPrevColor });
+      },
+
+      setOnionNextColor(onionNextColor: string) {
+        patchState(store, { onionNextColor });
       },
 
       addAudioTrack(track: AudioTrack) {

@@ -1,3 +1,8 @@
+:host {
+  position: relative;
+  z-index: 20;
+}
+
 .timeline-menu {
   display: flex;
   align-items: center;
@@ -28,91 +33,10 @@
   gap: 16px;
 }
 
-.timeline-zoom {
+.frame-toggles {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.playback-controls-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.zoom-btn {
-  height: 30px;
-  width: 30px;
-  padding: 0;
-  background-color: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-default);
-  transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    opacity 0.15s;
-}
-
-.zoom-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.zoom-slider {
-  width: 80px;
-}
-
-.onion-skin-btn {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  background-color: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s;
-  color: var(--text-default);
-}
-
-.onion-skin-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-.onion-skin-btn.active {
-  background-color: var(--bg-active);
-  border-color: var(--border-active);
-  color: var(--text-on-accent);
-}
-
-.onion-skin-icon {
-  width: 21px;
-  height: 21px;
-  display: block;
-}
-
-.onion-skin-icon circle {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-}
-
-.onion-skin-icon .left {
-  stroke-dasharray: 2.1 2.1;
+  gap: 5px;
 }
 
 .menu-right {
@@ -127,6 +51,7 @@
   align-items: center;
   gap: 12px;
 }
+
 /* ─── Timecode Display (Left) ──────────────────────────── */
 .timecode-display {
   font-size: 1.6em;
@@ -142,174 +67,6 @@
   flex-shrink: 0;
 }
 
-/* ─── Duration control ───────────────────────────────────── */
-.duration-control {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-default);
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.control-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--text-muted);
-}
-
-.duration-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.duration-input-wrap input {
-  width: 52px;
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--border-default);
-  background: var(--bg-body);
-  color: var(--text-default);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  transition: border-color 0.15s;
-}
-
-.duration-input-wrap input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-
-.control-unit {
-  font-size: 11px;
-  color: var(--text-light);
-}
-
-/* ─── Play / Pause button ────────────────────────────────── */
-.play-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background-color: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    box-shadow 0.2s;
-  color: var(--text-default);
-}
-
-.play-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-.play-btn.active {
-  background-color: var(--bg-active);
-  border-color: var(--border-active);
-  color: var(--text-on-accent);
-}
-
-/* ─── Animated play / pause icon ─────────────────────────── */
-.play-icon {
-  position: relative;
-  width: 14px;
-  height: 16px;
-}
-
-.play-icon .bar {
-  position: absolute;
-  inset: 0;
-  background: currentColor;
-  transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Play state (triangle from two halves) */
-.bar.bar-left {
-  clip-path: polygon(0% 0%, 55% 25%, 55% 75%, 0% 100%);
-}
-
-.bar.bar-right {
-  clip-path: polygon(55% 25%, 100% 50%, 100% 50%, 55% 75%);
-}
-
-/* Pause state (two vertical bars) */
-.play-icon.playing .bar.bar-left {
-  clip-path: polygon(0% 0%, 36% 0%, 36% 100%, 0% 100%);
-}
-
-.play-icon.playing .bar.bar-right {
-  clip-path: polygon(64% 0%, 100% 0%, 100% 100%, 64% 100%);
-}
-
-/* ─── Time display ───────────────────────────────────────── */
-.time-display {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  min-width: 36px;
-  text-align: center;
-}
-
-/* ─── Navigation buttons (start/prev/next/end) ───────────── */
-.back-to-start-btn,
-.back-one-board-btn,
-.forward-one-board-btn,
-.forward-to-end-btn {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  background-color: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s;
-  color: var(--text-default);
-}
-
-.back-to-start-btn:hover,
-.back-one-board-btn:hover,
-.forward-one-board-btn:hover,
-.forward-to-end-btn:hover {
-  background-color: var(--bg-hover);
-}
-
-.back-to-start-btn.active,
-.back-one-board-btn.active,
-.forward-one-board-btn.active,
-.forward-to-end-btn.active {
-  background-color: var(--bg-active);
-  border-color: var(--border-active);
-  color: var(--text-on-accent);
-}
-
-.menu-center button i.fa-solid,
-.menu-center button i.fas,
-.menu-center button i.fa {
-  font-size: 14px;
-  line-height: 1;
-  color: currentColor;
-  display: inline-block;
-}
-
-@media (max-width: 1080px) {
-  .timeline-zoom {
-    gap: 4px;
-  }
-
-  .zoom-slider {
-    width: 60px;
-  }
+.zoom-slider {
+  width: 60px;
 }

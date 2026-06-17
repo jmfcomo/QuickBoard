@@ -1,0 +1,67 @@
+<div class="frame-control onion-control">
+  <button
+    class="frame-control-btn onion-skin-btn"
+    [class.active]="store.onionSkinEnabled()"
+    [attr.aria-label]="
+      store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
+    "
+    [attr.title]="
+      store.onionSkinEnabled() ? 'Disable onion skinning' : 'Enable onion skinning'
+    "
+    [attr.aria-pressed]="store.onionSkinEnabled()"
+    (pointerdown)="onPointerDown($event)"
+    (pointerup)="onPointerUp()"
+    (pointercancel)="onPointerCancel()"
+    (pointerleave)="onPointerCancel()"
+    (contextmenu)="onContextMenu($event)"
+  >
+    <svg viewBox="0 0 24 24" class="frame-control-icon onion-skin-icon" aria-hidden="true" focusable="false">
+      <circle cx="9" cy="12" r="5.6" class="left"></circle>
+      <circle cx="15" cy="12" r="5.6" class="right"></circle>
+    </svg>
+    @if (store.onionSkinEnabled()) {
+    <span class="submenu-indicator" aria-hidden="true"></span>
+    }
+  </button>
+  @if (submenuOpen()) {
+  <div class="submenu onion-submenu" role="group" aria-label="Onion skin parameters">
+    <div class="submenu-title">Onion Skin</div>
+    <label class="submenu-field">
+      <span>Frames Back</span>
+      <input
+        type="number"
+        min="0"
+        max="10"
+        [value]="store.onionFramesBack()"
+        (change)="setOnionFramesBack($any($event.target).value)"
+      />
+    </label>
+    <label class="submenu-field">
+      <span>Frames Forward</span>
+      <input
+        type="number"
+        min="0"
+        max="10"
+        [value]="store.onionFramesForward()"
+        (change)="setOnionFramesForward($any($event.target).value)"
+      />
+    </label>
+    <label class="submenu-field submenu-field-color">
+      <span>Previous</span>
+      <input
+        type="color"
+        [value]="store.onionPrevColor()"
+        (input)="setOnionPrevColor($any($event.target).value)"
+      />
+    </label>
+    <label class="submenu-field submenu-field-color">
+      <span>Next</span>
+      <input
+        type="color"
+        [value]="store.onionNextColor()"
+        (input)="setOnionNextColor($any($event.target).value)"
+      />
+    </label>
+  </div>
+  }
+</div>

@@ -3,6 +3,7 @@ import { Capacitor } from '@capacitor/core';
 import { ExportService } from './export.service';
 import type { ExportSettings } from '../ui/export-settings/export-resolutions';
 import { IOS_DEFAULT_FOLDER } from './platform-file.service';
+import { appSettings } from 'src/settings-loader';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
@@ -19,7 +20,12 @@ export class ExportIpcService {
   private readonly exportService = inject(ExportService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly settingsMode = signal<'png' | 'video' | 'pdf'>('png');
+  readonly settingsMode = signal<'png' | 'video' | 'pdf'>(
+    (() => {
+      const v = appSettings.export?.defaultFormat;
+      return v === 'video' || v === 'pdf' ? v : 'png';
+    })()
+  );
   readonly settingsVisible = signal(false);
   readonly settingsBoardCount = signal(0);
 

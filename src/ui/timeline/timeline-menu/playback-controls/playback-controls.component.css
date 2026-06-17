@@ -1,0 +1,112 @@
+.playback-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Play / Pause button ────────────────────────────────── */
+.play-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+  color: var(--text-default);
+}
+
+.play-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.play-btn.active {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  color: var(--text-on-accent);
+}
+
+/* ─── Animated play / pause icon ─────────────────────────── */
+.play-icon {
+  position: relative;
+  width: 14px;
+  height: 16px;
+}
+
+.play-icon .bar {
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Play state (triangle from two halves) */
+.bar.bar-left {
+  clip-path: polygon(0% 0%, 55% 25%, 55% 75%, 0% 100%);
+}
+
+.bar.bar-right {
+  clip-path: polygon(55% 25%, 100% 50%, 100% 50%, 55% 75%);
+}
+
+/* Pause state (two vertical bars) */
+.play-icon.playing .bar.bar-left {
+  clip-path: polygon(0% 0%, 36% 0%, 36% 100%, 0% 100%);
+}
+
+.play-icon.playing .bar.bar-right {
+  clip-path: polygon(64% 0%, 100% 0%, 100% 100%, 64% 100%);
+}
+
+/* ─── Navigation buttons (start/prev/next/end) ───────────── */
+.back-to-start-btn,
+.back-one-board-btn,
+.forward-one-board-btn,
+.forward-to-end-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+  color: var(--text-default);
+}
+
+.back-to-start-btn:hover,
+.back-one-board-btn:hover,
+.forward-one-board-btn:hover,
+.forward-to-end-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.back-to-start-btn.active,
+.back-one-board-btn.active,
+.forward-one-board-btn.active,
+.forward-to-end-btn.active {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  color: var(--text-on-accent);
+}
+
+:host button i.fa-solid,
+:host button i.fas,
+:host button i.fa {
+  font-size: 14px;
+  line-height: 1;
+  color: currentColor;
+  display: inline-block;
+}

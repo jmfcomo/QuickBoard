@@ -1,0 +1,44 @@
+.duration-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-default);
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.control-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.duration-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.duration-input-wrap input {
+  width: 52px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-body);
+  color: var(--text-default);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s;
+}
+
+.duration-input-wrap input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.control-unit {
+  font-size: 11px;
+  color: var(--text-light);
+}

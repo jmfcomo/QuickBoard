@@ -1,0 +1,33 @@
+<div class="timeline-zoom" role="group" aria-label="Timeline zoom controls">
+  <button
+    class="zoom-btn"
+    type="button"
+    (click)="zoomOut()"
+    [disabled]="isMinZoom()"
+    aria-label="Zoom out timeline"
+  >
+    <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+  </button>
+
+  <input
+    class="zoom-slider"
+    type="range"
+    [min]="sliderMin"
+    [max]="sliderMax"
+    step="1"
+    [value]="sliderPosition()"
+    (input)="updateZoom($any($event.target).value)"
+    [style.--percent]="((sliderPosition() - sliderMin) / (sliderMax - sliderMin) * 100) + '%'"
+    aria-label="Timeline zoom"
+  />
+
+  <button
+    class="zoom-btn"
+    type="button"
+    (click)="zoomIn()"
+    [disabled]="isMaxZoom()"
+    aria-label="Zoom in timeline"
+  >
+    <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+  </button>
+</div>

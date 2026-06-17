@@ -46,6 +46,22 @@ export interface AppSettings {
       zoomStep: number;
     };
   };
+  boil: {
+    variations: number;
+    holdFrames: number;
+    amount: number;
+    boilNewFrames: boolean;
+  };
+  export?: {
+    defaultFormat: 'png' | 'video' | 'pdf';
+    defaultResolutionIndex: number;
+  };
+  onionSkin?: {
+    framesBack: number;
+    framesForward: number;
+    prevColor: string;
+    nextColor: string;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
