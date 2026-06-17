@@ -60,8 +60,9 @@
   background-color: var(--bg-hover);
 }
 
-/* Editor.js appends its tooltip to <body>, outside this component's DOM, so a
-   deliberately global rule is needed to suppress it. */
-::ng-deep .ct {
+/* Editor.js appends its tooltip to <body>, outside this component's DOM.
+   Target the specific Editor.js tooltip using .codex-editor__tooltip to avoid
+   hiding tooltips from other libraries that may use the generic .ct class. */
+::ng-deep .codex-editor__tooltip {
   display: none !important;
 }
