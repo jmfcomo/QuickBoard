@@ -37,7 +37,9 @@ export class ExportSettingsComponent {
     Math.max(
       0,
       Math.min(
-        (appSettings.export?.defaultResolutionIndex ?? 2) as number,
+        Number.isFinite(appSettings.export?.defaultResolutionIndex)
+          ? (appSettings.export?.defaultResolutionIndex as number)
+          : 2,
         this.resolutions.length - 1
       )
     )

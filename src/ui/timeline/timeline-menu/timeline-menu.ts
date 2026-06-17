@@ -274,12 +274,16 @@ export class TimelineMenu implements OnDestroy {
       return;
     }
     const clamped =
-      key === 'amount' ? Math.max(0, n) : Math.max(key === 'variations' ? 2 : 1, Math.round(n));
+      key === 'amount'
+        ? Math.max(0, Math.min(20, n))
+        : key === 'variations'
+          ? Math.max(2, Math.min(12, Math.round(n)))
+          : Math.max(1, Math.min(24, Math.round(n)));
     this.store.setBoardBoilParams(id, { [key]: clamped });
   }
 
   private handleDocumentPointerDown(event: PointerEvent) {
-    const target = event.target as HTMLElement | null;
+    const target = event.target instanceof Element ? event.target : null;
 
     if (this.boilSubmenuOpen()) {
       if (!(target && (target.closest('.boil-btn') || target.closest('.boil-submenu')))) {

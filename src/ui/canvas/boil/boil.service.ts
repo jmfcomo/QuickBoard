@@ -35,9 +35,15 @@ export class BoilService {
   resolveParams(board: Pick<Board, 'boilParams'>): BoilParams {
     const override = board.boilParams;
     return {
-      variations: Math.max(2, Math.round(override?.variations ?? this.defaults.variations)),
-      holdFrames: Math.max(1, Math.round(override?.holdFrames ?? this.defaults.holdFrames)),
-      amount: Math.max(0, override?.amount ?? this.defaults.amount),
+      variations: Math.max(
+        2,
+        Math.min(12, Math.round(override?.variations ?? this.defaults.variations))
+      ),
+      holdFrames: Math.max(
+        1,
+        Math.min(24, Math.round(override?.holdFrames ?? this.defaults.holdFrames))
+      ),
+      amount: Math.max(0, Math.min(20, override?.amount ?? this.defaults.amount)),
     };
   }
 

@@ -21,7 +21,10 @@ export class ExportIpcService {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly settingsMode = signal<'png' | 'video' | 'pdf'>(
-    (appSettings.export?.defaultFormat as 'png' | 'video' | 'pdf' | undefined) ?? 'png'
+    (() => {
+      const v = appSettings.export?.defaultFormat;
+      return v === 'video' || v === 'pdf' ? v : 'png';
+    })()
   );
   readonly settingsVisible = signal(false);
   readonly settingsBoardCount = signal(0);

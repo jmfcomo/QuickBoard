@@ -541,8 +541,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
         boilNewFrames: this.boilNewFrames(),
       },
       export: {
-        defaultFormat: this.exportDefaultFormat() as 'png' | 'video' | 'pdf',
-        defaultResolutionIndex: Number(this.exportDefaultResolution()) || 0,
+        defaultFormat: (() => {
+          const v = this.exportDefaultFormat();
+          return v === 'video' || v === 'pdf' ? v : 'png';
+        })(),
+        defaultResolutionIndex: (() => {
+          const n = Number(this.exportDefaultResolution());
+          const idx = Number.isFinite(n) ? Math.round(n) : 0;
+          return Math.max(0, Math.min(idx, EXPORT_RESOLUTIONS.length - 1));
+        })(),
       },
       onionSkin: {
         framesBack: this.onionFramesBack(),

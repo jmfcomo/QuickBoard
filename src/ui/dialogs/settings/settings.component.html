@@ -347,7 +347,13 @@
 
     <!-- Restore Defaults Button -->
     <div class="dialog-footer">
-      <p class="restart-notice" [class.changed]="restartChanged()" [class.shake]="restartShaking()">Restart the app to apply changes.</p>
+      <p
+        class="restart-notice"
+        [class.changed]="restartChanged()"
+        [class.shake]="restartShaking()"
+      >
+        Restart the app to apply changes.
+      </p>
       <button
         type="button"
         class="restore-button"

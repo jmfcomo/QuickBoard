@@ -351,12 +351,16 @@ export const AppStore = signalStore(
       },
 
       setOnionFramesBack(onionFramesBack: number) {
-        patchState(store, { onionFramesBack: Math.max(0, Math.round(onionFramesBack)) });
-      },
+        patchState(store, {
+          onionFramesBack: Math.max(0, Math.min(10, Math.round(onionFramesBack))),
+        });
+      }
 
       setOnionFramesForward(onionFramesForward: number) {
-        patchState(store, { onionFramesForward: Math.max(0, Math.round(onionFramesForward)) });
-      },
+        patchState(store, {
+          onionFramesForward: Math.max(0, Math.min(10, Math.round(onionFramesForward))),
+        });
+      }
 
       setOnionPrevColor(onionPrevColor: string) {
         patchState(store, { onionPrevColor });
