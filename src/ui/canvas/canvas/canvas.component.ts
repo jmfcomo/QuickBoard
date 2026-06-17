@@ -21,6 +21,8 @@ import { ClearCanvasConfirmComponent } from '../clear-canvas-confirm';
 import { PropertiesBarComponent } from '../properties-bar/properties-bar.component';
 import { OnionSkinOverlayComponent } from '../onion-skin/onion-skin-overlay.component';
 import { OnionSkinService } from '../onion-skin/onion-skin.service';
+import { BoilOverlayComponent } from '../boil/boil-overlay.component';
+import { BoilService } from '../boil/boil.service';
 import { CanvasPersistenceService } from '../persistence/canvas-persistence.service';
 import { ToolsBarComponent } from '../tools-bar/tools-bar.component';
 import { CanvasUndoRedoService } from '../undo-redo/canvas-undo-redo.service';
@@ -43,6 +45,7 @@ import { appSettings } from 'src/settings-loader';
     ClearCanvasConfirmComponent,
     PropertiesBarComponent,
     OnionSkinOverlayComponent,
+    BoilOverlayComponent,
     ToolsBarComponent,
   ],
   templateUrl: './canvas.component.html',
@@ -53,6 +56,8 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly canvasFullscreenToggled = output<void>();
 
   readonly onionSkinLayers = inject(OnionSkinService).onionSkinLayers;
+  private readonly boil = inject(BoilService);
+  readonly currentBoilImage = this.boil.currentBoilImage;
 
   readonly canvasContainer = viewChild.required<ElementRef<HTMLElement>>('canvasContainer');
   readonly activeTool = signal<string>(appSettings.canvas.defaultTool ?? 'pencil');
@@ -173,6 +178,17 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
         this.loadBoardData(selectedBoardId);
       } else if (canvasDataChanged) {
         this.loadBoardData(selectedBoardId);
+      }
+    });
+
+    // Keep boil variations warm for the current board so playback wiggles immediately.
+    effect(() => {
+      const boards = this.store.boards();
+      const currentId = this.store.currentBoardId();
+      this.store.isPlaying();
+      const board = boards.find((b) => b.id === currentId);
+      if (board) {
+        this.boil.ensureVariations(board);
       }
     });
   }

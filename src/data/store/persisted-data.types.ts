@@ -31,6 +31,7 @@ export interface PersistedBoard {
   previewUrl: string | null;
   backgroundColor: string;
   duration: number;
+  boilEnabled?: boolean;
 }
 
 /**

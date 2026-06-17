@@ -72,6 +72,47 @@
   width: 80px;
 }
 
+.boil-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin-right: 8px;
+  background-color: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+  color: var(--text-default);
+}
+
+.boil-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+.boil-btn.active {
+  background-color: var(--bg-active);
+  border-color: var(--border-active);
+  color: var(--text-on-accent);
+}
+
+.boil-icon {
+  width: 21px;
+  height: 21px;
+  display: block;
+}
+
+.boil-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
 .onion-skin-btn {
   width: 34px;
   height: 34px;

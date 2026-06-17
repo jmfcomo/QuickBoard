@@ -19,6 +19,8 @@ export type {
 export type { OnionOverlayRect, OnionSkinLayer } from './onion-skin';
 
 export { OnionSkinService } from './onion-skin';
+export { BoilOverlayComponent, BoilService } from './boil';
+export type { BoilParams, BoilSegment } from './boil';
 export { CanvasUndoRedoService } from './undo-redo';
 export { CanvasPersistenceService } from './persistence';
 

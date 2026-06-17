@@ -1,0 +1,13 @@
+@if (image(); as src) {
+  <img
+    class="boil-overlay-img"
+    [src]="src"
+    [style.left.px]="imageRect().left"
+    [style.top.px]="imageRect().top"
+    [style.width.px]="imageRect().width"
+    [style.height.px]="imageRect().height"
+    alt=""
+    aria-hidden="true"
+    draggable="false"
+  />
+}

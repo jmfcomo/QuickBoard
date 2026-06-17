@@ -5,6 +5,23 @@
 
   <div class="menu-section menu-center">
     <button
+      class="boil-btn"
+      [class.active]="currentBoilEnabled()"
+      [attr.aria-label]="
+        currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
+      "
+      [attr.title]="
+        currentBoilEnabled() ? 'Disable line boiling for this frame' : 'Enable line boiling for this frame'
+      "
+      [attr.aria-pressed]="currentBoilEnabled()"
+      (click)="toggleBoil()"
+    >
+      <svg viewBox="0 0 24 24" class="boil-icon" aria-hidden="true" focusable="false">
+        <path d="M3 9c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
+        <path d="M3 15c2-2.4 4-2.4 6 0s4 2.4 6 0 4-2.4 6 0"></path>
+      </svg>
+    </button>
+    <button
       class="onion-skin-btn"
       [class.active]="store.onionSkinEnabled()"
       [attr.aria-label]="

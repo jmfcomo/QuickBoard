@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AppStore } from '../data/store/app.store';
 import { CanvasDataService } from './canvas-data.service';
+import { BoilService } from '../ui/canvas/boil/boil.service';
 import type { LCInstance } from '../ui/canvas/literally-canvas-interfaces';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -73,6 +74,7 @@ interface BoardLayoutEntry {
 export class ExportService {
   readonly store = inject(AppStore);
   readonly canvasDataService = inject(CanvasDataService);
+  private readonly boil = inject(BoilService);
 
   readonly isExporting = signal(false);
   readonly exportProgress = signal(0);
@@ -248,34 +250,48 @@ export class ExportService {
     const writtenFrames: string[] = [];
     const safePrefix = this.sanitizePrefix(settings.prefix);
 
-    await this.renderBoardsAtScaleStreaming(
-      settings.resolution.scale,
-      safePrefix,
-      async (frame, current, total) => {
-        // Convert data URL to raw bytes for the FFmpeg virtual FS
-        const base64 = frame.dataUrl.slice(frame.dataUrl.indexOf(',') + 1);
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          bytes[i] = binary.charCodeAt(i);
-        }
-
-        await ffmpeg.writeFile(frame.name, bytes);
-        writtenFrames.push(frame.name);
-
-        const duration = boards[current - 1]?.duration ?? 3;
-        concatText += `file '${frame.name}'\n`;
-        if (current < total) {
-          concatText += `duration ${duration}\n`;
-        }
-        onFrameProgress?.(current, total, frame.name);
-      },
-      'image/jpeg',
-      abortSignal,
-      startIndex,
-      endIndex,
-      allBoards
+    // Expand each board into one or more timed segments. Boil-enabled boards
+    // fan out into cycling jitter variations so the exported video wiggles.
+    const fps = this.store.fps();
+    const segmentPlan = boards.flatMap((board) =>
+      this.boil
+        .expandBoardToSegments(board, this.canvasDataService.getCanvasData(board.id), fps)
+        .map((segment) => ({ board, segment }))
     );
+    const totalSegments = segmentPlan.length;
+    const padLength = Math.max(3, String(totalSegments).length);
+
+    for (let index = 0; index < segmentPlan.length; index++) {
+      this.throwIfAborted(abortSignal);
+      const { board, segment } = segmentPlan[index];
+      const frameNum = String(index + 1).padStart(padLength, '0');
+      const frameName = `${safePrefix}_${frameNum}.jpg`;
+
+      const dataUrl = await this.renderSingleBoard(
+        segment.snapshot,
+        board.backgroundColor,
+        settings.resolution.scale,
+        'image/jpeg'
+      );
+      this.throwIfAborted(abortSignal);
+
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      await ffmpeg.writeFile(frameName, bytes);
+      writtenFrames.push(frameName);
+
+      concatText += `file '${frameName}'\n`;
+      if (index < totalSegments - 1) {
+        concatText += `duration ${segment.durationSeconds}\n`;
+      }
+      onFrameProgress?.(index + 1, totalSegments, frameName);
+      this.throwIfAborted(abortSignal);
+    }
 
     if (abortSignal?.aborted) throw new Error('Export canceled by user.');
 

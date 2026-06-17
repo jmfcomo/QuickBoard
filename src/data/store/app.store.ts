@@ -13,6 +13,7 @@ export interface Board {
   previewUrl: string | null;
   backgroundColor: string;
   duration: number;
+  boilEnabled?: boolean;
 }
 
 export interface AudioTrack {
@@ -274,6 +275,22 @@ export const AppStore = signalStore(
         const boards = store
           .boards()
           .map((board) => (board.id === boardId ? { ...board, duration } : board));
+        patchState(store, { boards });
+      },
+
+      setBoardBoil(boardId: string, boilEnabled: boolean) {
+        const boards = store
+          .boards()
+          .map((board) => (board.id === boardId ? { ...board, boilEnabled } : board));
+        patchState(store, { boards });
+      },
+
+      toggleBoardBoil(boardId: string) {
+        const boards = store
+          .boards()
+          .map((board) =>
+            board.id === boardId ? { ...board, boilEnabled: !board.boilEnabled } : board
+          );
         patchState(store, { boards });
       },
 

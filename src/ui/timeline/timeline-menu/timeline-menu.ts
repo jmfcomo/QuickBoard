@@ -29,6 +29,12 @@ export class TimelineMenu {
     return board?.duration ?? 3;
   });
 
+  currentBoilEnabled = computed(() => {
+    const id = this.store.currentBoardId();
+    const board = this.store.boards().find((b) => b.id === id);
+    return board?.boilEnabled ?? false;
+  });
+
   updateDuration(value: string) {
     const n = Number(value);
     const minDuration = 1 / (this.store.fps() || 24);
@@ -44,6 +50,13 @@ export class TimelineMenu {
 
   toggleOnionSkin() {
     this.store.toggleOnionSkin();
+  }
+
+  toggleBoil() {
+    const id = this.store.currentBoardId();
+    if (id) {
+      this.store.toggleBoardBoil(id);
+    }
   }
 
   goToStart() {
