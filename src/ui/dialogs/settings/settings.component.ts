@@ -169,6 +169,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly zoomStep = signal<number>(
     this.getSafeSettingValue('timeline.zoom.zoomStep', 100) as number
   );
+  readonly boilVariations = signal<number>(
+    this.getSafeSettingValue('boil.variations', 3) as number
+  );
+  readonly boilHoldFrames = signal<number>(
+    this.getSafeSettingValue('boil.holdFrames', 2) as number
+  );
+  readonly boilAmount = signal<number>(this.getSafeSettingValue('boil.amount', 2.5) as number);
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
     {
@@ -304,6 +311,31 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly boilNumberFields: readonly NumberFieldConfig[] = [
+    {
+      id: 'boil-variations',
+      label: 'Variations',
+      value: this.boilVariations,
+      min: 2,
+      max: 12,
+    },
+    {
+      id: 'boil-hold-frames',
+      label: 'Hold Frames',
+      value: this.boilHoldFrames,
+      min: 1,
+      max: 24,
+    },
+    {
+      id: 'boil-amount',
+      label: 'Jitter Amount',
+      value: this.boilAmount,
+      min: 0,
+      max: 20,
+      unit: 'px',
+    },
+  ];
+
   // UI states
   readonly showRestoreConfirm = signal(false);
   readonly saving = signal(false);
@@ -381,6 +413,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
           zoomStep: this.zoomStep(),
         },
       },
+      boil: {
+        variations: this.boilVariations(),
+        holdFrames: this.boilHoldFrames(),
+        amount: this.boilAmount(),
+      },
     };
   }
 
@@ -451,6 +488,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.maxZoom.set(getValue(settings, 'timeline.zoom.maxZoom', 2500) as number);
       this.defaultZoom.set(getValue(settings, 'timeline.zoom.defaultZoom', 40) as number);
       this.zoomStep.set(getValue(settings, 'timeline.zoom.zoomStep', 100) as number);
+      this.boilVariations.set(getValue(settings, 'boil.variations', 3) as number);
+      this.boilHoldFrames.set(getValue(settings, 'boil.holdFrames', 2) as number);
+      this.boilAmount.set(getValue(settings, 'boil.amount', 2.5) as number);
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

@@ -11,7 +11,8 @@ import { BoilParams, BoilSegment } from './boil.types';
  * playback (and export) to give animation that hand-drawn wiggle.
  *
  * Variations are derived purely from the original snapshot, so nothing extra is
- * persisted — only the per-board `boilEnabled` flag is stored.
+ * persisted — only the per-board `boilEnabled` flag and optional per-frame
+ * parameter overrides are stored.
  */
 @Injectable({ providedIn: 'root' })
 export class BoilService {
@@ -20,14 +21,25 @@ export class BoilService {
 
   /** Rendered, opaque variation image data URLs, keyed by board id. */
   private readonly variationImages = signal<Record<string, string[]>>({});
-  /** Snapshot reference each cached variation set was built from, for invalidation. */
-  private readonly variationRefs = new Map<string, unknown>();
+  /** Cache key (snapshot ref + param signature) each variation set was built from. */
+  private readonly variationRefs = new Map<string, { ref: unknown; sig: string }>();
 
-  readonly params: BoilParams = {
+  /** Global defaults from settings, used when a frame has no override. */
+  readonly defaults: BoilParams = {
     variations: Math.max(2, Math.round(appSettings.boil?.variations ?? 3)),
     holdFrames: Math.max(1, Math.round(appSettings.boil?.holdFrames ?? 2)),
     amount: Math.max(0, appSettings.boil?.amount ?? 2.5),
   };
+
+  /** Resolve the effective boil parameters for a board (per-frame over defaults). */
+  resolveParams(board: Pick<Board, 'boilParams'>): BoilParams {
+    const override = board.boilParams;
+    return {
+      variations: Math.max(2, Math.round(override?.variations ?? this.defaults.variations)),
+      holdFrames: Math.max(1, Math.round(override?.holdFrames ?? this.defaults.holdFrames)),
+      amount: Math.max(0, override?.amount ?? this.defaults.amount),
+    };
+  }
 
   /**
    * The variation image to overlay on the live canvas right now, or null when
@@ -63,29 +75,33 @@ export class BoilService {
       return null;
     }
 
+    const params = this.resolveParams(board);
     const fps = this.store.fps() || 24;
     const localTime = Math.max(0, this.store.currentTime() - startTime);
     const frame = Math.floor(localTime * fps);
-    const index = Math.floor(frame / this.params.holdFrames) % variations.length;
+    const index = Math.floor(frame / params.holdFrames) % variations.length;
     return variations[index] ?? null;
   });
 
   /**
    * Ensure variation images exist for a boil-enabled board. Re-renders when the
-   * board's drawing has changed since the cache was built. Safe to call often.
+   * board's drawing or boil parameters have changed. Safe to call often.
    */
   ensureVariations(board: Board): void {
     if (!board.boilEnabled) {
       return;
     }
 
+    const params = this.resolveParams(board);
+    const sig = this.paramsSignature(params);
     const canvasData = this.canvasDataService.getCanvasData(board.id);
-    if (this.variationRefs.get(board.id) === canvasData && this.variationImages()[board.id]) {
+    const cached = this.variationRefs.get(board.id);
+    if (cached && cached.ref === canvasData && cached.sig === sig && this.variationImages()[board.id]) {
       return;
     }
 
-    const images = this.renderVariations(board.id, canvasData, board.backgroundColor);
-    this.variationRefs.set(board.id, canvasData);
+    const images = this.renderVariations(board.id, canvasData, board.backgroundColor, params);
+    this.variationRefs.set(board.id, { ref: canvasData, sig });
     this.variationImages.update((cache) => ({ ...cache, [board.id]: images }));
   }
 
@@ -117,15 +133,16 @@ export class BoilService {
       return [{ snapshot: canvasData, durationSeconds: total }];
     }
 
+    const params = this.resolveParams(board);
     const safeFps = fps || 24;
-    const holdSeconds = this.params.holdFrames / safeFps;
+    const holdSeconds = params.holdFrames / safeFps;
     if (holdSeconds <= 0) {
       return [{ snapshot: canvasData, durationSeconds: total }];
     }
 
     const perturbed: Record<string, unknown>[] = [];
-    for (let i = 0; i < this.params.variations; i++) {
-      perturbed.push(this.perturbSnapshot(canvasData, this.seedFor(board.id, i)));
+    for (let i = 0; i < params.variations; i++) {
+      perturbed.push(this.perturbSnapshot(canvasData, this.seedFor(board.id, i), params));
     }
 
     const segments: BoilSegment[] = [];
@@ -144,15 +161,20 @@ export class BoilService {
     return segments.length > 0 ? segments : [{ snapshot: canvasData, durationSeconds: total }];
   }
 
+  private paramsSignature(params: BoilParams): string {
+    return `${params.variations}:${params.holdFrames}:${params.amount}`;
+  }
+
   private renderVariations(
     boardId: string,
     canvasData: Record<string, unknown> | null,
-    backgroundColor: string
+    backgroundColor: string,
+    params: BoilParams
   ): string[] {
     const images: string[] = [];
-    for (let i = 0; i < this.params.variations; i++) {
+    for (let i = 0; i < params.variations; i++) {
       const snapshot = canvasData
-        ? this.perturbSnapshot(canvasData, this.seedFor(boardId, i))
+        ? this.perturbSnapshot(canvasData, this.seedFor(boardId, i), params)
         : null;
       const image = this.renderSnapshotToDataUrl(snapshot, backgroundColor);
       if (image) {
@@ -226,7 +248,8 @@ export class BoilService {
    */
   private perturbSnapshot(
     snapshot: Record<string, unknown>,
-    seed: number
+    seed: number,
+    params: BoilParams
   ): Record<string, unknown> {
     const clone =
       typeof structuredClone === 'function'
@@ -235,13 +258,15 @@ export class BoilService {
 
     const shapes = clone['shapes'];
     if (Array.isArray(shapes)) {
-      shapes.forEach((shape, index) => this.perturbShape(shape, seed + index * 2654435761));
+      shapes.forEach((shape, index) =>
+        this.perturbShape(shape, seed + index * 2654435761, params)
+      );
     }
 
     return clone;
   }
 
-  private perturbShape(shape: unknown, seed: number): void {
+  private perturbShape(shape: unknown, seed: number, params: BoilParams): void {
     if (!shape || typeof shape !== 'object') {
       return;
     }
@@ -252,7 +277,7 @@ export class BoilService {
     }
 
     const rng = this.mulberry32(seed);
-    const amount = this.params.amount;
+    const amount = params.amount;
     const offsetX = (rng() * 2 - 1) * amount;
     const offsetY = (rng() * 2 - 1) * amount;
     const noise = () => (rng() * 2 - 1) * amount * 0.5;
@@ -284,11 +309,14 @@ export class BoilService {
       }
     };
 
-    // LinePath / Polygon point arrays. smoothedPointCoordinatePairs drives rendering.
+    // LinePath / Polygon control points. Only the raw control points are jittered;
+    // the pre-baked smoothed points are dropped so LiterallyCanvas regenerates a
+    // clean curve from the jittered controls. Jittering the dense smoothed points
+    // directly produced sharp spikes at corners (where they cluster tightly).
     jitterPairs(record['pointCoordinatePairs']);
-    jitterPairs(record['smoothedPointCoordinatePairs']);
     jitterPoints(record['points']);
-    jitterPoints(record['smoothedPoints']);
+    delete record['smoothedPointCoordinatePairs'];
+    delete record['smoothedPoints'];
 
     // Positioned shapes (Rectangle, Ellipse, Image, Text).
     if (typeof record['x'] === 'number' && typeof record['y'] === 'number') {

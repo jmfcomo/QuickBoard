@@ -14,6 +14,7 @@ export interface Board {
   backgroundColor: string;
   duration: number;
   boilEnabled?: boolean;
+  boilParams?: { variations?: number; holdFrames?: number; amount?: number };
 }
 
 export interface AudioTrack {
@@ -290,6 +291,20 @@ export const AppStore = signalStore(
           .boards()
           .map((board) =>
             board.id === boardId ? { ...board, boilEnabled: !board.boilEnabled } : board
+          );
+        patchState(store, { boards });
+      },
+
+      setBoardBoilParams(
+        boardId: string,
+        params: { variations?: number; holdFrames?: number; amount?: number }
+      ) {
+        const boards = store
+          .boards()
+          .map((board) =>
+            board.id === boardId
+              ? { ...board, boilParams: { ...board.boilParams, ...params } }
+              : board
           );
         patchState(store, { boards });
       },

@@ -46,6 +46,11 @@ export interface AppSettings {
       zoomStep: number;
     };
   };
+  boil: {
+    variations: number;
+    holdFrames: number;
+    amount: number;
+  };
 }
 
 @Injectable({ providedIn: 'root' })

@@ -32,6 +32,7 @@ export interface PersistedBoard {
   backgroundColor: string;
   duration: number;
   boilEnabled?: boolean;
+  boilParams?: { variations?: number; holdFrames?: number; amount?: number };
 }
 
 /**

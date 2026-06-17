@@ -1,7 +1,9 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal, effect, OnDestroy } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { AppStore } from '../../../data/store/app.store';
 import { PlaybackService } from '../../../services/playback.service';
 import { TimelineZoomService } from '../../../services/timeline-zoom.service';
+import { BoilService } from '../../canvas/boil';
 import { formatTime as formatTimeUtil } from '../helpers/format-time';
 
 @Component({
@@ -10,10 +12,18 @@ import { formatTime as formatTimeUtil } from '../helpers/format-time';
   templateUrl: './timeline-menu.html',
   styleUrl: './timeline-menu.css',
 })
-export class TimelineMenu {
+export class TimelineMenu implements OnDestroy {
   readonly store = inject(AppStore);
   readonly playback = inject(PlaybackService);
   readonly zoom = inject(TimelineZoomService);
+  private readonly boil = inject(BoilService);
+  private readonly document = inject(DOCUMENT);
+
+  private boilHoldTimer: number | null = null;
+  private boilPointerActive = false;
+  private boilHoldTriggered = false;
+
+  readonly boilSubmenuOpen = signal(false);
 
   readonly zoomScale = this.zoom.scale;
   readonly sliderPosition = this.zoom.sliderPosition;
@@ -34,6 +44,27 @@ export class TimelineMenu {
     const board = this.store.boards().find((b) => b.id === id);
     return board?.boilEnabled ?? false;
   });
+
+  /** Effective boil parameters for the current board (per-frame over defaults). */
+  readonly currentBoilParams = computed(() => {
+    const id = this.store.currentBoardId();
+    const board = this.store.boards().find((b) => b.id === id);
+    return this.boil.resolveParams(board ?? {});
+  });
+
+  constructor() {
+    effect((onCleanup) => {
+      const handlePointerDown = (event: PointerEvent) => this.handleDocumentPointerDown(event);
+      this.document.addEventListener('pointerdown', handlePointerDown, true);
+      onCleanup(() => {
+        this.document.removeEventListener('pointerdown', handlePointerDown, true);
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.clearBoilHoldTimer();
+  }
 
   updateDuration(value: string) {
     const n = Number(value);
@@ -56,6 +87,95 @@ export class TimelineMenu {
     const id = this.store.currentBoardId();
     if (id) {
       this.store.toggleBoardBoil(id);
+    }
+  }
+
+  // --- Boil button: click toggles, Alt+click / press-and-hold / right-click opens submenu ---
+
+  onBoilPointerDown(event: PointerEvent) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    this.boilPointerActive = true;
+    this.boilHoldTriggered = false;
+    this.clearBoilHoldTimer();
+
+    if (event.altKey) {
+      this.boilHoldTriggered = true;
+      this.boilSubmenuOpen.set(true);
+      return;
+    }
+
+    this.boilHoldTimer = window.setTimeout(() => {
+      if (!this.boilPointerActive) {
+        return;
+      }
+      this.boilHoldTriggered = true;
+      this.boilSubmenuOpen.set(true);
+    }, 300);
+  }
+
+  onBoilPointerUp() {
+    if (!this.boilPointerActive) {
+      return;
+    }
+
+    this.boilPointerActive = false;
+    const wasHold = this.boilHoldTriggered;
+    this.boilHoldTriggered = false;
+    this.clearBoilHoldTimer();
+
+    if (wasHold) {
+      return;
+    }
+
+    this.toggleBoil();
+  }
+
+  onBoilPointerCancel() {
+    this.boilPointerActive = false;
+    this.boilHoldTriggered = false;
+    this.clearBoilHoldTimer();
+  }
+
+  onBoilContextMenu(event: MouseEvent) {
+    event.preventDefault();
+    this.clearBoilHoldTimer();
+    this.boilPointerActive = false;
+    this.boilHoldTriggered = false;
+    this.boilSubmenuOpen.set(true);
+  }
+
+  setBoilParam(key: 'variations' | 'holdFrames' | 'amount', value: string) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) {
+      return;
+    }
+    const id = this.store.currentBoardId();
+    if (!id) {
+      return;
+    }
+    const clamped =
+      key === 'amount' ? Math.max(0, n) : Math.max(key === 'variations' ? 2 : 1, Math.round(n));
+    this.store.setBoardBoilParams(id, { [key]: clamped });
+  }
+
+  private handleDocumentPointerDown(event: PointerEvent) {
+    if (!this.boilSubmenuOpen()) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest('.boil-btn') || target.closest('.boil-submenu'))) {
+      return;
+    }
+    this.boilSubmenuOpen.set(false);
+  }
+
+  private clearBoilHoldTimer() {
+    if (this.boilHoldTimer !== null) {
+      clearTimeout(this.boilHoldTimer);
+      this.boilHoldTimer = null;
     }
   }
 
