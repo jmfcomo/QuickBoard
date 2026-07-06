@@ -90,6 +90,16 @@ interface ColorFieldConfig {
   fieldClass?: string;
 }
 
+interface SettingsSection {
+  id: string;
+  title: string;
+  gridClass?: string;
+  checkboxFields?: readonly CheckboxFieldConfig[];
+  numberFields?: readonly NumberFieldConfig[];
+  selectFields?: readonly SelectFieldConfig[];
+  colorFields?: readonly ColorFieldConfig[];
+}
+
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -428,6 +438,57 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  // All settings sections configuration
+  readonly sections: readonly SettingsSection[] = [
+    {
+      id: 'saving',
+      title: 'Saving',
+      gridClass: 'saving-grid',
+      checkboxFields: this.savingCheckboxFields,
+      numberFields: this.savingNumberFields,
+    },
+    {
+      id: 'export',
+      title: 'Export Defaults',
+      selectFields: this.exportSelectFields,
+    },
+    {
+      id: 'audio',
+      title: 'Audio',
+      numberFields: this.audioNumberFields,
+    },
+    {
+      id: 'themes',
+      title: 'Themes',
+      selectFields: this.themeSelectFields,
+    },
+    {
+      id: 'canvas',
+      title: 'Canvas Defaults',
+      gridClass: 'canvas-grid',
+      colorFields: this.canvasColorFields,
+      selectFields: this.canvasSelectFields,
+      checkboxFields: this.canvasCheckboxFields,
+    },
+    {
+      id: 'boil',
+      title: 'Line Boiling Defaults',
+      numberFields: this.boilNumberFields,
+      checkboxFields: this.boilCheckboxFields,
+    },
+    {
+      id: 'onion',
+      title: 'Onion Skin Defaults',
+      numberFields: this.onionNumberFields,
+      colorFields: this.onionColorFields,
+    },
+    {
+      id: 'timeline',
+      title: 'Timeline (Experimental)',
+      numberFields: this.timelineNumberFields,
+    },
+  ];
+
   // UI states
   readonly showRestoreConfirm = signal(false);
   readonly saving = signal(false);
@@ -436,6 +497,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   readonly restoreConfirmTop = signal(0);
   readonly restoreConfirmRight = signal(8);
+
+  // Collapse states for sections - stored in a Map keyed by section id
+  readonly collapsedSections = signal<Set<string>>(new Set());
 
   readonly restartShaking = signal(false);
   readonly restartChanged = signal(false);
@@ -734,5 +798,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
     if (input) {
       input.value = String(clampedValue);
     }
+  }
+
+  // Toggle collapse state for a section
+  toggleSection(sectionId: string): void {
+    this.collapsedSections.update((collapsed) => {
+      const newSet = new Set(collapsed);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  }
+
+  // Check if a section is collapsed
+  isSectionCollapsed(sectionId: string): boolean {
+    return this.collapsedSections().has(sectionId);
   }
 }
