@@ -258,14 +258,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly audioNumberFields: readonly NumberFieldConfig[] = [
     {
       id: 'default-lanes',
-      label: 'Default Audio Tracks',
+      label: 'Audio Tracks',
       value: this.defaultLaneCount,
       min: 1,
       max: 4,
     },
     {
       id: 'default-volume',
-      label: 'Default Clip Volume',
+      label: 'Clip Volume',
       value: this.defaultVolume,
       min: 0,
       max: 100,
@@ -448,19 +448,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
       numberFields: this.savingNumberFields,
     },
     {
+      id: 'themes',
+      title: 'Themes',
+      selectFields: this.themeSelectFields,
+    },
+    {
       id: 'export',
       title: 'Export Defaults',
       selectFields: this.exportSelectFields,
     },
     {
       id: 'audio',
-      title: 'Audio',
+      title: 'Audio Defaults',
       numberFields: this.audioNumberFields,
-    },
-    {
-      id: 'themes',
-      title: 'Themes',
-      selectFields: this.themeSelectFields,
     },
     {
       id: 'canvas',
