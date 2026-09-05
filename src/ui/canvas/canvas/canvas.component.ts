@@ -71,16 +71,16 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   readonly isZoomKeepOn = this.viewport.zoomKeepOn;
   readonly canvasZoomLevel = this.viewport.zoomLevel;
   private readonly toolSizeMap = signal<Record<string, number>>({
-    pencil: 5,
-    brush: 5,
-    rectangle: 5,
-    circle: 5,
-    polygon: 5,
-    eraser: 5,
+    pencil: appSettings.tools?.pencil?.size ?? 5,
+    brush: appSettings.tools?.brush?.size ?? 5,
+    rectangle: appSettings.tools?.rectangle?.size ?? 5,
+    circle: appSettings.tools?.circle?.size ?? 5,
+    polygon: appSettings.tools?.polygon?.size ?? 5,
+    eraser: appSettings.tools?.eraser?.size ?? 5,
   });
   readonly strokeSize = computed(() => this.toolSizeMap()[this.activeTool()] ?? 5);
-  readonly brushSpacing = signal<number>(45);
-  readonly colorTolerance = signal<number>(16);
+  readonly brushSpacing = signal<number>(appSettings.tools?.brush?.spacing ?? 45);
+  readonly colorTolerance = signal<number>(appSettings.tools?.bucketFill?.tolerance ?? 16);
   readonly strokeColor = signal<string>(appSettings.canvas.defaultStrokeColor ?? '#000000');
   readonly fillColor = signal<string>(appSettings.canvas.defaultFillColor ?? '#ffffff');
   readonly backgroundColor = signal<string>(appSettings.board.defaultBackgroundColor ?? '#ffffff');

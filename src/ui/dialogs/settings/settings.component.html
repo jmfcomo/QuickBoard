@@ -265,6 +265,28 @@
             </div>
           </div>
           } }
+          <!-- Tool Fields (each tool is a box with one or more properties) -->
+          @if (section.toolFields) { @for (tool of section.toolFields; track tool.id) {
+          <div class="field tool-field">
+            <span class="field-label">{{ tool.label }}</span>
+            <div class="tool-props">
+              @for (prop of tool.properties; track prop.id) {
+              <div class="tool-prop">
+                <label [for]="prop.id" class="tool-prop-label">{{ prop.label }}</label>
+                <input
+                  [id]="prop.id"
+                  type="number"
+                  class="number-input"
+                  [value]="prop.value()"
+                  (change)="setNumberSignalFromInput($event, prop.value, prop.min, prop.max)"
+                  [attr.min]="prop.min ?? null"
+                  [attr.max]="prop.max ?? null"
+                />
+              </div>
+              }
+            </div>
+          </div>
+          } }
         </div>
         }
       </section>

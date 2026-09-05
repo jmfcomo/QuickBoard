@@ -90,6 +90,21 @@ interface ColorFieldConfig {
   fieldClass?: string;
 }
 
+interface ToolProperty {
+  id: string;
+  label: string;
+  value: WritableSignal<number>;
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
+interface ToolFieldConfig {
+  id: string;
+  label: string;
+  properties: readonly ToolProperty[];
+}
+
 interface SettingsSection {
   id: string;
   title: string;
@@ -98,6 +113,7 @@ interface SettingsSection {
   numberFields?: readonly NumberFieldConfig[];
   selectFields?: readonly SelectFieldConfig[];
   colorFields?: readonly ColorFieldConfig[];
+  toolFields?: readonly ToolFieldConfig[];
 }
 
 @Component({
@@ -220,6 +236,27 @@ export class SettingsComponent implements OnInit, OnDestroy {
   );
   readonly onionNextColor = signal<string>(
     this.getSafeSettingValue('onionSkin.nextColor', '#00b3ff') as string
+  );
+
+  // Tool default properties
+  readonly pencilSize = signal<number>(this.getSafeSettingValue('tools.pencil.size', 5) as number);
+  readonly brushSize = signal<number>(this.getSafeSettingValue('tools.brush.size', 5) as number);
+  readonly brushSpacing = signal<number>(
+    this.getSafeSettingValue('tools.brush.spacing', 45) as number
+  );
+  readonly eraserSize = signal<number>(this.getSafeSettingValue('tools.eraser.size', 5) as number);
+  readonly objectEraserSize = signal<number>(
+    this.getSafeSettingValue('tools.objectEraser.size', 20) as number
+  );
+  readonly rectangleSize = signal<number>(
+    this.getSafeSettingValue('tools.rectangle.size', 5) as number
+  );
+  readonly circleSize = signal<number>(this.getSafeSettingValue('tools.circle.size', 5) as number);
+  readonly polygonSize = signal<number>(
+    this.getSafeSettingValue('tools.polygon.size', 5) as number
+  );
+  readonly bucketFillTolerance = signal<number>(
+    this.getSafeSettingValue('tools.bucketFill.tolerance', 16) as number
   );
 
   readonly savingCheckboxFields: readonly CheckboxFieldConfig[] = [
@@ -438,6 +475,74 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
   ];
 
+  readonly toolFields: readonly ToolFieldConfig[] = [
+    {
+      id: 'tool-pencil',
+      label: 'Pencil',
+      properties: [{ id: 'pencil-size', label: 'Size', value: this.pencilSize, min: 1, max: 500 }],
+    },
+    {
+      id: 'tool-brush',
+      label: 'Brush',
+      properties: [
+        { id: 'brush-size', label: 'Size', value: this.brushSize, min: 1, max: 500 },
+        { id: 'brush-spacing', label: 'Spacing', value: this.brushSpacing, min: 10, max: 200 },
+      ],
+    },
+    {
+      id: 'tool-eraser',
+      label: 'Eraser',
+      properties: [{ id: 'eraser-size', label: 'Size', value: this.eraserSize, min: 1, max: 500 }],
+    },
+    {
+      id: 'tool-object-eraser',
+      label: 'Object Eraser',
+      properties: [
+        {
+          id: 'object-eraser-size',
+          label: 'Size',
+          value: this.objectEraserSize,
+          min: 1,
+          max: 100,
+        },
+      ],
+    },
+    {
+      id: 'tool-rectangle',
+      label: 'Rectangle',
+      properties: [
+        { id: 'rectangle-size', label: 'Stroke', value: this.rectangleSize, min: 1, max: 500 },
+      ],
+    },
+    {
+      id: 'tool-circle',
+      label: 'Circle',
+      properties: [
+        { id: 'circle-size', label: 'Stroke', value: this.circleSize, min: 1, max: 500 },
+      ],
+    },
+    {
+      id: 'tool-polygon',
+      label: 'Polygon',
+      properties: [
+        { id: 'polygon-size', label: 'Stroke', value: this.polygonSize, min: 1, max: 500 },
+      ],
+    },
+    {
+      id: 'tool-bucket-fill',
+      label: 'Bucket Fill',
+      properties: [
+        {
+          id: 'bucket-fill-tolerance',
+          label: 'Sensitivity',
+          value: this.bucketFillTolerance,
+          min: 0,
+          max: 128,
+        },
+      ],
+    },
+  ];
+
   // All settings sections configuration
   readonly sections: readonly SettingsSection[] = [
     {
@@ -481,6 +586,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
       title: 'Onion Skin Defaults',
       numberFields: this.onionNumberFields,
       colorFields: this.onionColorFields,
+    },
+    {
+      id: 'tools',
+      title: 'Tool Defaults',
+      gridClass: 'tools-grid',
+      toolFields: this.toolFields,
     },
     {
       id: 'timeline',
@@ -621,6 +732,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
         prevColor: this.onionPrevColor(),
         nextColor: this.onionNextColor(),
       },
+      tools: {
+        pencil: { size: this.pencilSize() },
+        brush: { size: this.brushSize(), spacing: this.brushSpacing() },
+        eraser: { size: this.eraserSize() },
+        objectEraser: { size: this.objectEraserSize() },
+        rectangle: { size: this.rectangleSize() },
+        circle: { size: this.circleSize() },
+        polygon: { size: this.polygonSize() },
+        bucketFill: { tolerance: this.bucketFillTolerance() },
+      },
     };
   }
 
@@ -703,6 +824,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.onionFramesForward.set(getValue(settings, 'onionSkin.framesForward', 1) as number);
       this.onionPrevColor.set(getValue(settings, 'onionSkin.prevColor', '#ff00ff') as string);
       this.onionNextColor.set(getValue(settings, 'onionSkin.nextColor', '#00b3ff') as string);
+      this.pencilSize.set(getValue(settings, 'tools.pencil.size', 5) as number);
+      this.brushSize.set(getValue(settings, 'tools.brush.size', 5) as number);
+      this.brushSpacing.set(getValue(settings, 'tools.brush.spacing', 45) as number);
+      this.eraserSize.set(getValue(settings, 'tools.eraser.size', 5) as number);
+      this.objectEraserSize.set(getValue(settings, 'tools.objectEraser.size', 20) as number);
+      this.rectangleSize.set(getValue(settings, 'tools.rectangle.size', 5) as number);
+      this.circleSize.set(getValue(settings, 'tools.circle.size', 5) as number);
+      this.polygonSize.set(getValue(settings, 'tools.polygon.size', 5) as number);
+      this.bucketFillTolerance.set(getValue(settings, 'tools.bucketFill.tolerance', 16) as number);
     } catch (err) {
       console.error('Failed to load fresh settings:', err);
       // Fall back to default values already set in signal initialization

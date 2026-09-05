@@ -41,16 +41,13 @@
   gap: 8px;
 }
 
-.close-button {
+.close-button,
+.collapse-button {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
   color: var(--text-light);
-  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -58,7 +55,15 @@
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.close-button:hover {
+.close-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.close-button:hover,
+.collapse-button:hover {
   background-color: var(--bg-hover);
   border-color: var(--border-default);
   color: var(--text-default);
@@ -114,25 +119,9 @@
 }
 
 .collapse-button {
-  flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid transparent;
   border-radius: 5px;
-  color: var(--text-light);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.2s ease;
-}
-
-.collapse-button:hover {
-  background-color: var(--bg-hover);
-  border-color: var(--border-default);
-  color: var(--text-default);
 }
 
 .collapse-button svg {
@@ -247,6 +236,31 @@ app-color-picker.color-input {
 
 .compact-color-field .field-label {
   letter-spacing: 0.7px;
+}
+
+.tools-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.tool-props {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-prop {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool-prop-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  opacity: 0.85;
 }
 
 .folder-input-group,

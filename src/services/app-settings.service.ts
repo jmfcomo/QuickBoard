@@ -62,6 +62,16 @@ export interface AppSettings {
     prevColor: string;
     nextColor: string;
   };
+  tools?: {
+    pencil?: { size?: number };
+    brush?: { size?: number; spacing?: number };
+    eraser?: { size?: number };
+    objectEraser?: { size?: number };
+    rectangle?: { size?: number };
+    circle?: { size?: number };
+    polygon?: { size?: number };
+    bucketFill?: { tolerance?: number };
+  };
 }
 
 @Injectable({ providedIn: 'root' })
